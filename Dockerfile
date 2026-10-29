@@ -29,6 +29,9 @@ RUN uv sync --frozen --no-dev --no-install-project && \
     rm -rf /root/.cache/uv
 
 COPY app ./app
+# Esquema versionado: el arranque aplica las migraciones antes de Uvicorn.
+COPY alembic.ini ./
+COPY migrations ./migrations
 # CSS compilado en la etapa 1 (app.css está en .dockerignore)
 COPY --from=css /build/app/static/css/app.css ./app/static/css/app.css
 
@@ -36,5 +39,7 @@ RUN mkdir -p uploads
 
 EXPOSE 8000
 
-CMD ["uv", "run", "--no-sync", "--frozen", "uvicorn", "app.main:app", \
-     "--host", "0.0.0.0", "--port", "8000"]
+# ``alembic upgrade head`` es idempotente. Se ejecuta con el mismo entorno que
+# Uvicorn (``uv run --no-sync --frozen``) para no resolver dependencias en
+# caliente; si falla, el contenedor no arranca (fail fast).
+CMD ["sh", "-c", "uv run --no-sync --frozen alembic upgrade head && exec uv run --no-sync --frozen uvicorn app.main:app --host 0.0.0.0 --port 8000"]
