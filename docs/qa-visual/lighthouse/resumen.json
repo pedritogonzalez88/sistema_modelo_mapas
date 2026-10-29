@@ -1,0 +1,182 @@
+{
+  "base": "http://localhost:8000",
+  "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "corridas": [
+    {
+      "slug": "inicio-movil",
+      "ruta": "/",
+      "forma": "mobile",
+      "preset": null,
+      "url": "http://localhost:8000/",
+      "lighthouseVersion": "13.6.0",
+      "chromeVersion": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "fetchTime": "2026-10-29T21:32:44.116Z",
+      "duracionSegundos": 12,
+      "puntajes": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "metricas": {
+        "first-contentful-paint": {
+          "display": "1.1 s",
+          "score": 1
+        },
+        "largest-contentful-paint": {
+          "display": "1.1 s",
+          "score": 1
+        },
+        "total-blocking-time": {
+          "display": "0 ms",
+          "score": 1
+        },
+        "cumulative-layout-shift": {
+          "display": "0",
+          "score": 1
+        },
+        "speed-index": {
+          "display": "1.1 s",
+          "score": 1
+        }
+      },
+      "fallosAccesibilidad": [],
+      "reportes": {
+        "json": "docs/qa-visual/lighthouse/inicio-movil.report.json",
+        "html": "docs/qa-visual/lighthouse/inicio-movil.report.html"
+      }
+    },
+    {
+      "slug": "cruces-movil",
+      "ruta": "/cruces",
+      "forma": "mobile",
+      "preset": null,
+      "url": "http://localhost:8000/cruces",
+      "lighthouseVersion": "13.6.0",
+      "chromeVersion": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "fetchTime": "2026-10-29T21:32:56.548Z",
+      "duracionSegundos": 13,
+      "puntajes": {
+        "performance": 99,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "metricas": {
+        "first-contentful-paint": {
+          "display": "1.7 s",
+          "score": 0.93
+        },
+        "largest-contentful-paint": {
+          "display": "1.7 s",
+          "score": 0.99
+        },
+        "total-blocking-time": {
+          "display": "0 ms",
+          "score": 1
+        },
+        "cumulative-layout-shift": {
+          "display": "0",
+          "score": 1
+        },
+        "speed-index": {
+          "display": "1.7 s",
+          "score": 1
+        }
+      },
+      "fallosAccesibilidad": [],
+      "reportes": {
+        "json": "docs/qa-visual/lighthouse/cruces-movil.report.json",
+        "html": "docs/qa-visual/lighthouse/cruces-movil.report.html"
+      }
+    },
+    {
+      "slug": "qaqc-1-movil",
+      "ruta": "/qaqc/1",
+      "forma": "mobile",
+      "preset": null,
+      "url": "http://localhost:8000/qaqc/1",
+      "lighthouseVersion": "13.6.0",
+      "chromeVersion": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "fetchTime": "2026-10-29T21:33:09.427Z",
+      "duracionSegundos": 12,
+      "puntajes": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "metricas": {
+        "first-contentful-paint": {
+          "display": "1.1 s",
+          "score": 1
+        },
+        "largest-contentful-paint": {
+          "display": "1.1 s",
+          "score": 1
+        },
+        "total-blocking-time": {
+          "display": "0 ms",
+          "score": 1
+        },
+        "cumulative-layout-shift": {
+          "display": "0",
+          "score": 1
+        },
+        "speed-index": {
+          "display": "1.1 s",
+          "score": 1
+        }
+      },
+      "fallosAccesibilidad": [],
+      "reportes": {
+        "json": "docs/qa-visual/lighthouse/qaqc-1-movil.report.json",
+        "html": "docs/qa-visual/lighthouse/qaqc-1-movil.report.html"
+      }
+    },
+    {
+      "slug": "inicio-escritorio",
+      "ruta": "/",
+      "forma": "desktop",
+      "preset": "desktop",
+      "url": "http://localhost:8000/",
+      "lighthouseVersion": "13.6.0",
+      "chromeVersion": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "fetchTime": "2026-10-29T21:33:21.569Z",
+      "duracionSegundos": 12,
+      "puntajes": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "metricas": {
+        "first-contentful-paint": {
+          "display": "0.3 s",
+          "score": 1
+        },
+        "largest-contentful-paint": {
+          "display": "0.3 s",
+          "score": 1
+        },
+        "total-blocking-time": {
+          "display": "0 ms",
+          "score": 1
+        },
+        "cumulative-layout-shift": {
+          "display": "0",
+          "score": 1
+        },
+        "speed-index": {
+          "display": "0.3 s",
+          "score": 1
+        }
+      },
+      "fallosAccesibilidad": [],
+      "reportes": {
+        "json": "docs/qa-visual/lighthouse/inicio-escritorio.report.json",
+        "html": "docs/qa-visual/lighthouse/inicio-escritorio.report.html"
+      }
+    }
+  ]
+}

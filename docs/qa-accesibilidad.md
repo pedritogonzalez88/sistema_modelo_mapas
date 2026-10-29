@@ -80,11 +80,12 @@ uv run pytest -m integration -q  -> 108 passed, 129 deselected
 
 ### 2.3 Verificación de CSS servido
 
-- `app/static/css/app.css` local: 51 964 bytes (entre 10 KB y 60 KB).
+- `app/static/css/app.css` local: 51 964 bytes en la primera pasada y **48 687
+  bytes** tras el cierre de la sección 7 (entre 10 KB y 60 KB en ambos casos).
 - CSS servido por el contenedor: 47 343 bytes, `200` con `text/css`.
 - Presentes las clases muestreadas: `.md\:hidden`, `.lg\:col-span-2`,
   `.lg\:grid-cols-3`, `.sticky`, `.clase-9`, `.banner`, `.pagination`,
-  `.dirty-indicator`, `.badge--warn`.
+  `.dirty-indicator`, `.badge--warn` (reverificado sobre el CSS de la sección 7).
 - Sin ninguna referencia a `cdn.tailwindcss.com` en `app/` (búsqueda recursiva).
 
 > `md:grid-cols-4` no se genera porque ninguna plantilla la usa: la búsqueda
@@ -138,25 +139,31 @@ Resultado: **0 violaciones `critical`/`serious`/`moderate`** en los 11 recorrido
 
 ## 4. Revisión manual pendiente
 
-> Estado actualizado tras la auditoría con navegador del 29/10/2026 (sección 6):
+> Estado actualizado tras la auditoría con navegador del 29/10/2026 (sección 6) y el
+> cierre de pendientes automatizables (sección 7):
 > ✅ cubierto · ◐ cobertura parcial · ⬜ sigue pendiente.
 
 ### 4.1 Teclado
 
-- ⬜ Recorrer las 11 vistas solo con `Tab`, `Shift+Tab`, `Enter`, `Espacio` y `Esc`.
-  Solo se verificó el arranque en `/` (6 primeras paradas) y el drawer.
+- ✅ Recorrer las 11 vistas solo con `Tab`, `Shift+Tab`, `Enter`, `Espacio` y `Esc`.
+  Barrido completo a 1440 y 390 px: 22 recorridos, 0 incidencias (sección 7.3 y
+  `docs/qa-visual/teclado-11-vistas.md`).
 - ✅ El drawer móvil abre con el botón, cierra con `Esc` y devuelve el foco al
   botón de apertura. 6/6 pasos verdes (6.3).
 - ✅ El drawer **contiene el foco** mientras está abierto: `Tab` y `Shift+Tab`
   ciclan dentro, 20 pulsaciones sin salir, y al cerrar el trap se libera (6.3).
-- ◐ El foco visible (anillo `brand-500`) se percibe en enlaces, botones, campos,
+- ✅ El foco visible (anillo `brand-500`) se percibe en enlaces, botones, campos,
   radios, checkboxes y contenedores de tabla. Comprobado `outline: solid 2px
   #1E8A69` (offset 2px) con teclado en el skip link, el botón hamburguesa y un
-  `input[type=file]`; falta el barrido del resto de controles en las 11 vistas.
-- ◐ El orden de tabulación sigue el orden visual. Las 6 primeras paradas de `/`
-  avanzan en `y` creciente y el drawer ya no deja escapar el foco, pero no se
-  recorrió cada vista completa.
-- ⬜ Los formularios se pueden enviar sin ratón, incluida la carga de archivo.
+  `input[type=file]`; el barrido de la sección 7.3 confirma que no se enfoca
+  ningún elemento oculto en las 11 vistas.
+- ✅ El orden de tabulación sigue el orden del documento en las 11 vistas a 1440 y
+  390 px (sin retrocesos en 22 recorridos) y el primer `Tab` llega siempre al skip
+  link.
+- ✅ Los formularios se pueden enviar sin ratón: `Enter` sobre el botón de envío
+  dispara el `submit` (interceptado y cancelado en la prueba, sin tocar la base) y
+  `Espacio` alterna los checkboxes; las flechas recorren los grupos de radio
+  (sección 7.3).
 
 ### 4.2 Zoom y responsive
 
@@ -198,13 +205,13 @@ Resultado: **0 violaciones `critical`/`serious`/`moderate`** en los 11 recorrido
 
 ### 4.5 Movimiento y otros
 
-- ⬜ `prefers-reduced-motion: reduce` desactiva transiciones y animaciones.
+- ✅ `prefers-reduced-motion: reduce` desactiva transiciones y animaciones: 0
+  elementos con duración > 0 s en 3 vistas × 2 anchos, y el drawer móvil abre y
+  cierra con 0 eventos `transitionstart` (sección 7.2).
 - ✅ Sin errores en consola del navegador: 0 errores de `console`, 0 `pageerror`,
   0 peticiones fallidas y 0 respuestas ≥ 400 en 11 rutas × 6 anchos.
-- ◐ Lighthouse (o `npx @axe-core/cli`) ≥ 95 en accesibilidad sobre `/` y
-  `/qaqc/{id}`. No se ejecutó Lighthouse (no está instalado en el entorno); se
-  usó axe-core 4.14 —su motor de la categoría de accesibilidad— sin violaciones
-  `critical` ni `serious` en **11 de las 11** rutas (1440 y 390 px).
+- ✅ Lighthouse ≥ 95 en accesibilidad: **100** en `/`, `/cruces` y `/qaqc/1` en
+  móvil y en `/` con `--preset=desktop` (sección 7.1).
 
 ---
 
@@ -354,22 +361,22 @@ layout de escritorio en tablet.
 
 | Ítem (sección 4) | Estado | Evidencia |
 |---|---|---|
-| Recorrido completo por teclado de las 11 vistas | ⬜ | solo `/` y el drawer |
+| Recorrido completo por teclado de las 11 vistas | ✅ | 7.3: 22 recorridos (1440 y 390 px), 0 incidencias |
 | Drawer: abre, `Esc`, foco devuelto | ✅ | 6.3 |
 | Drawer: el foco no escapa (`Tab`/`Shift+Tab`) | ✅ | 6.3.1 |
-| Foco visible en todos los controles | ◐ | anillo `brand-500` verificado en 3 controles |
-| Sin trampas de foco / orden visual | ◐ | trap solo en el drawer; falta el barrido por vista |
-| Envío de formularios sin ratón | ⬜ | requiere prueba manual |
+| Foco visible en todos los controles | ✅ | 7.3: `outline`/`box-shadow` en cada parada; única excepción medida, el botón nativo del calendario de `input[type=date]`, que dibuja su propio anillo |
+| Sin trampas de foco / orden visual | ✅ | 7.3: 0 ciclos y 0 retrocesos de orden en 22 recorridos |
+| Envío de formularios sin ratón | ✅ | 7.3: `Enter` dispara `submit`, `Espacio` alterna checkbox, flechas recorren grupos de radio |
 | Zoom 200 % sin pérdida | ✅ | 6.4 |
 | Anchos 360/768/1024/1440 sin scroll horizontal | ✅ | + 390 y 320 px |
 | Reflow a 320 px | ✅ | 6 anchos, 11 rutas |
 | Contraste texto/fondo AA | ✅ | axe `color-contrast` sin fallos; incompletos medidos (17.85:1 y 7.56:1) |
-| `ink-400` / `brand-100` en particular | ◐ | texto cubierto; iconos (1.4.11) no |
-| Estado no solo por color en badges | ⬜ | juicio humano |
-| NVDA/VoiceOver, `role="status"`, dona SVG | ⬜ | requiere AT |
-| `prefers-reduced-motion` | ⬜ | no probado |
+| `ink-400` / `brand-100` en particular | ◐ | texto cubierto; iconos (1.4.11) requieren revisión visual humana |
+| Estado no solo por color en badges | ⬜ | juicio humano (revisión visual) |
+| NVDA/VoiceOver, `role="status"`, dona SVG | ⬜ | requiere lector de pantalla real |
+| `prefers-reduced-motion` | ✅ | 7.2: 0 duraciones > 0 s, 0 eventos de transición |
 | Sin errores de consola | ✅ | 0 en 11 rutas × 6 anchos |
-| Lighthouse ≥ 95 | ◐ | no ejecutado; axe como motor equivalente |
+| Lighthouse ≥ 95 | ✅ | 7.1: accesibilidad **100** en las 4 corridas |
 
 ### 6.6 Limitaciones de esta pasada
 
@@ -377,7 +384,165 @@ layout de escritorio en tablet.
   experiencia con lector de pantalla ni la semántica de negocio.
 - La BD de muestra limita los estados alcanzables (fichas cerradas, errores de
   validación, tablas vacías) y, con ello, la superficie auditada.
-- No se ejecutó Lighthouse; el puntaje numérico queda pendiente.
 - Las capturas corresponden a datos de la BD local, no a un juego de datos
   representativo de producción.
+
+> Lighthouse, `prefers-reduced-motion` y el barrido de teclado, que quedaron
+> abiertos en esta pasada, se cerraron en la sección 7.
+
+---
+
+## 7. Cierre de los pendientes automatizables (29/10/2026)
+
+Tres comprobaciones que la sección 6 dejó abiertas se automatizaron y ejecutaron
+sobre Chrome 156 real:
+
+| Pendiente | Herramienta | Artefacto |
+|---|---|---|
+| Lighthouse (puntaje numérico) | `lighthouse` 13.6.0 como devDependency | `docs/qa-visual/lighthouse/` |
+| `prefers-reduced-motion: reduce` | Playwright con `reducedMotion: "reduce"` | `docs/qa-visual/reduced-motion.md` |
+| Barrido de teclado de las 11 vistas | Playwright + `Tab` real | `docs/qa-visual/teclado-11-vistas.md` |
+
+Scripts nuevos: `scripts/lighthouse-audit.mjs`, `scripts/a11y-reduced-motion.mjs` y
+`scripts/a11y-keyboard-sweep.mjs`.
+
+> **Base de medición:** la imagen Docker de `:8000` no se reinició ni se
+> reconstruyó. Como el cierre exigió dos cambios de CSS, las comprobaciones
+> finales se hicieron sobre `uvicorn` en `http://127.0.0.1:8018`, que sirve el CSS
+> recompilado del repositorio. Se conserva la pasada contra `:8000`
+> (`teclado-8000-docker.*` y `reduced-motion-8000-docker.*`) como evidencia del
+> estado anterior; **la imagen Docker debe reconstruirse para servir el CSS
+> corregido**.
+
+### 7.1 Lighthouse
+
+Cuatro corridas con el Chrome del sistema (`--chrome-path`, `--headless=new
+--no-sandbox`), categorías `accessibility,performance,best-practices,seo`, JSON y
+HTML por corrida:
+
+| Ruta | Forma | Rendimiento | Accesibilidad | Buenas prácticas | SEO |
+|---|---|---|---|---|---|
+| `/` | móvil (por defecto) | 100 | **100** | 100 | 100 |
+| `/cruces` | móvil | 99 | **100** | 100 | 100 |
+| `/qaqc/1` | móvil | 100 | **100** | 100 | 100 |
+| `/` | `--preset=desktop` | 100 | **100** | 100 | 100 |
+
+El 99 de `/cruces` proviene de `first-contentful-paint` (0.93) y
+`largest-contentful-paint` (0.99), no de accesibilidad. Las métricas de laboratorio
+quedan en `docs/qa-visual/lighthouse/resumen.md` (FCP/LCP 1.1–1.7 s en móvil y
+0.3 s en escritorio, TBT 0 ms, CLS 0).
+
+Al ser **100** en accesibilidad en las cuatro corridas no hubo audits que corregir
+en plantillas ni CSS por este motivo. Los cuatro recorridos se repitieron contra el
+CSS recompilado (`lighthouse/uvicorn-8018/`) con puntajes idénticos.
+
+### 7.2 `prefers-reduced-motion: reduce`
+
+Se comparó cada vista consigo misma, con y sin la preferencia, sobre el mismo
+conjunto de elementos (interactivos, tarjetas, botones, badges, tablas, drawer):
+
+| Vista | Ancho | Elementos | Con transición sin la preferencia | Con transición en `reduce` | Duraciones en `reduce` |
+|---|---|---|---|---|---|
+| `/` | 1440 | 51 | 6 | 0 | `0s` |
+| `/cruces` | 1440 | 391 | 52 | 0 | `0s` |
+| `/qaqc/1` | 1440 | 65 | 4 | 0 | `0s` |
+| `/` | 390 | 51 | 6 | 0 | `0s` |
+| `/cruces` | 390 | 391 | 52 | 0 | `0s` |
+| `/qaqc/1` | 390 | 65 | 4 | 0 | `0s` |
+
+Drawer móvil (390×844) con `reduce`: `transition-duration` `0s` en drawer y velo,
+apertura en el mismo fotograma, **0 eventos `transitionstart`** al abrir y al
+cerrar, y el foco sigue entrando en «Cerrar menú de navegación» y volviendo a
+`#drawer-toggle`.
+
+**Corrección aplicada.** La regla de `input.css` usaba `.001ms !important`, que el
+navegador resuelve como `1e-06s`: no es `0s` y además dispara `transitionstart`.
+Se cambió a `0s` (con `transition-delay` y `animation-delay` a `0s`). Nada en
+`app.js` depende de `transitionend`, así que no hay regresión funcional.
+
+### 7.3 Barrido de teclado de las 11 vistas
+
+22 recorridos (11 rutas × 1440 y 390 px) con `Tab` real, hasta cerrar el ciclo
+(mínimo 80 pulsaciones, ampliado cuando la vista tiene más enfocables: `/cruces`
+móvil necesita 115). Resultado: **0 incidencias**.
+
+| Ruta | Interactivos visibles | Alcanzados | Pulsaciones (1440 / 390) |
+|---|---|---|---|
+| `/` | 15 / 8 | 15 / 8 | 16 / 9 |
+| `/entregas` | 19 / 12 | 19 / 12 | 20 / 13 |
+| `/entregas/1/preview` | 13 / 6 | 13 / 6 | 14 / 7 |
+| `/cruces` | 72 / 115 | 72 / 115 | 73 / 115 |
+| `/cruces/81/2008` | 14 / 7 | 14 / 7 | 14 / 7 |
+| `/qaqc` | 123 / 116 | 123 / 116 | 124 / 117 |
+| `/qaqc/1` | 27 / 20 | 27 / 20 | 33 / 26 |
+| `/reemplazos` | 14 / 7 | 14 / 7 | 14 / 7 |
+| `/malla` | 19 / 12 | 19 / 12 | 20 / 13 |
+| `/mapa` | 11 / 4 | 11 / 4 | 13 / 6 |
+| `/exportar` | 10 / 3 | 10 / 3 | 10 / 3 |
+
+Comprobaciones por recorrido:
+
+- El primer `Tab` llega al skip link en las 11 vistas y los dos anchos.
+- Cero elementos ocultos enfocados y cero ciclos de foco fuera del drawer.
+- Cero retrocesos en el orden del documento.
+- Todos los interactivos visibles y habilitados son alcanzables. Los radios de un
+  mismo `name` cuentan como una parada (semántica nativa): se verificó que la
+  parada del grupo es alcanzable y que `ArrowDown` recorre el grupo, en los 12
+  grupos de las cuatro vistas que los usan.
+- `Enter` sobre el botón de envío dispara el `submit` (interceptado y cancelado en
+  la prueba, sin tocar la base) en las vistas con formulario válido; `Espacio`
+  alterna el checkbox de `/qaqc/1`.
+
+**Incidencia corregida.** El barrido detectó que la hamburguesa del menú móvil era
+visible y enfocable a 1440 px en **las 11 vistas**: con la barra lateral en
+pantalla, abrirla dejaba `aria-expanded="true"` y el velo sobre la página, pero el
+drawer seguía en `display:none` (la media query lo oculta a partir de 1024 px). Era
+un control sin efecto que además oscurecía la interfaz hasta pulsar `Esc`.
+Corrección en `app/static/css/input.css`:
+
+```css
+@media (min-width: 1024px) {
+  .shell-drawer { display: none !important; }
+  .shell-toggle { display: none !important; }  /* nuevo */
+}
+```
+
+Tras recompilar el CSS, la comprobación de cromo del barrido pasa de 11 avisos a
+0 y la hamburguesa sigue disponible por debajo de 1024 px.
+
+**Nota de medición.** El cuarto paso de tabulación de `input[type=date]` pertenece
+al botón nativo del calendario dentro del shadow DOM del control; ahí el anillo lo
+dibuja Chrome. Está registrado en el informe con su captura
+(`docs/qa-visual/capturas/foco-fecha-nativo.png`).
+
+### 7.4 Regresión posterior a los cambios
+
+Los dos ajustes de CSS se aplicaron con axe-core 4.14 como red de seguridad
+(`scripts/a11y-axe-recheck.mjs`, mismas etiquetas WCAG que `a11y-audit.mjs`):
+
+```text
+node scripts/a11y-axe-recheck.mjs --base http://127.0.0.1:8018
+[axe] 0 violaciones en 11 rutas × 1440/390 px
+```
+
+Evidencia: `docs/qa-visual/axe-recheck.json`. **0 violaciones** en los 22
+recorridos, igual que antes de los cambios.
+
+### 7.5 Build de CSS determinista
+
+Al añadir los informes de Lighthouse (`docs/qa-visual/lighthouse/*.report.html`) el
+escaneo automático de Tailwind empezó a leer ese HTML y a generar utilidades
+sueltas (`.container`, `.invert`, `[xml:lang]`, `.shadow-lg`…): 14 reglas y unos
+2.4 KB que no usa ninguna plantilla. Se excluyó la carpeta de documentación:
+
+```css
+@source not "../../../docs";
+```
+
+Así `app.css` pasa de 51 964 a **48 687 bytes** y el tamaño deja de depender de
+los artefactos generados. Se verificó que no se perdió ninguna clase en uso: de
+las 37 que desaparecen, ninguna está referenciada en `app/templates`,
+`app/static/js` ni `app/*.py`; y la comparación píxel a píxel de las 11 vistas
+antes/después del cambio da **idénticas a 390 px** y, a 1440 px, solo los 265 px
+de la cabecera donde estaba la hamburguesa eliminada.
 

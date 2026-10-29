@@ -272,13 +272,12 @@ Conclusión: **no se incumple 1.4.4 (Redimensionar texto) ni 1.4.10 (Reflow)** p
 
 **No cubierto (sigue pendiente de revisión manual/AT):**
 
-- Recorrido completo con teclado de las 11 vistas (aquí solo el arranque en `/` y el drawer).
 - Lectores de pantalla reales (NVDA/JAWS + Firefox/Chrome, VoiceOver + Safari).
 - Contraste: `color-contrast` sin violaciones; 2 casos quedaron **incompletos** y se listan en 3.1 (texto SVG de la dona y un párrafo parcialmente tapado por la barra sticky). Los cuatro valores se midieron y superan AA (§11.4).
-- `prefers-reduced-motion: reduce`.
-- Envío de formularios sin ratón, incluida la carga de archivo.
-- Lighthouse (puntaje numérico); esta auditoría usa axe-core directamente, que es el motor de su categoría de accesibilidad.
 - Contenido dentro de estados no alcanzables en esta BD de muestra (p. ej. fichas cerradas, errores de validación vacíos).
+
+> El recorrido de teclado de las 11 vistas, `prefers-reduced-motion` y Lighthouse,
+> que aparecían en esta lista, se cerraron el 29/10/2026 (§11.8).
 
 ---
 
@@ -375,15 +374,32 @@ axe sobre el drawer abierto: **0 violaciones / 0 nodos** (`axe/drawer-390.json`)
 - `docs/qa-visual/` completo: `audit-data.json`, `interaction-data.json`,
   `axe/*.json` (22 archivos), `axe/resumen.md` y las **33 capturas** `fullPage`
   (1440, 768 y 390 px).
-- `app/static/css/app.css`: 51 964 bytes (la imagen Docker sirve 47 343 bytes).
+- `app/static/css/app.css`: 51 964 bytes en esta pasada (la imagen Docker sirve
+  47 343 bytes). Tras el cierre de §11.8 el archivo local queda en 48 687 bytes
+  (ver `docs/qa-accesibilidad.md` §7.5).
 
 ### 11.7 Lo que sigue abierto
 
+> Actualizado el 29/10/2026 tras cerrar Lighthouse, `prefers-reduced-motion` y el
+> barrido de teclado: ver §11.8. Quedan abiertos solo el lector de pantalla real y
+> la revisión visual humana.
+
 - Lectores de pantalla reales (NVDA/JAWS, VoiceOver): el anuncio efectivo no es
   verificable con axe.
-- Lighthouse (puntaje numérico).
-- Regresión visual manual lado a lado de las capturas.
-- Recorrido de teclado completo de las 11 vistas (envío de formularios y carga de
-  archivo incluidas) y `prefers-reduced-motion`.
+- Regresión visual manual lado a lado de las capturas (incluye el juicio humano
+  sobre si el estado de badges y chips se comunica sin depender del color) y el
+  contraste de los iconos sueltos en `ink-400` (1.4.11).
 - Los 5 nodos `color-contrast` marcados como `incomplete` seguirán apareciendo en
   cada pasada: son limitaciones de axe, no incumplimientos (ratios en §11.4).
+
+### 11.8 Lighthouse, movimiento reducido y teclado (cerrados el 29/10/2026)
+
+| Comprobación | Resultado | Artefacto |
+|---|---|---|
+| Lighthouse (móvil y escritorio) | Accesibilidad **100** en `/`, `/cruces` y `/qaqc/1`; rendimiento 100/99/100/100; buenas prácticas y SEO 100 | `docs/qa-visual/lighthouse/` |
+| `prefers-reduced-motion: reduce` | 0 elementos con duración > 0 s en 3 vistas × 2 anchos; drawer sin transición y 0 eventos `transitionstart` | `docs/qa-visual/reduced-motion.md` |
+| Teclado en las 11 vistas | 22 recorridos, 0 incidencias; 1 defecto real corregido (hamburguesa activa en escritorio) | `docs/qa-visual/teclado-11-vistas.md` |
+
+Detalle, método y puntajes: `docs/qa-accesibilidad.md` §7. Las mediciones finales
+se hicieron sobre `uvicorn` en `:8018` con el CSS recompilado; la imagen Docker de
+`:8000` conserva el CSS anterior y debe reconstruirse.

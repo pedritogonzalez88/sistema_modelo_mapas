@@ -1028,8 +1028,9 @@ F2, F4 y F6.1, con commits separados por función.
 
 ### Verificación ejecutada
 
-- `npm run css:build` genera `app/static/css/app.css` (51 964 bytes; la imagen
-  Docker sirve 47 343 bytes) con las utilidades usadas por las plantillas.
+- `npm run css:build` genera `app/static/css/app.css` (48 687 bytes tras el cierre
+  de la sección de accesibilidad; la imagen Docker sirve 47 343 bytes) con las
+  utilidades usadas por las plantillas.
 - Sin referencias a `cdn.tailwindcss.com` en `app/`.
 - `uv run pytest -q`: 129 pruebas en verde (unitarias y de contrato).
 - `uv run pytest -m integration -q`: 108 pruebas en verde contra PostgreSQL en
@@ -1068,9 +1069,11 @@ F2, F4 y F6.1, con commits separados por función.
 - **`md:grid-cols-4` no existe en el CSS compilado** porque ninguna plantilla la
   usa; las rejillas de cuatro columnas emplean `xl:grid-cols-4` o
   `lg:grid-cols-4`.
-- **Tamaño del CSS distinto entre local y Docker** (52 KB vs 47 KB): Tailwind
+- **Tamaño del CSS distinto entre local y Docker** (48 KB vs 47 KB): Tailwind
   detecta fuentes adicionales en el árbol de trabajo local; el CSS de la imagen
-  es un subconjunto suficiente y contiene todas las clases verificadas.
+  es un subconjunto suficiente y contiene todas las clases verificadas. La
+  diferencia se redujo con `@source not "../../../docs"` (ver
+  `docs/qa-accesibilidad.md` §7.5).
 - **Aviso de deprecación de Jinja resuelto**: `pattern="\d{4}-W\d{2}"` en
   `entregas.html` se sustituyó por `pattern="[0-9]{4}-W[0-9]{2}"`. Jinja
   interpretaba `\d` como una secuencia inválida y avisaba en cada render; el
@@ -1102,14 +1105,44 @@ F2, F4 y F6.1, con commits separados por función.
   `label-content-name-mismatch` incompleto de la paginación y la contención del
   foco del drawer. Detalle en `docs/qa-visual/resumen-auditoria.md` §11.
 
+### Cierre de calidad de accesibilidad (29/10/2026)
+
+Se cerraron los tres pendientes automatizables. Scripts nuevos:
+`scripts/lighthouse-audit.mjs`, `scripts/a11y-reduced-motion.mjs` y
+`scripts/a11y-keyboard-sweep.mjs`; `lighthouse` 13.6.0 añadido como
+devDependency.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Lighthouse (móvil por defecto y `--preset=desktop`) | Accesibilidad **100** en `/`, `/cruces` y `/qaqc/1`; rendimiento 100/99/100/100; buenas prácticas y SEO 100 | `docs/qa-visual/lighthouse/` |
+| `prefers-reduced-motion: reduce` | 0 elementos con `transition-duration`/`animation-duration` > 0 s en 3 vistas × 2 anchos; drawer abre y cierra con 0 eventos `transitionstart` | `docs/qa-visual/reduced-motion.md` |
+| Barrido de teclado de las 11 vistas | 22 recorridos (1440 y 390 px), 0 incidencias: sin focos ocultos, sin ciclos, sin retrocesos de orden, todos los interactivos alcanzables | `docs/qa-visual/teclado-11-vistas.md` |
+
+Correcciones aplicadas en esta pasada:
+
+- **`prefers-reduced-motion`**: la regla usaba `.001ms !important`, que el
+  navegador resuelve como `1e-06s` y que además dispara `transitionstart`. Ahora
+  usa `0s` (más `transition-delay`/`animation-delay` a `0s`). No hay regresión:
+  nada en `app.js` depende de `transitionend`.
+- **Hamburguesa en escritorio**: el botón del menú móvil era visible y enfocable a
+  partir de 1024 px, donde la barra lateral ya está en pantalla y el drawer queda
+  en `display:none`; al pulsarlo solo aparecía el velo. Se oculta con
+  `.shell-toggle { display: none !important }` en la media query de 1024 px.
+- **Build de CSS determinista**: `@source not "../../../docs"` para que los
+  informes HTML generados no aporten utilidades al bundle (51 964 → 48 687 bytes;
+  ninguna clase en uso se pierde).
+
+> Las mediciones finales se hicieron sobre `uvicorn` en `http://127.0.0.1:8018`
+> con el CSS recompilado (`npm run css:build`). La imagen Docker de `:8000` no se
+> reinició: **debe reconstruirse para servir el CSS corregido**. Las pasadas contra
+> `:8000` quedan como evidencia previa en `teclado-8000-docker.*` y
+> `reduced-motion-8000-docker.*`.
+
 ### Pendientes reales
 
 - Lectores de pantalla reales (NVDA/JAWS + Firefox/Chrome, VoiceOver + Safari)
-  sobre las 11 vistas: anuncio de landmarks, tablas y mensajes `role="status"`.
-- Lighthouse (puntaje numérico) en `/` y `/qaqc/{id}`; la auditoría actual usa
-  axe-core 4.14 directamente, el motor de su categoría.
-- Regresión visual manual con capturas "antes/después"
-  (`docs/qa-visual/capturas/` ya se regenera con cada auditoría, pero la
-  comparación lado a lado sigue siendo revisión humana).
-- Recorrido completo con teclado (incluido envío de formularios y carga de
-  archivo) en las 11 vistas: hoy están cubiertos el skip link y el drawer.
+  sobre las 11 vistas: anuncio de landmarks, tablas, mensajes `role="status"` y
+  la dona SVG.
+- Revisión visual humana: comparación lado a lado de las capturas, estado de
+  badges y chips sin depender del color, contraste de iconos sueltos en `ink-400`
+  (1.4.11) y revisión de `ink-400`/`brand-100` sobre sus fondos.

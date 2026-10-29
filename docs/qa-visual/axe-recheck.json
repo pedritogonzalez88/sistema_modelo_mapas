@@ -1,0 +1,167 @@
+{
+  "base": "http://127.0.0.1:8018",
+  "fecha": "2026-10-29T21:55:35.210Z",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa",
+    "best-practice"
+  ],
+  "rutas": [
+    {
+      "ruta": "/",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": [
+        {
+          "id": "color-contrast",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "ruta": "/entregas",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/entregas/1/preview",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": [
+        {
+          "id": "color-contrast",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "ruta": "/cruces",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/cruces/81/2008",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/qaqc",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/qaqc/1",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/reemplazos",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/malla",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/mapa",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/exportar",
+      "ancho": 1440,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": [
+        {
+          "id": "color-contrast",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "ruta": "/entregas",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/entregas/1/preview",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": [
+        {
+          "id": "color-contrast",
+          "nodes": 3
+        }
+      ]
+    },
+    {
+      "ruta": "/cruces",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/cruces/81/2008",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/qaqc",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/qaqc/1",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/reemplazos",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/malla",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/mapa",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    },
+    {
+      "ruta": "/exportar",
+      "ancho": 390,
+      "violaciones": [],
+      "incompletos": []
+    }
+  ],
+  "violacionesTotales": 0
+}

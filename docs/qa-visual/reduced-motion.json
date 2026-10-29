@@ -1,0 +1,500 @@
+{
+  "fecha": "2026-10-29T21:56:23.850Z",
+  "base": "http://127.0.0.1:8018",
+  "navegador": {
+    "modo": "playwright channel=chrome",
+    "version": "156.0.8078.74"
+  },
+  "metodo": {
+    "emulacion": "Playwright newContext({ reducedMotion: \"reduce\" }) sobre el mismo conjunto de elementos que en \"no-preference\"",
+    "selectores": "a[href],button,input:not([type=hidden]),select,textarea,summary,[tabindex]:not([tabindex='-1']),.card,.btn,.badge,.banner,.table,.table-wrap,.shell-link,.shell-toggle,.shell-drawer,.shell-overlay,.pagination__page,.dirty-indicator,.chip,tr,details,dialog",
+    "criterio": "Se considera incumplimiento cualquier elemento con transition-property distinta de none y transition-duration > 0, o animation-name distinta de none y animation-duration > 0."
+  },
+  "sinPreferencia": {
+    "inicio@1440": {
+      "ruta": "/",
+      "ancho": 1440,
+      "estado": 200,
+      "total": 51,
+      "conTransicion": 6,
+      "conAnimacion": 0,
+      "animados": 6,
+      "valoresTransicion": [
+        "0.15s",
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": [
+        {
+          "selector": "a.btn.btn--primary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        }
+      ]
+    },
+    "cruces@1440": {
+      "ruta": "/cruces",
+      "ancho": 1440,
+      "estado": 200,
+      "total": 391,
+      "conTransicion": 52,
+      "conAnimacion": 0,
+      "animados": 52,
+      "valoresTransicion": [
+        "0.15s",
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": [
+        {
+          "selector": "button.btn.btn--primary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        }
+      ]
+    },
+    "qaqc-ficha@1440": {
+      "ruta": "/qaqc/1",
+      "ancho": 1440,
+      "estado": 200,
+      "total": 65,
+      "conTransicion": 4,
+      "conAnimacion": 0,
+      "animados": 4,
+      "valoresTransicion": [
+        "0.15s",
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": [
+        {
+          "selector": "button.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "button.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "button.btn.btn--primary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "button.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        }
+      ]
+    },
+    "inicio@390": {
+      "ruta": "/",
+      "ancho": 390,
+      "estado": 200,
+      "total": 51,
+      "conTransicion": 6,
+      "conAnimacion": 0,
+      "animados": 6,
+      "valoresTransicion": [
+        "0.15s",
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": [
+        {
+          "selector": "a.btn.btn--primary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        }
+      ]
+    },
+    "cruces@390": {
+      "ruta": "/cruces",
+      "ancho": 390,
+      "estado": 200,
+      "total": 391,
+      "conTransicion": 52,
+      "conAnimacion": 0,
+      "animados": 52,
+      "valoresTransicion": [
+        "0.15s",
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": [
+        {
+          "selector": "button.btn.btn--primary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "a.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        }
+      ]
+    },
+    "qaqc-ficha@390": {
+      "ruta": "/qaqc/1",
+      "ancho": 390,
+      "estado": 200,
+      "total": 65,
+      "conTransicion": 4,
+      "conAnimacion": 0,
+      "animados": 4,
+      "valoresTransicion": [
+        "0.15s",
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": [
+        {
+          "selector": "button.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "button.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "button.btn.btn--primary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        },
+        {
+          "selector": "button.btn.btn--secondary",
+          "transitionProperty": "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to",
+          "transitionDuration": "0.15s",
+          "animationDuration": "0s"
+        }
+      ]
+    }
+  },
+  "conReduce": {
+    "inicio@1440": {
+      "ruta": "/",
+      "ancho": 1440,
+      "estado": 200,
+      "total": 51,
+      "conTransicion": 0,
+      "conAnimacion": 0,
+      "animados": 0,
+      "valoresTransicion": [
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": []
+    },
+    "cruces@1440": {
+      "ruta": "/cruces",
+      "ancho": 1440,
+      "estado": 200,
+      "total": 391,
+      "conTransicion": 0,
+      "conAnimacion": 0,
+      "animados": 0,
+      "valoresTransicion": [
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": []
+    },
+    "qaqc-ficha@1440": {
+      "ruta": "/qaqc/1",
+      "ancho": 1440,
+      "estado": 200,
+      "total": 65,
+      "conTransicion": 0,
+      "conAnimacion": 0,
+      "animados": 0,
+      "valoresTransicion": [
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": []
+    },
+    "inicio@390": {
+      "ruta": "/",
+      "ancho": 390,
+      "estado": 200,
+      "total": 51,
+      "conTransicion": 0,
+      "conAnimacion": 0,
+      "animados": 0,
+      "valoresTransicion": [
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": []
+    },
+    "cruces@390": {
+      "ruta": "/cruces",
+      "ancho": 390,
+      "estado": 200,
+      "total": 391,
+      "conTransicion": 0,
+      "conAnimacion": 0,
+      "animados": 0,
+      "valoresTransicion": [
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": []
+    },
+    "qaqc-ficha@390": {
+      "ruta": "/qaqc/1",
+      "ancho": 390,
+      "estado": 200,
+      "total": 65,
+      "conTransicion": 0,
+      "conAnimacion": 0,
+      "animados": 0,
+      "valoresTransicion": [
+        "0s"
+      ],
+      "valoresAnimacion": [
+        "0s"
+      ],
+      "ejemplosAnimados": []
+    }
+  },
+  "drawer": {
+    "previo": {
+      "drawer": {
+        "selector": "[data-drawer]",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "animationDuration": "0s",
+        "display": "none",
+        "dataOpen": "false"
+      },
+      "overlay": {
+        "selector": ".shell-overlay",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "animationDuration": "0s",
+        "display": "none",
+        "dataOpen": "false"
+      }
+    },
+    "apertura": {
+      "ms": 0,
+      "dataOpen": "true"
+    },
+    "abierto": {
+      "drawer": {
+        "selector": "[data-drawer]",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "animationDuration": "0s",
+        "display": "flex",
+        "dataOpen": "true",
+        "eventos": {
+          "transition": 0,
+          "animation": 0
+        }
+      },
+      "overlay": {
+        "selector": ".shell-overlay",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "animationDuration": "0s",
+        "display": "block",
+        "dataOpen": "true",
+        "eventos": {
+          "transition": 0,
+          "animation": 0
+        }
+      },
+      "foco": "Cerrar menú de navegación"
+    },
+    "cerrado": {
+      "dataOpen": "false",
+      "transitionDuration": "0s",
+      "foco": "drawer-toggle",
+      "eventos": {
+        "transition": 0,
+        "animation": 0
+      }
+    },
+    "msComandoApertura": 788
+  },
+  "incidencias": [],
+  "incidenciasPerceptibles": []
+}
