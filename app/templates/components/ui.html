@@ -1,0 +1,338 @@
+{# =========================================================================
+   components/ui.html — sistema de componentes del Validador EET.
+   Macros puras (sin acceso a request salvo `pagination`, que lo recibe).
+   Regla: las vistas no escriben colores sueltos; usan estas macros.
+   ========================================================================= #}
+{% import "components/icons.html" as icons %}
+
+{# ---------------------------------------------------------------------
+   btn(label, href=None, variant="primary", size="md", icon=None, type="button")
+   Botón o enlace con la misma apariencia. `variant`: primary | secondary |
+   ghost | danger. `size`: md | sm. Si se pasa `variant="sm"` se interpreta
+   como botón primario pequeño (compatibilidad con el plan).
+   --------------------------------------------------------------------- #}
+{% macro btn(label, href=None, variant="primary", size="md", icon=None, type="button") -%}
+{%- if variant == "sm" -%}{%- set variant = "primary" -%}{%- set size = "sm" -%}{%- endif -%}
+{%- set clase = "btn btn--" ~ variant ~ (" btn--sm" if size == "sm" else "") -%}
+{%- if href is not none -%}
+<a class="{{ clase }}" href="{{ href }}"{% for k, v in kwargs.items() if v is not none and v is not sameas false %} {{ k|replace("_", "-") }}{% if v is not sameas true %}="{{ v }}"{% endif %}{% endfor %}>{% if icon %}{{ icons.icon(icon, "w-4 h-4") }}{% endif %}{{ label }}</a>
+{%- else -%}
+<button class="{{ clase }}" type="{{ type }}"{% for k, v in kwargs.items() if v is not none and v is not sameas false %} {{ k|replace("_", "-") }}{% if v is not sameas true %}="{{ v }}"{% endif %}{% endfor %}>{% if icon %}{{ icons.icon(icon, "w-4 h-4") }}{% endif %}{{ label }}</button>
+{%- endif -%}
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   badge(text, tone="neutral", icon=None)
+   Etiqueta de estado. `tone`: ok | warn | danger | info | neutral.
+   El texto siempre acompaña al color (nunca solo color).
+   --------------------------------------------------------------------- #}
+{% macro badge(text, tone="neutral", icon=None) -%}
+<span class="badge badge--{{ tone }}">{% if icon %}{{ icons.icon(icon, "w-3.5 h-3.5") }}{% endif %}{{ text }}</span>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   card(title=None, subtitle=None, class="") — usar con {% call %}
+   Sección con cabecera opcional y cuerpo provisto por el llamador.
+   --------------------------------------------------------------------- #}
+{% macro card(title=None, subtitle=None, class="") -%}
+<section class="card {{ class }}">
+  {%- if title %}
+  <header class="card__header">
+    <h2 class="card__title">{{ title }}</h2>
+    {%- if subtitle %}<p class="card__subtitle">{{ subtitle }}</p>{% endif %}
+  </header>
+  {%- endif %}
+  <div class="card__body">{% if caller is defined %}{{ caller() }}{% endif %}</div>
+</section>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   stat(label, value, hint=None, tone="neutral")
+   Métrica con valor ya formateado en el servidor. `tone` añade acento
+   lateral: ok | warn | danger | info | neutral.
+   --------------------------------------------------------------------- #}
+{% macro stat(label, value, hint=None, tone="neutral") -%}
+<div class="stat{{ ' stat--' ~ tone if tone != 'neutral' else '' }}">
+  <p class="stat__label">{{ label }}</p>
+  <p class="stat__value">{{ value }}</p>
+  {%- if hint %}<p class="stat__hint">{{ hint }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   empty(title, text, action_label=None, action_href=None)
+   Estado vacío accionable (siempre dice qué hacer a continuación).
+   --------------------------------------------------------------------- #}
+{% macro empty(title, text, action_label=None, action_href=None) -%}
+<div class="empty">
+  {{ icons.icon("info", "w-7 h-7 text-ink-400") }}
+  <p class="empty__title">{{ title }}</p>
+  <p class="empty__text">{{ text }}</p>
+  {%- if action_label and action_href %}{{ btn(action_label, href=action_href, variant="secondary", size="sm") }}{% endif %}
+</div>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   banner(tone, text, dismissible=True)
+   Feedback de una acción. role="status" para ok/info y role="alert"
+   para warn/danger. El texto lo provee el backend (nunca la URL cruda).
+   --------------------------------------------------------------------- #}
+{% macro banner(tone="info", text="", dismissible=True) -%}
+<div class="banner banner--{{ tone }}" role="{{ 'alert' if tone in ('warn', 'danger') else 'status' }}" aria-atomic="true">
+  <span class="banner__icon" aria-hidden="true">{{ icons.icon("check" if tone == "ok" else ("alert" if tone in ("warn", "danger") else "info"), "w-5 h-5") }}</span>
+  <p class="banner__text">{{ text }}</p>
+  {%- if dismissible %}
+  <button type="button" class="banner__close" data-banner-close aria-label="Cerrar mensaje">{{ icons.icon("x", "w-4 h-4") }}</button>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   field(label, name, type="text", value="", hint=None, error=None,
+         required=False, **kwargs)
+   Campo de formulario accesible: label[for], aria-describedby con ayuda y
+   error, aria-invalid cuando hay error. `type="textarea"` renderiza un
+   textarea. Atributos extra permitidos: placeholder, autocomplete, pattern,
+   inputmode, min, max, step, maxlength, rows, accept, multiple, readonly,
+   disabled, list, title.
+   --------------------------------------------------------------------- #}
+{% macro field(label, name, type="text", value="", hint=None, error=None, required=False) -%}
+{%- set fid = "campo-" ~ (name|string|replace("[", "-")|replace("]", "")|replace(".", "-")) -%}
+{%- set permitidos = ["placeholder", "autocomplete", "inputmode", "pattern", "min", "max",
+                      "step", "maxlength", "minlength", "rows", "accept", "multiple",
+                      "readonly", "disabled", "list", "title"] -%}
+{%- set ids = [] -%}
+{%- if hint %}{% set _ = ids.append(fid ~ "-hint") %}{% endif -%}
+{%- if error %}{% set _ = ids.append(fid ~ "-error") %}{% endif -%}
+<div class="field">
+  <label class="field__label" for="{{ fid }}">{{ label }}{% if required %} <span class="field__req" aria-hidden="true">*</span>{% endif %}</label>
+  {%- if hint %}<p class="field__hint" id="{{ fid }}-hint">{{ hint }}</p>{% endif %}
+  {%- if type == "textarea" %}
+  <textarea class="textarea" id="{{ fid }}" name="{{ name }}"{% if required %} required aria-required="true"{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if ids %} aria-describedby="{{ ids|join(' ') }}"{% endif %}{% for k, v in kwargs.items() if k in permitidos and v is not none and v is not sameas false %} {{ k|replace("_", "-") }}{% if v is not sameas true %}="{{ v }}"{% endif %}{% endfor %}>{{ value }}</textarea>
+  {%- else %}
+  <input class="input" id="{{ fid }}" name="{{ name }}" type="{{ type }}" value="{{ value }}"{% if required %} required aria-required="true"{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if ids %} aria-describedby="{{ ids|join(' ') }}"{% endif %}{% for k, v in kwargs.items() if k in permitidos and v is not none and v is not sameas false %} {{ k|replace("_", "-") }}{% if v is not sameas true %}="{{ v }}"{% endif %}{% endfor %}>
+  {%- endif %}
+  {%- if error %}<p class="field__error" id="{{ fid }}-error" role="alert">{{ error }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   page_header(title, description=None, breadcrumb=None) — usar con {% call %}
+   Encabezado con el único h1 de la página y zona de acciones.
+   `breadcrumb`: lista de migas, cada una como texto o como dict
+   {label, href}.
+   --------------------------------------------------------------------- #}
+{% macro page_header(title, description=None, breadcrumb=None) -%}
+<header class="page-header">
+  {%- if breadcrumb %}
+  <nav class="breadcrumb" aria-label="Ruta de navegación">
+    <ol>
+      {%- for miga in breadcrumb %}
+      <li>
+        {%- if miga is mapping -%}
+          {%- if miga.href %}<a href="{{ miga.href }}">{{ miga.label }}</a>{% else %}<span aria-current="page">{{ miga.label }}</span>{% endif -%}
+        {%- else %}<span>{{ miga }}</span>{% endif -%}
+      </li>
+      {%- if not loop.last %}<li aria-hidden="true">/</li>{% endif %}
+      {%- endfor %}
+    </ol>
+  </nav>
+  {%- endif %}
+  <div class="page-header__row">
+    <div>
+      <h1 class="page-header__title">{{ title }}</h1>
+      {%- if description %}<p class="page-header__desc">{{ description }}</p>{% endif %}
+    </div>
+    {%- if caller is defined %}
+    <div class="page-header__actions">{{ caller() }}</div>
+    {%- endif %}
+  </div>
+</header>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   chip_clase(codigo)
+   Código 1–9 como chip con nombre de la clase (app/domain/classes.py) y
+   "SC" para sin consenso. Nunca comunica significado solo con color.
+   --------------------------------------------------------------------- #}
+{% macro chip_clase(codigo) -%}
+{%- set CLASES = {
+  "1": "Bosque natural",
+  "2": "Plantaciones forestales",
+  "3": "Palmar",
+  "4": "Otras tierras forestales",
+  "5": "Pastizales",
+  "6": "Tierras de cultivo",
+  "7": "Humedales",
+  "8": "Asentamientos",
+  "9": "Otras tierras"
+} -%}
+{%- set raw = codigo.value if codigo is not none and codigo.value is defined else codigo -%}
+{%- set clave = raw|string|trim -%}
+{%- set ns = namespace(code=None) -%}
+{%- if clave in CLASES -%}
+  {%- set ns.code = clave -%}
+{%- else -%}
+  {%- for k, v in CLASES.items() if ns.code is none -%}
+    {%- if clave|lower == v|lower %}{% set ns.code = k %}{% endif -%}
+  {%- endfor -%}
+{%- endif -%}
+{%- if ns.code -%}
+<span class="clase clase-{{ ns.code }}"><span class="clase__code">{{ ns.code }}</span>{{ CLASES[ns.code] }}</span>
+{%- elif clave|lower in ("sc", "s/c", "s/consenso", "sin consenso") -%}
+<span class="clase clase-sc"><span class="clase__code">SC</span>Sin consenso</span>
+{%- elif clave in ("", "none", "None") -%}
+<span class="text-ink-400" aria-hidden="true">—</span>
+{%- else -%}
+<span class="clase clase-sc">{{ clave }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   table_wrap(caption) — usar con {% call %}
+   Contenedor con scroll propio y accesible por teclado.
+   --------------------------------------------------------------------- #}
+{% macro table_wrap(caption="") -%}
+<div class="table-wrap" role="region" tabindex="0"{% if caption %} aria-label="{{ caption }}"{% endif %}>
+  {% if caller is defined %}{{ caller() }}{% endif %}
+</div>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   pagination(page, pages, request)
+   Paginación en servidor. Conserva los filtros actuales porque parte de
+   request.url; se oculta si hay una sola página.
+   --------------------------------------------------------------------- #}
+{% macro pagination(page, pages, request) -%}
+{%- set pagina = page|int(1) -%}
+{%- set total_paginas = pages|int(0) -%}
+{%- if total_paginas > 1 -%}
+{%- set inicio = [1, pagina - 2]|max -%}
+{%- set fin = [total_paginas, pagina + 2]|min -%}
+<nav class="pagination" aria-label="Paginación de resultados">
+  <p class="pagination__info">Página {{ pagina }} de {{ total_paginas }}</p>
+  <div class="pagination__pages">
+    {%- if pagina > 1 %}
+    <a class="pagination__page" href="{{ request.url.include_query_params(page=pagina - 1) }}" rel="prev" aria-label="Página anterior">‹</a>
+    {%- else %}
+    <span class="pagination__page opacity-40" aria-hidden="true">‹</span>
+    {%- endif %}
+    {%- for p in range(inicio, fin + 1) %}
+      {%- if p == pagina %}
+    <span class="pagination__page" aria-current="page">{{ p }}</span>
+      {%- else %}
+    <a class="pagination__page" href="{{ request.url.include_query_params(page=p) }}">{{ p }}</a>
+      {%- endif %}
+    {%- endfor %}
+    {%- if pagina < total_paginas %}
+    <a class="pagination__page" href="{{ request.url.include_query_params(page=pagina + 1) }}" rel="next" aria-label="Página siguiente">›</a>
+    {%- else %}
+    <span class="pagination__page opacity-40" aria-hidden="true">›</span>
+    {%- endif %}
+  </div>
+</nav>
+{%- endif -%}
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   stepper(pasos, actual)
+   Progreso de un flujo lineal. `pasos` es una lista de etiquetas y
+   `actual` el índice 1-based del paso vigente.
+   --------------------------------------------------------------------- #}
+{% macro stepper(pasos, actual) -%}
+<ol class="stepper" aria-label="Progreso del flujo">
+  {%- for paso in pasos %}
+  <li class="stepper__item{{ ' is-done' if loop.index < actual }}{{ ' is-current' if loop.index == actual }}"{% if loop.index == actual %} aria-current="step"{% endif %}>
+    <span class="stepper__dot">{{ loop.index }}</span>
+    <span class="stepper__label">{{ paso }}</span>
+  </li>
+  {%- endfor %}
+</ol>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   timeline(items)
+   Historial de estados. `items`: [{fecha, texto, tono}] con tono
+   ok | warn | danger | info | neutral.
+   --------------------------------------------------------------------- #}
+{% macro timeline(items) -%}
+<ol class="timeline">
+  {%- for item in items %}
+  <li class="timeline__item timeline__item--{{ item.tono|default('neutral', true) }}">
+    {%- if item.fecha %}<time class="timeline__fecha">{{ item.fecha }}</time>{% endif %}
+    <span>{{ item.texto }}</span>
+  </li>
+  {%- else %}
+  <li class="timeline__item">Sin movimientos registrados.</li>
+  {%- endfor %}
+</ol>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   donut(segments, size=140, stroke=16)
+   Dona SVG generada en el servidor (sin JS). Accesible: role="img" y
+   <title> con todas las etiquetas; leyenda con valor y porcentaje.
+   `segments`: [{label, value, color}].
+   --------------------------------------------------------------------- #}
+{% macro donut(segments, size=140, stroke=16) -%}
+{%- set ns = namespace(total=0, acumulado=0) -%}
+{%- for s in segments -%}{%- set ns.total = ns.total + (s.value or 0) -%}{%- endfor -%}
+{%- set radio = (size - stroke) / 2 -%}
+{%- set circunferencia = 2 * 3.141592653589793 * radio -%}
+{%- set centro = size / 2 -%}
+<figure class="donut">
+  <svg class="donut__svg" width="{{ size }}" height="{{ size }}" viewBox="0 0 {{ size }} {{ size }}" role="img">
+    <title>Distribución: {% for s in segments %}{{ s.label }} {{ s.value or 0 }}{% if not loop.last %}, {% endif %}{% endfor %}</title>
+    <circle cx="{{ centro }}" cy="{{ centro }}" r="{{ radio }}" fill="none" stroke="var(--color-line)" stroke-width="{{ stroke }}"></circle>
+    {%- for s in segments %}
+      {%- set valor = s.value or 0 -%}
+      {%- if valor > 0 and ns.total > 0 %}
+    <circle cx="{{ centro }}" cy="{{ centro }}" r="{{ radio }}" fill="none"
+            stroke="{{ s.color|default('var(--color-brand-500)', true) }}" stroke-width="{{ stroke }}"
+            stroke-dasharray="{{ (valor / ns.total * circunferencia)|round(2) }} {{ (circunferencia - valor / ns.total * circunferencia)|round(2) }}"
+            stroke-dashoffset="{{ (-ns.acumulado)|round(2) }}"
+            transform="rotate(-90 {{ centro }} {{ centro }})"></circle>
+      {%- set ns.acumulado = ns.acumulado + valor / ns.total * circunferencia -%}
+      {%- endif -%}
+    {%- endfor %}
+    <text x="{{ centro }}" y="{{ centro }}" text-anchor="middle" dominant-baseline="central" class="fill-ink-900 tabular" font-size="{{ (size / 5)|round|int }}" font-weight="600">{{ ns.total }}</text>
+  </svg>
+  <figcaption class="donut__legend">
+    {%- for s in segments %}
+    <span class="donut__key">
+      <span class="donut__swatch" style="background-color: {{ s.color|default('var(--color-brand-500)', true) }}" aria-hidden="true"></span>
+      <span>{{ s.label }}</span>
+      <span class="donut__value">{{ s.value or 0 }}{% if ns.total %} · {{ ((s.value or 0) / ns.total * 100)|round(1) }} %{% endif %}</span>
+    </span>
+    {%- endfor %}
+  </figcaption>
+</figure>
+{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
+   progress(value, max=100, label=None)
+   Barra de progreso determinada con semántica ARIA.
+   --------------------------------------------------------------------- #}
+{% macro progress(value, max=100, label=None) -%}
+{%- set techo = max|int(100) or 100 -%}
+{%- set actual = value|int(0) -%}
+{%- set pct = ([actual, techo]|min / techo * 100)|round(1) -%}
+<div class="progress" role="progressbar" aria-valuenow="{{ actual }}" aria-valuemin="0"
+     aria-valuemax="{{ techo }}" aria-label="{{ label or 'Progreso' }}">
+  <span class="progress__bar" style="width: {{ pct }}%"></span>
+</div>
+{%- endmacro %}

@@ -1,0 +1,12 @@
+{# =========================================================================
+   components/icons.html — macro única de iconos.
+   Sprite local en app/static/icons.svg (sin red, sin CLS, sin librerías).
+   ========================================================================= #}
+{% macro icon(name, class="w-5 h-5", title=None) -%}
+<svg class="{{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     aria-hidden="{{ 'false' if title else 'true' }}" focusable="false">
+  {%- if title %}<title>{{ title }}</title>{% endif -%}
+  <use href="/static/icons.svg#i-{{ name }}"></use>
+</svg>
+{%- endmacro %}
