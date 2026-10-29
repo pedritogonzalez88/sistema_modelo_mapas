@@ -563,22 +563,37 @@ mapeo de grupos (1 d), break-glass local (2 d), operación del IdP (aparte).
 
 ---
 
-## 11. Decisiones abiertas (necesarias antes de implementar)
+## 11. Decisiones confirmadas (2026-10-29)
 
-1. **¿Existe AD accesible y se puede crear una cuenta de servicio de solo lectura?**
-   Dominio, base DN, grupos y si los asistentes tienen cuenta.
-2. **¿Qué transporte de correo habrá?** Relay SMTP interno, proveedor transaccional o solo correo
-   institucional. Remitente y límites.
-3. **¿El sistema se expone a internet o solo a red interna/VPN?** Define cookies `Secure`,
-   rate limits y política de bloqueo.
-4. **¿La política de 2FA es obligatoria para todos?** Propuesta: TOTP obligatorio para
-   `admin`/`supervision`; TOTP o correo para `cargador`/`asistente`/`consulta`.
-5. **¿Se acepta introducir Alembic?** Es la opción recomendada para un cambio de este tamaño.
-6. **¿Hay un IdP institucional (Entra ID/Keycloak) que TI prefiera usar?** Si sí, conviene la
-   Opción B y se ahorran los flujos más delicados.
-7. **¿Se requiere "recordar este equipo"?** Propuesta: desactivado por defecto; si se habilita,
-   30 días y revocable.
-8. **Retención de auditoría y de sesiones** (propuesta: auditoría 1 año, sesiones 30 días tras expirar).
+1. **AD/LDAP: todavía no existe.** Se implementa el proveedor y toda su configuración, pero
+   **deshabilitado por defecto** (`EET_LDAP_ENABLED=false`). Queda listo para activarse cuando TI
+   entregue dominio, base DN, grupos y cuenta de servicio. Se incluye comando de diagnóstico
+   `python -m app.cli ldap-check` y pruebas con servidor LDAP simulado.
+2. **Correo: dominio institucional disponible.** Se usa SMTP autenticado con remitente del dominio
+   (`no-reply@<dominio>`), outbox con reintentos y backend de consola en desarrollo. SPF/DKIM/DMARC
+   quedan como dependencia de TI: sin ellos la recuperación de cuentas falla en la práctica.
+3. **Exposición: internet e interna.** Sube el nivel de exigencia:
+   - HTTPS obligatorio, cookies `Secure` + `HttpOnly` + `SameSite=Lax`, HSTS.
+   - Rate limit por IP **y** por cuenta en login, 2FA y recuperación; bloqueo temporal.
+   - Protección CSRF en todos los POST, CSP con nonce, `frame-ancestors 'none'`.
+   - Rutas de administración y auditoría restringidas a red interna/VPN por configuración
+     (`EET_ADMIN_INTERNAL_ONLY=true`), además del rol.
+   - Sin enumeración de usuarios ni diferencias de tiempo entre cuenta existente e inexistente.
+   - Logs sin secretos; alertas de picos de fallos; revisión de dependencias.
+4. **Política de 2FA: aprobada.** TOTP obligatorio para `admin` y `supervision`; TOTP **o** correo
+   para `cargador`, `asistente` y `consulta`. "Recordar este equipo" desactivado por defecto.
+5. **Alembic: aprobado.** Se introduce como mecanismo único de migración; `init_db()` queda solo
+   para desarrollo local.
+6. **Sin IdP externo.** Se descarta OIDC por ahora; la abstracción de proveedores deja la puerta
+   abierta sin comprometer el diseño.
+
+### Datos operativos pendientes (no bloquean el desarrollo)
+
+- Host, puerto, usuario y contraseña del relay SMTP institucional.
+- Dominio exacto del remitente y confirmación de SPF/DKIM/DMARC.
+- Ventana de mantenimiento para el despliegue inicial.
+- Nombres de los grupos de AD y base DN (para cuando exista).
+- Retención de auditoría (propuesta: 1 año) y de sesiones (propuesta: 30 días tras expirar).
 
 ---
 
