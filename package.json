@@ -8,7 +8,9 @@
     "css:watch": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/app.css --minify --watch"
   },
   "devDependencies": {
-    "tailwindcss": "4.3.3",
-    "@tailwindcss/cli": "4.3.3"
+    "@tailwindcss/cli": "4.3.3",
+    "axe-core": "^4.14.0",
+    "playwright": "^1.64.1",
+    "tailwindcss": "4.3.3"
   }
 }
