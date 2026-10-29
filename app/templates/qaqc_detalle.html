@@ -81,12 +81,12 @@
             Regla {{ cruce.cruce.regla_version }}{% if cruce.cruce.actualizado_en %} · calculado el {{ cruce.cruce.actualizado_en.strftime("%Y-%m-%d %H:%M") }}{% endif %}
           </p>
           <p class="mt-3 text-sm">
-            <a class="text-brand-700 underline-offset-2 hover:underline" href="/cruces/{{ ficha.punto_id }}/{{ ficha.anio }}">Ver el cruce de origen</a>
+            <a class="text-brand-700 underline underline-offset-2 hover:text-brand-900" href="/cruces/{{ ficha.punto_id }}/{{ ficha.anio }}">Ver el cruce de origen</a>
           </p>
           {% else %}
           <p class="mt-2 text-sm text-ink-600">Sin cruce calculado para este punto y año. La ficha se conserva como expediente.</p>
           <p class="mt-3 text-sm">
-            <a class="text-brand-700 underline-offset-2 hover:underline" href="/cruces">Ir a cruces</a>
+            <a class="text-brand-700 underline underline-offset-2 hover:text-brand-900" href="/cruces">Ir a cruces</a>
           </p>
           {% endif %}
         </section>

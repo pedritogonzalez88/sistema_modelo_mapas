@@ -20,27 +20,30 @@
 <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
   {# --- Archivo ------------------------------------------------------- #}
   {% call ui.card("Archivo", "Original recibido, conservado con su huella SHA-256.") %}
-    <dl class="flex flex-col gap-3 text-sm">
-      <div>
+    {#
+      Una lista de definición solo admite un nivel de <div> entre <dl> y cada
+      <dt>/<dd>. La rejilla de dos columnas vive en el propio <dl> y cada dato
+      es un <div> con su par: la semántica se conserva sin anidar grupos.
+    #}
+    <dl class="grid grid-cols-2 gap-3 text-sm">
+      <div class="col-span-2">
         <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Nombre</dt>
         <dd class="mt-0.5 break-all font-medium" title="{{ entrega.archivo_path }}">{{ nombre_archivo }}</dd>
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Tamaño</dt>
-          <dd class="mt-0.5 tabular">
-            {%- if tamano is none %}No disponible
-            {%- elif tamano >= 1048576 %}{{ "%.2f"|format(tamano / 1048576) }} MB
-            {%- elif tamano >= 1024 %}{{ "%.1f"|format(tamano / 1024) }} KB
-            {%- else %}{{ tamano }} B{% endif -%}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Recibida</dt>
-          <dd class="mt-0.5 tabular">{{ entrega.recibida_en.strftime("%d/%m/%Y %H:%M") if entrega.recibida_en else "—" }}</dd>
-        </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Tamaño</dt>
+        <dd class="mt-0.5 tabular">
+          {%- if tamano is none %}No disponible
+          {%- elif tamano >= 1048576 %}{{ "%.2f"|format(tamano / 1048576) }} MB
+          {%- elif tamano >= 1024 %}{{ "%.1f"|format(tamano / 1024) }} KB
+          {%- else %}{{ tamano }} B{% endif -%}
+        </dd>
       </div>
       <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Recibida</dt>
+        <dd class="mt-0.5 tabular">{{ entrega.recibida_en.strftime("%d/%m/%Y %H:%M") if entrega.recibida_en else "—" }}</dd>
+      </div>
+      <div class="col-span-2">
         <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">SHA-256 (16 primeros caracteres)</dt>
         <dd class="mt-1 flex flex-wrap items-center gap-2">
           <code class="rounded-md bg-canvas px-2 py-1 font-mono text-xs" title="{{ entrega.sha256 }}">{{ sha_corto }}</code>
@@ -49,26 +52,24 @@
           </button>
         </dd>
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Semana</dt>
-          <dd class="mt-0.5 tabular">{{ entrega.semana }}</dd>
-        </div>
-        <div>
-          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Tipo</dt>
-          <dd class="mt-0.5">{{ entrega.tipo|capitalize }}</dd>
-        </div>
-        <div>
-          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Versión</dt>
-          <dd class="mt-0.5 tabular">v{{ entrega.version }}</dd>
-        </div>
-        <div>
-          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Estado</dt>
-          <dd class="mt-1">
-            {% set tono_estado = "ok" if entrega.estado == "aceptada" else ("danger" if entrega.estado == "rechazada" else "warn") %}
-            {{ ui.badge(entrega.estado|capitalize, tono_estado) }}
-          </dd>
-        </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Semana</dt>
+        <dd class="mt-0.5 tabular">{{ entrega.semana }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Tipo</dt>
+        <dd class="mt-0.5">{{ entrega.tipo|capitalize }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Versión</dt>
+        <dd class="mt-0.5 tabular">v{{ entrega.version }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Estado</dt>
+        <dd class="mt-1">
+          {% set tono_estado = "ok" if entrega.estado == "aceptada" else ("danger" if entrega.estado == "rechazada" else "warn") %}
+          {{ ui.badge(entrega.estado|capitalize, tono_estado) }}
+        </dd>
       </div>
     </dl>
   {% endcall %}
@@ -92,7 +93,7 @@
 <section class="mb-6" aria-labelledby="errores-validacion">
   <h2 class="mb-2 text-base font-semibold" id="errores-validacion">Errores de validación</h2>
   {% if errores %}
-    {% call ui.table_wrap("Errores de validación") %}
+    {% call ui.table_wrap("Errores de validación detectados") %}
       <table class="table">
         <caption>
           Se muestran {{ errores|length }} de {{ n_errores }} error{{ "" if n_errores == 1 else "es" }}.

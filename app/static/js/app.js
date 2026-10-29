@@ -7,7 +7,10 @@
   "use strict";
 
   /* ---------------------------------------------------------------------
-     1) Drawer móvil: abrir/cerrar, Esc, overlay y devolución del foco.
+     1) Drawer móvil: abrir/cerrar, Esc, overlay, devolución del foco y
+     contención del foco (patrón APG para diálogos modales).
+     Sin JS el marcado ya degrada: el drawer se muestra como bloque estático
+     porque el CSS solo lo oculta bajo `.js`.
      --------------------------------------------------------------------- */
   var toggle = document.querySelector("[data-drawer-toggle]");
   var drawer = document.querySelector("[data-drawer]");
@@ -15,8 +18,25 @@
   var closeBtn = document.querySelector("[data-drawer-close]");
   var ultimoFoco = null;
 
+  /* Elementos que pueden recibir foco con Tab dentro del drawer. */
+  var ENFOCABLES = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled]):not([type='hidden'])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
+
   function drawerAbierto() {
     return !!drawer && drawer.getAttribute("data-open") === "true";
+  }
+
+  function enfocablesDelDrawer() {
+    if (!drawer) return [];
+    return Array.prototype.filter.call(drawer.querySelectorAll(ENFOCABLES), function (el) {
+      return el.getClientRects().length > 0 && el.getAttribute("aria-hidden") !== "true";
+    });
   }
 
   function abrirDrawer() {
@@ -36,7 +56,49 @@
     if (toggle) toggle.setAttribute("aria-expanded", "false");
     document.body.style.overflow = "";
     if (devolverFoco !== false) {
-      (ultimoFoco && document.contains(ultimoFoco) ? ultimoFoco : toggle || drawer)["focus"]();
+      var destino =
+        ultimoFoco && ultimoFoco !== document.body && document.contains(ultimoFoco)
+          ? ultimoFoco
+          : toggle;
+      if (destino && typeof destino.focus === "function") destino.focus();
+    }
+    ultimoFoco = null;
+  }
+
+  /* Tab y Shift+Tab ciclan dentro del drawer mientras está abierto: el foco
+     nunca alcanza la página de fondo, que con `aria-modal="true"` queda
+     presentada como inerte. Escape cierra y devuelve el foco al disparador. */
+  function trampaDeFoco(ev) {
+    if (!drawerAbierto()) return;
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      cerrarDrawer();
+      return;
+    }
+    if (ev.key !== "Tab") return;
+
+    var lista = enfocablesDelDrawer();
+    if (!lista.length) {
+      ev.preventDefault();
+      (closeBtn || drawer).focus();
+      return;
+    }
+
+    var primero = lista[0];
+    var ultimo = lista[lista.length - 1];
+    var activo = document.activeElement;
+
+    if (!drawer.contains(activo)) {
+      ev.preventDefault();
+      (ev.shiftKey ? ultimo : primero).focus();
+      return;
+    }
+    if (ev.shiftKey && activo === primero) {
+      ev.preventDefault();
+      ultimo.focus();
+    } else if (!ev.shiftKey && activo === ultimo) {
+      ev.preventDefault();
+      primero.focus();
     }
   }
 
@@ -49,9 +111,9 @@
     drawer.addEventListener("click", function (ev) {
       if (ev.target.closest("a")) cerrarDrawer(false);
     });
-    document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && drawerAbierto()) cerrarDrawer();
-    });
+    /* En captura: la contención se decide antes de que cualquier otro
+       manejador de teclado pueda mover el foco. */
+    document.addEventListener("keydown", trampaDeFoco, true);
     window.addEventListener("resize", function () {
       if (window.innerWidth >= 1024 && drawerAbierto()) cerrarDrawer(false);
     });

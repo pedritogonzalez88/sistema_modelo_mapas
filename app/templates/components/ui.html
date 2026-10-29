@@ -212,6 +212,9 @@
    pagination(page, pages, request)
    Paginación en servidor. Conserva los filtros actuales porque parte de
    request.url; se oculta si hay una sola página.
+   Anterior/siguiente: el glifo visible queda fuera del árbol accesible
+   (aria-hidden) y el nombre accesible del enlace llega por el texto oculto,
+   así que no depende del carácter «‹»/«›» ni del color.
    --------------------------------------------------------------------- #}
 {% macro pagination(page, pages, request) -%}
 {%- set pagina = page|int(1) -%}
@@ -223,7 +226,7 @@
   <p class="pagination__info">Página {{ pagina }} de {{ total_paginas }}</p>
   <div class="pagination__pages">
     {%- if pagina > 1 %}
-    <a class="pagination__page" href="{{ request.url.include_query_params(page=pagina - 1) }}" rel="prev" aria-label="Página anterior">‹</a>
+    <a class="pagination__page" href="{{ request.url.include_query_params(page=pagina - 1) }}" rel="prev"><span aria-hidden="true">‹</span><span class="sr-only">Página anterior</span></a>
     {%- else %}
     <span class="pagination__page opacity-40" aria-hidden="true">‹</span>
     {%- endif %}
@@ -235,7 +238,7 @@
       {%- endif %}
     {%- endfor %}
     {%- if pagina < total_paginas %}
-    <a class="pagination__page" href="{{ request.url.include_query_params(page=pagina + 1) }}" rel="next" aria-label="Página siguiente">›</a>
+    <a class="pagination__page" href="{{ request.url.include_query_params(page=pagina + 1) }}" rel="next"><span aria-hidden="true">›</span><span class="sr-only">Página siguiente</span></a>
     {%- else %}
     <span class="pagination__page opacity-40" aria-hidden="true">›</span>
     {%- endif %}

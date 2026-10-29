@@ -59,7 +59,7 @@
           placeholder="2026-W41",
           hint="Formato ISO: año y semana, por ejemplo 2026-W41.",
           required=True,
-          pattern="\d{4}-W\d{2}",
+          pattern="[0-9]{4}-W[0-9]{2}",
           maxlength="8",
           autocomplete="off",
           title="Use el formato 2026-W41"
@@ -141,7 +141,7 @@
   </header>
   <div class="card__body">
     {% if entregas %}
-      {% call ui.table_wrap("Entregas registradas") %}
+      {% call ui.table_wrap("Entregas registradas por semana") %}
         <table class="table">
           <caption>Mostrando {{ entregas|length }} entrega{{ "" if entregas|length == 1 else "s" }}{% if hay_filtros %} con los filtros aplicados{% endif %} de {{ total_entregas }} en total.</caption>
           <thead>

@@ -129,7 +129,7 @@
       {% for c, ficha_id in filas %}
       <tr>
         <td class="whitespace-nowrap">
-          <a class="font-medium text-brand-700 underline-offset-2 hover:underline tabular"
+          <a class="font-medium text-brand-700 underline underline-offset-2 hover:text-brand-900 tabular"
              href="/cruces/{{ c.punto_id }}/{{ c.anio }}?return_to={{ return_to|urlencode }}">{{ c.punto_id }}</a>
         </td>
         <td class="whitespace-nowrap tabular">{{ c.anio }}</td>
@@ -161,7 +161,10 @@
     <div class="card__body flex flex-col gap-3">
       <div class="flex flex-wrap items-start justify-between gap-2">
         <p class="text-sm font-semibold">
-          Punto <a class="tabular text-brand-700 underline-offset-2 hover:underline"
+          {# El enlace va subrayado de forma permanente: dentro de un bloque de
+             texto 1.4.1 exige un distintivo que no dependa del color (el verde
+             de marca sobre tinta solo alcanza 2.44:1). #}
+          Punto <a class="tabular text-brand-700 underline underline-offset-2 hover:text-brand-900"
                    href="/cruces/{{ c.punto_id }}/{{ c.anio }}?return_to={{ return_to|urlencode }}">{{ c.punto_id }}</a>
           <span class="text-ink-400" aria-hidden="true">·</span>
           año <span class="tabular">{{ c.anio }}</span>
