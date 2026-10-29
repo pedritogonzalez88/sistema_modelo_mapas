@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "components/ui.html" as ui %}
+{% import "components/ui.html" as ui with context %}
 
 {% set CODIGO = codigo|int if codigo else 500 %}
 {% set TITULOS = {

@@ -216,4 +216,19 @@
       window.history.back();
     }
   });
+
+  /* ---------------------------------------------------------------------
+     6) Mostrar/ocultar contraseña (pantallas de acceso). El botón declara
+     aria-pressed y cambia su texto; sin JS el campo sigue siendo usable.
+     --------------------------------------------------------------------- */
+  document.addEventListener("click", function (ev) {
+    var boton = ev.target.closest("[data-password-toggle]");
+    if (!boton) return;
+    var campo = document.getElementById(boton.getAttribute("data-password-toggle"));
+    if (!campo) return;
+    var visible = campo.getAttribute("type") === "text";
+    campo.setAttribute("type", visible ? "password" : "text");
+    boton.setAttribute("aria-pressed", visible ? "false" : "true");
+    boton.textContent = visible ? "Mostrar contraseña" : "Ocultar contraseña";
+  });
 })();

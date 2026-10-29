@@ -5,6 +5,7 @@
    `proyecto` y `migas` (lista de {label, href}).
    ========================================================================= #}
 {% import "components/icons.html" as icons %}
+{% import "components/ui.html" as ui with context %}
 
 {% set NAV = [
   ("Inicio", [("/", "Resumen", "home")]),
@@ -13,6 +14,14 @@
   ("Cierre", [("/reemplazos", "Reemplazos", "refresh"), ("/exportar", "Exportar", "download")]),
 ] %}
 {% set path = request.url.path %}
+{%- set usuario_actual = request.state.usuario | default(none, true) -%}
+{%- set ETIQUETA_ROL = {
+  "admin": "Administración",
+  "supervision": "Supervisión",
+  "cargador": "Carga",
+  "asistente": "Asistente",
+  "consulta": "Consulta",
+} -%}
 
 {# Navegación compartida entre sidebar y drawer #}
 {% macro nav_items(nav, ruta) %}
@@ -38,6 +47,30 @@
   <p class="text-[11px] leading-snug text-brand-100">Trazabilidad: interpretaciones originales · cruce calculado · dictamen QA/QC — la clase consolidada nunca sobrescribe los originales.</p>
 {% endmacro %}
 
+{# Menú de usuario accesible sin JS: <details>/<summary> con nombre, rol y
+   las acciones de seguridad. Con la bandera apagada no hay usuario en la
+   petición y no se renderiza nada. #}
+{% macro menu_usuario(usuario, oscuro=False) %}
+  {%- if usuario %}
+  <details class="user-menu{{ ' user-menu--oscuro' if oscuro }}" data-user-menu>
+    <summary class="user-menu__trigger">
+      {{ icons.icon("user", "w-4 h-4 shrink-0") }}
+      <span class="user-menu__nombre">{{ usuario.nombre }}</span>
+      {{ icons.icon("chevron-down", "w-4 h-4 shrink-0 user-menu__chevron") }}
+      <span class="sr-only">Menú de la cuenta</span>
+    </summary>
+    <div class="user-menu__panel">
+      <p class="user-menu__rol">{{ ui.badge(ETIQUETA_ROL.get(usuario.rol, usuario.rol)) }}</p>
+      <a class="user-menu__link" href="/auth/cambiar-password">Cambiar contraseña</a>
+      <form method="post" action="/auth/logout" class="user-menu__form">
+        {{ ui.csrf_input() }}
+        <button type="submit" class="user-menu__link">Salir</button>
+      </form>
+    </div>
+  </details>
+  {%- endif %}
+{% endmacro %}
+
 {# --- Drawer móvil (visible como bloque estático si no hay JS) ------------ #}
 <div id="drawer" class="shell-drawer" data-drawer data-open="false"
      role="dialog" aria-modal="true" aria-labelledby="drawer-title">
@@ -51,6 +84,9 @@
   <nav class="px-2 pb-4" aria-label="Secciones (móvil)">
     {{ nav_items(NAV, path) }}
   </nav>
+  {%- if usuario_actual %}
+  <div class="border-t border-white/10 px-3 py-3">{{ menu_usuario(usuario_actual, oscuro=True) }}</div>
+  {%- endif %}
   <div class="border-t border-white/10 px-3 py-3">{{ trazabilidad() }}</div>
 </div>
 
@@ -106,5 +142,7 @@
       <span class="truncate">{{ proyecto.nombre }}</span>
     </span>
     {% endif %}
+
+    {{ menu_usuario(usuario_actual) }}
   </div>
 </header>

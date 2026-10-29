@@ -360,4 +360,54 @@
   /* Indicador de "cambios sin guardar": lo activa app.js */
   .dirty-indicator { display: none; }
   .dirty-indicator.is-visible { display: inline-flex; }
+
+  /* --- Menú de usuario (topbar y drawer) ------------------------------- */
+  .user-menu { @apply relative shrink-0; }
+  .user-menu__trigger {
+    @apply flex cursor-pointer list-none items-center gap-2 rounded-lg border
+           border-line bg-white px-2.5 py-1.5 text-sm text-ink-700
+           hover:bg-canvas;
+  }
+  .user-menu__trigger::-webkit-details-marker { display: none; }
+  .user-menu__nombre { @apply max-w-[10rem] truncate; }
+  .user-menu__chevron { @apply text-ink-400; }
+  .user-menu[open] .user-menu__chevron { transform: rotate(180deg); }
+  .user-menu__panel {
+    @apply absolute right-0 z-40 mt-2 flex w-56 flex-col gap-1 rounded-card
+           border border-line bg-white p-2 shadow-card;
+  }
+  .user-menu__rol { @apply px-2 py-1; }
+  .user-menu__link {
+    @apply block w-full rounded-lg px-2 py-2 text-left text-sm text-ink-700
+           hover:bg-canvas;
+  }
+  .user-menu__form { @apply m-0; }
+  /* Variante del drawer: panel en el flujo y contraste sobre el fondo oscuro */
+  .user-menu--oscuro .user-menu__trigger {
+    @apply border-white/20 bg-white/10 text-white hover:bg-white/20;
+  }
+  .user-menu--oscuro .user-menu__chevron { @apply text-brand-100; }
+  .user-menu--oscuro .user-menu__panel {
+    @apply static mt-2 w-full border-white/10;
+  }
+
+  /* --- Acceso: layout sin sidebar (Fase A1) ---------------------------- */
+  .auth-page {
+    @apply mx-auto flex min-h-screen w-full max-w-[440px] flex-col
+           justify-center gap-4 px-4 py-10;
+  }
+  .auth-brand {
+    @apply flex items-center gap-2 rounded-card bg-brand-900 px-4 py-3
+           text-white shadow-card;
+  }
+  .auth-card { @apply rounded-card border border-line bg-white p-6 shadow-card; }
+  .auth-intro { @apply mt-1 text-sm text-ink-600; }
+  .auth-links { @apply mt-4 text-xs leading-relaxed text-ink-600; }
+  .auth-footer { @apply text-[11px] leading-snug text-ink-400; }
+  .auth-errores { @apply mt-2 list-disc pl-5 text-xs text-red-800; }
+  .auth-secret { @apply flex flex-col gap-1; }
+  .auth-secret__toggle {
+    @apply self-start text-xs text-brand-700 underline underline-offset-2
+           hover:text-brand-900;
+  }
 }

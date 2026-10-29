@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "components/ui.html" as ui %}
+{% import "components/ui.html" as ui with context %}
 {% import "components/icons.html" as icons %}
 
 {% block title %}Entrega #{{ entrega.id }} · {{ proyecto.nombre if proyecto is defined and proyecto else "Validador EET" }}{% endblock %}
@@ -124,12 +124,14 @@
 <div class="sticky bottom-0 z-20 -mx-4 border-t border-line bg-white/95 px-4 py-3 backdrop-blur lg:-mx-6 lg:px-6">
   <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
     <form action="/entregas/{{ entrega.id }}/confirm" method="post" class="flex flex-wrap items-center gap-3">
+      {{ ui.csrf_input() }}
       {{ ui.btn("Confirmar y cruzar", icon="check", type="submit") }}
       <p class="max-w-sm text-xs text-ink-600">Al confirmar, la entrega queda aceptada y se recalculan los cruces de la terna. Las interpretaciones originales no se sobrescriben.</p>
     </form>
 
     <form action="/entregas/{{ entrega.id }}/reject" method="post"
           class="flex flex-col gap-2 sm:flex-row sm:items-end" data-reject-form>
+      {{ ui.csrf_input() }}
       <div class="w-full sm:w-72">
         {{ ui.field("Motivo del rechazo", "motivo",
                     placeholder="Explique el motivo del rechazo",

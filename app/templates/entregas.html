@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "components/ui.html" as ui %}
+{% import "components/ui.html" as ui with context %}
 {% import "components/icons.html" as icons %}
 
 {% block title %}Entregas · {{ proyecto.nombre }}{% endblock %}
@@ -21,6 +21,7 @@
   <div class="card__body">
     <form action="/entregas/upload" method="post" enctype="multipart/form-data" class="flex flex-col gap-5"
           data-upload-form>
+      {{ ui.csrf_input() }}
       <div class="rounded-card border border-dashed border-line bg-canvas/40 p-4" data-dropzone>
         <label for="campo-file"
                class="flex cursor-pointer flex-col items-center gap-2 rounded-lg px-4 py-6 text-center transition-colors hover:bg-brand-50/70 focus-within:ring-2 focus-within:ring-brand-100">

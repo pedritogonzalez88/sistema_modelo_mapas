@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "components/ui.html" as ui %}
+{% import "components/ui.html" as ui with context %}
 {% import "components/icons.html" as icons %}
 
 {% block title %}Malla oficial · {{ proyecto.nombre }}{% endblock %}
@@ -29,6 +29,7 @@
   </header>
   <div class="card__body">
     <form action="/malla/upload" method="post" enctype="multipart/form-data" class="flex flex-col gap-5">
+      {{ ui.csrf_input() }}
       <div class="rounded-card border border-dashed border-line bg-canvas/40 p-4">
         <label class="field__label" for="campo-file-malla">Archivo de la malla</label>
         <p class="field__hint" id="hint-file-malla">

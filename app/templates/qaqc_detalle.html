@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "components/ui.html" as ui %}
+{% import "components/ui.html" as ui with context %}
 {% block title %}Ficha QA/QC #{{ ficha.id }} · Validador EET{% endblock %}
 
 {% block contenido %}
@@ -165,6 +165,7 @@
   {# ----------------------------------------------------------- FORMULARIO #}
   <form action="/qaqc/{{ ficha.id }}" method="post"
         class="order-last card divide-y divide-line lg:order-first lg:col-span-2">
+    {{ ui.csrf_input() }}
 
     <fieldset class="p-5">
       <legend class="text-sm font-semibold text-ink-900">1. Contexto del cruce</legend>
@@ -334,6 +335,7 @@
     <form action="/qaqc/{{ ficha.id }}/evento" method="post"
           class="flex flex-col gap-2 rounded-lg border border-line bg-white p-3"
           {% if meta.cierra %}data-confirm="Esta transición cierra la ficha y no admite cambios posteriores en el dictamen. ¿Desea continuar?"{% endif %}>
+      {{ ui.csrf_input() }}
       <input type="hidden" name="evento" value="{{ ev }}">
       <p class="text-sm font-medium">{{ meta.label }}</p>
       <p class="text-xs text-ink-600">{{ meta.efecto }}</p>

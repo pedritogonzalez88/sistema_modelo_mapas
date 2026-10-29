@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "components/ui.html" as ui %}
+{% import "components/ui.html" as ui with context %}
 {% import "components/icons.html" as icons %}
 
 {% block title %}Reemplazos · {{ proyecto.nombre }}{% endblock %}
@@ -28,6 +28,7 @@
   </header>
   <div class="card__body">
     <form action="/reemplazos" method="post" class="flex flex-col gap-5">
+      {{ ui.csrf_input() }}
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div class="lg:col-span-1">
           {{ ui.field(
@@ -136,11 +137,13 @@
                 <div class="flex flex-wrap items-center justify-end gap-2">
                   {% if r.estado == "propuesto" and not r.punto_reserva %}
                     <form action="/reemplazos/{{ r.id }}/proponer" method="post">
+                      {{ ui.csrf_input() }}
                       {{ ui.btn("Proponer reserva", variant="secondary", size="sm", type="submit") }}
                     </form>
                   {% endif %}
                   {% if r.estado == "propuesto" %}
                     <form action="/reemplazos/{{ r.id }}/estado" method="post">
+                      {{ ui.csrf_input() }}
                       <input type="hidden" name="nuevo_estado" value="autorizado">
                       {{ ui.btn(
                         "Autorizar",
@@ -152,6 +155,7 @@
                     </form>
                   {% elif r.estado == "autorizado" %}
                     <form action="/reemplazos/{{ r.id }}/estado" method="post">
+                      {{ ui.csrf_input() }}
                       <input type="hidden" name="nuevo_estado" value="completado">
                       {{ ui.btn("Completar", size="sm", type="submit") }}
                     </form>
