@@ -1,0 +1,14 @@
+{
+  "name": "eet-ui",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Toolchain de estilos del Validador EET (Tailwind CSS v4 compilado)",
+  "scripts": {
+    "css:build": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/app.css --minify",
+    "css:watch": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/app.css --minify --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "4.3.3",
+    "@tailwindcss/cli": "4.3.3"
+  }
+}

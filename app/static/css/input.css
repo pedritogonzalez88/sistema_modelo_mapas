@@ -1,0 +1,348 @@
+/* ==========================================================================
+   Validador EET · AEP — hoja de entrada del sistema de diseño
+   Tailwind CSS v4 (configuración CSS-first). Compilar con:
+     npm run css:build   ->  app/static/css/app.css
+   Las plantillas y el JS se escanean explícitamente para que el build sea
+   determinista también dentro de Docker (sin depender del cwd).
+   ========================================================================== */
+
+@import "tailwindcss";
+
+@source "../../templates";
+@source "../js";
+
+/* --------------------------------------------------------------------------
+   Tokens de diseño (fuente única de verdad)
+   -------------------------------------------------------------------------- */
+@theme {
+  /* Marca institucional AEP (verde forestal) */
+  --color-brand-900: #0B3B2E;
+  --color-brand-700: #14624A;
+  --color-brand-500: #1E8A69;
+  --color-brand-100: #D6EBE2;
+  --color-brand-50:  #EAF5F0;
+
+  /* Neutros fríos para texto */
+  --color-ink-900: #0F172A;
+  --color-ink-700: #334155;
+  --color-ink-600: #475569;
+  --color-ink-400: #64748B;
+
+  /* Superficies */
+  --color-canvas: #F4F7F6;
+  --color-line: #E2E8E7;
+
+  /* Tipografía: system-ui primero (D8), Inter se suma si está disponible */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Radios y elevación */
+  --radius-card: 12px;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, .06);
+}
+
+/* Números de métricas y tablas alineados (utilidad propia para poder
+   usarla también con @apply dentro de los componentes). */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink-900 font-sans antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3 {
+    @apply tracking-tight;
+  }
+
+  /* Respeta la preferencia de movimiento reducido (WCAG 2.2) */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Componentes
+   -------------------------------------------------------------------------- */
+@layer components {
+  /* --- Botones --------------------------------------------------------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 h-11
+           text-sm font-medium transition-colors disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+  .btn--primary   { @apply bg-brand-700 text-white hover:bg-brand-900; }
+  .btn--secondary { @apply bg-white text-ink-900 border border-line hover:bg-canvas; }
+  .btn--ghost     { @apply text-brand-700 hover:bg-brand-50; }
+  .btn--danger    { @apply bg-white text-red-700 border border-red-300 hover:bg-red-50; }
+  .btn--sm        { @apply h-9 px-3 text-xs; }
+
+  /* --- Tarjetas ------------------------------------------------------- */
+  .card {
+    @apply bg-white border border-line rounded-card shadow-card;
+  }
+  .card__header  { @apply px-5 pt-5 pb-0; }
+  .card__title   { @apply text-base font-semibold; }
+  .card__subtitle{ @apply text-sm text-ink-600 mt-1; }
+  .card__body    { @apply p-5; }
+
+  /* --- Badges de estado ----------------------------------------------- */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5
+           text-xs font-medium;
+  }
+  .badge--ok      { @apply bg-emerald-100 text-emerald-800; }
+  .badge--warn    { @apply bg-amber-100 text-amber-800; }
+  .badge--danger  { @apply bg-red-100 text-red-800; }
+  .badge--info    { @apply bg-sky-100 text-sky-800; }
+  .badge--neutral { @apply bg-slate-100 text-slate-700; }
+
+  /* --- Métricas -------------------------------------------------------- */
+  .stat {
+    @apply flex flex-col gap-1 rounded-card border border-line bg-white
+           p-5 shadow-card;
+  }
+  .stat__label {
+    @apply text-xs font-medium uppercase tracking-wide text-ink-600;
+  }
+  .stat__value {
+    @apply text-3xl font-semibold tabular;
+  }
+  .stat__hint {
+    @apply text-xs text-ink-400;
+  }
+  .stat--ok     { @apply border-l-4 border-l-emerald-500; }
+  .stat--warn   { @apply border-l-4 border-l-amber-500; }
+  .stat--danger { @apply border-l-4 border-l-red-500; }
+  .stat--info   { @apply border-l-4 border-l-sky-500; }
+
+  /* --- Formularios ----------------------------------------------------- */
+  .field {
+    @apply flex flex-col gap-1.5;
+  }
+  .field__label {
+    @apply text-sm font-medium text-ink-900;
+  }
+  .field__req {
+    @apply text-red-700 ml-0.5;
+  }
+  .field__hint {
+    @apply text-xs text-ink-600;
+  }
+  .field__error {
+    @apply text-xs text-red-700;
+  }
+  .input, .select, .textarea {
+    @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm
+           placeholder:text-ink-400 focus:border-brand-500 focus:ring-2
+           focus:ring-brand-100 focus:outline-none;
+  }
+  .textarea {
+    @apply min-h-24 resize-y;
+  }
+
+  /* --- Tablas ---------------------------------------------------------- */
+  .table-wrap {
+    @apply overflow-x-auto rounded-card border border-line bg-white;
+  }
+  .table {
+    @apply w-full text-sm border-collapse;
+  }
+  .table thead th {
+    @apply sticky top-0 z-10 bg-canvas/95 backdrop-blur px-3 py-2.5
+           text-left text-xs font-semibold uppercase tracking-wide
+           text-ink-600 border-b border-line whitespace-nowrap;
+  }
+  .table tbody td {
+    @apply px-3 py-3 border-b border-line align-middle;
+  }
+  .table tbody tr:hover {
+    @apply bg-canvas/60;
+  }
+  .table caption {
+    @apply px-3 py-2 text-left text-xs text-ink-600;
+  }
+  .table tfoot td {
+    @apply px-3 py-2 text-xs text-ink-600;
+  }
+
+  /* --- Cobertura 1–9: color + código + nombre, nunca solo color -------- */
+  .clase {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs
+           font-medium border border-transparent;
+  }
+  .clase-1 { @apply bg-emerald-50 text-emerald-900 border-emerald-200; }
+  .clase-2 { @apply bg-lime-50 text-lime-900 border-lime-200; }
+  .clase-3 { @apply bg-yellow-50 text-yellow-900 border-yellow-200; }
+  .clase-4 { @apply bg-green-50 text-green-900 border-green-200; }
+  .clase-5 { @apply bg-amber-50 text-amber-900 border-amber-200; }
+  .clase-6 { @apply bg-orange-50 text-orange-900 border-orange-200; }
+  .clase-7 { @apply bg-cyan-50 text-cyan-900 border-cyan-200; }
+  .clase-8 { @apply bg-violet-50 text-violet-900 border-violet-200; }
+  .clase-9 { @apply bg-slate-100 text-slate-800 border-slate-300; }
+  .clase-sc{ @apply bg-white text-slate-700 border-dashed border-slate-400; }
+  .clase__code {
+    @apply font-semibold tabular;
+  }
+
+  /* --- Banners de feedback -------------------------------------------- */
+  .banner {
+    @apply flex items-start gap-3 rounded-card border px-4 py-3 text-sm;
+  }
+  .banner--ok      { @apply bg-emerald-50 border-emerald-200 text-emerald-900; }
+  .banner--warn    { @apply bg-amber-50 border-amber-200 text-amber-900; }
+  .banner--danger  { @apply bg-red-50 border-red-200 text-red-900; }
+  .banner--info    { @apply bg-sky-50 border-sky-200 text-sky-900; }
+  .banner__text    { @apply flex-1; }
+  .banner__icon    { @apply shrink-0 mt-0.5; }
+  .banner__close {
+    @apply shrink-0 rounded p-1 hover:bg-black/5;
+  }
+
+  /* --- Estado vacío ---------------------------------------------------- */
+  .empty {
+    @apply flex flex-col items-center gap-2 rounded-card border border-dashed
+           border-line bg-white px-6 py-10 text-center;
+  }
+  .empty__title { @apply text-base font-semibold; }
+  .empty__text  { @apply text-sm text-ink-600 max-w-prose; }
+
+  /* --- Encabezado de página ------------------------------------------- */
+  .page-header  { @apply flex flex-col gap-3 mb-6; }
+  .page-header__row {
+    @apply flex flex-col gap-3 md:flex-row md:items-start md:justify-between;
+  }
+  .page-header__title { @apply text-2xl font-semibold; }
+  .page-header__desc  { @apply text-sm text-ink-600 mt-1; }
+  .page-header__actions { @apply flex flex-wrap items-center gap-2; }
+
+  /* --- Migas de pan ---------------------------------------------------- */
+  .breadcrumb { @apply text-xs text-ink-600; }
+  .breadcrumb ol { @apply flex flex-wrap items-center gap-1.5; }
+  .breadcrumb a { @apply hover:text-brand-700 underline-offset-2 hover:underline; }
+  .breadcrumb [aria-current="page"] { @apply text-ink-900 font-medium; }
+
+  /* --- Paginación ------------------------------------------------------ */
+  .pagination {
+    @apply flex flex-wrap items-center justify-between gap-2 px-1 py-3 text-sm;
+  }
+  .pagination__pages { @apply flex items-center gap-1; }
+  .pagination__page {
+    @apply inline-flex h-9 min-w-9 items-center justify-center rounded-lg border
+           border-line bg-white px-2 text-xs text-ink-700 hover:bg-canvas;
+  }
+  .pagination__page[aria-current="page"] {
+    @apply bg-brand-700 border-brand-700 text-white font-semibold;
+  }
+  .pagination__info { @apply text-xs text-ink-600; }
+
+  /* --- Stepper --------------------------------------------------------- */
+  .stepper { @apply flex flex-wrap items-center gap-2 text-sm; }
+  .stepper__item {
+    @apply flex items-center gap-2 rounded-full border border-line bg-white
+           px-3 py-1 text-ink-600;
+  }
+  .stepper__item.is-current {
+    @apply border-brand-500 text-brand-900 font-semibold bg-brand-50;
+  }
+  .stepper__item.is-done {
+    @apply border-brand-100 text-brand-700;
+  }
+  .stepper__dot {
+    @apply inline-flex h-5 w-5 items-center justify-center rounded-full
+           border border-current text-[11px] tabular;
+  }
+
+  /* --- Timeline -------------------------------------------------------- */
+  .timeline { @apply flex flex-col gap-3 border-l border-line pl-4; }
+  .timeline__item { @apply relative text-sm; }
+  .timeline__item::before {
+    content: "";
+    @apply absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full
+           bg-ink-400 ring-2 ring-white;
+  }
+  .timeline__item--ok::before     { @apply bg-emerald-600; }
+  .timeline__item--warn::before   { @apply bg-amber-600; }
+  .timeline__item--danger::before { @apply bg-red-600; }
+  .timeline__item--info::before   { @apply bg-sky-600; }
+  .timeline__fecha { @apply block text-xs text-ink-400 tabular; }
+
+  /* --- Dona (SVG generado en Jinja) ------------------------------------ */
+  .donut { @apply flex flex-wrap items-center gap-6; }
+  .donut__svg { @apply shrink-0; }
+  .donut__legend { @apply flex flex-col gap-1.5 text-sm; }
+  .donut__key { @apply inline-flex items-center gap-2; }
+  .donut__swatch {
+    @apply inline-block h-3 w-3 shrink-0 rounded-sm border border-black/10;
+  }
+  .donut__value { @apply tabular text-ink-600; }
+
+  /* --- Barra de progreso ---------------------------------------------- */
+  .progress {
+    @apply h-2 w-full overflow-hidden rounded-full bg-line;
+  }
+  .progress__bar {
+    @apply block h-full rounded-full bg-brand-700;
+  }
+
+  /* --- Shell: navegación lateral y topbar ------------------------------ */
+  .shell-link {
+    @apply relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm
+           text-brand-100 hover:bg-white/10 hover:text-white;
+  }
+  .shell-link[aria-current="page"] {
+    @apply bg-brand-50 text-brand-900 font-medium hover:bg-brand-50;
+  }
+  .shell-link[aria-current="page"]::before {
+    content: "";
+    @apply absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-brand-700;
+  }
+  .shell-group {
+    @apply px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider
+           text-brand-100/70;
+  }
+  .shell-brand { @apply flex items-center gap-2 px-3 py-3; }
+
+  /* Sin JS: el menú móvil se muestra como bloque estático (degradación). */
+  .shell-drawer { @apply block border-b border-line bg-brand-900; }
+  .js .shell-drawer { @apply hidden; }
+  .js .shell-drawer[data-open="true"] {
+    @apply fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col
+           overflow-y-auto bg-brand-900 shadow-xl;
+  }
+  .shell-toggle { @apply hidden; }
+  .js .shell-toggle { @apply inline-flex; }
+  .shell-overlay {
+    @apply fixed inset-0 z-40 hidden bg-ink-900/50;
+  }
+  .js .shell-overlay[data-open="true"] { @apply block; }
+
+  @media (min-width: 1024px) {
+    .shell-drawer { display: none !important; }
+  }
+
+  /* Elementos que solo tienen sentido con JavaScript activo */
+  .js-only { display: none; }
+  .js .js-only { display: inline-flex; }
+
+  /* Indicador de "cambios sin guardar": lo activa app.js */
+  .dirty-indicator { display: none; }
+  .dirty-indicator.is-visible { display: inline-flex; }
+}
