@@ -4,5 +4,8 @@ __pycache__/
 .idea/
 uploads/
 docs/
+tests/
+node_modules/
+app/static/css/app.css
 .env
 *.pyc
