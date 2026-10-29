@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Acceso · Validador EET{% endblock %}</title>
+  <meta name="description" content="{% block description %}Acceso al Validador EET de la AEP.{% endblock %}">
+  <meta name="theme-color" content="#0B3B2E">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
+  {# Marca de "JS disponible": el botón de mostrar contraseña solo aparece con JS #}
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen">
+{%- import "components/ui.html" as ui with context %}
+<a href="#contenido"
+   class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-brand-900 focus:shadow">
+  Saltar al contenido
+</a>
+
+<div class="auth-page">
+  <header class="auth-brand">
+    <img src="{{ url_for('static', path='favicon.svg') }}" alt="" width="32" height="32" class="rounded-md">
+    <span class="leading-tight">
+      <span class="block text-sm font-semibold text-white">Validador EET · AEP</span>
+      <span class="block text-[11px] text-brand-100">Exactitud temática</span>
+    </span>
+  </header>
+
+  <main id="contenido" class="auth-card">
+    {%- set f = flash(request) if flash is defined else None %}
+    {%- if f %}
+    <div class="mb-4">{{ ui.banner(f.tone, f.text) }}</div>
+    {%- endif %}
+    {% block avisos %}{% endblock %}
+    {% block contenido %}{% endblock %}
+  </main>
+
+  <footer class="auth-footer">
+    <p>Trazabilidad: interpretaciones originales · cruce calculado · dictamen QA/QC. El acceso queda auditado con usuario, fecha, IP y agente.</p>
+  </footer>
+</div>
+
+<script src="{{ url_for('static', path='js/app.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

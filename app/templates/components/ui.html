@@ -23,6 +23,16 @@
 
 
 {# ---------------------------------------------------------------------
+   csrf_input()
+   Campo oculto con el token CSRF de la petición. Va como PRIMER campo de
+   todos los formularios POST. El token sale de `csrf_token(request)`:
+   con sesión es el de la sesión; sin sesión, el de la cookie `eet_csrf`.
+   Con `EET_AUTH_ENABLED=false` el valor es vacío y no se valida.
+   --------------------------------------------------------------------- #}
+{% macro csrf_input() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">{%- endmacro %}
+
+
+{# ---------------------------------------------------------------------
    badge(text, tone="neutral", icon=None)
    Etiqueta de estado. `tone`: ok | warn | danger | info | neutral.
    El texto siempre acompaña al color (nunca solo color).
@@ -106,7 +116,7 @@
 {%- set fid = "campo-" ~ (name|string|replace("[", "-")|replace("]", "")|replace(".", "-")) -%}
 {%- set permitidos = ["placeholder", "autocomplete", "inputmode", "pattern", "min", "max",
                       "step", "maxlength", "minlength", "rows", "accept", "multiple",
-                      "readonly", "disabled", "list", "title"] -%}
+                      "readonly", "disabled", "list", "title", "autofocus"] -%}
 {%- set ids = [] -%}
 {%- if hint %}{% set _ = ids.append(fid ~ "-hint") %}{% endif -%}
 {%- if error %}{% set _ = ids.append(fid ~ "-error") %}{% endif -%}

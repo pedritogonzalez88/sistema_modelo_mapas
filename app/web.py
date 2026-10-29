@@ -21,6 +21,9 @@ FLASH_OK = {
     "reemplazo_estado":   ("Estado del reemplazo actualizado.", "ok"),
     "malla_cargada":      ("Metadatos de la malla actualizados.", "ok"),
     "mapa_cargado":       ("Clases del mapa MADES cargadas.", "ok"),
+    # Autenticación (Fase A1)
+    "sesion_cerrada":     ("Sesión cerrada correctamente.", "ok"),
+    "password_changed":   ("Contraseña actualizada. Las demás sesiones se cerraron.", "ok"),
 }
 
 FLASH_ERROR = {
@@ -47,3 +50,18 @@ def _flash(request):
 
 
 templates.env.globals["flash"] = _flash
+
+
+def _csrf_token(request) -> str:
+    """Token CSRF del formulario actual (global Jinja ``csrf_token(request)``).
+
+    La importación es local para que ``app.web`` no arrastre el paquete de
+    autenticación al importarse desde los routers y para que la resolución de
+    dependencias quede en un único punto.
+    """
+    from app.auth.csrf import token_actual
+
+    return token_actual(request)
+
+
+templates.env.globals["csrf_token"] = _csrf_token

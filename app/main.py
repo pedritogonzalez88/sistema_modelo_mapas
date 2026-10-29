@@ -1,3 +1,11 @@
+"""Punto de entrada de la aplicación.
+
+``create_app()`` permite montar una instancia limpia en pruebas y en tareas
+(CLI, scripts) sin reutilizar el estado global; ``app = create_app()`` es la
+que consume Uvicorn. Los middlewares se agregan al final: Starlette construye
+la pila en orden inverso, así que ``SecurityHeaders`` queda por fuera de
+``AuthGate`` y este por fuera de los routers.
+"""
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -6,6 +14,8 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.auth.middleware import AuthGateMiddleware, SecurityHeadersMiddleware
+from app.auth.router import router as auth_router
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
 from app.routers import cruces, dashboard, entregas, exportar, malla, mapa, qaqc, reemplazos
@@ -31,15 +41,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
-
-
-@app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Errores HTTP como HTML legible, salvo rutas de máquina.
 
     JSON solo para /salud, /api* o cuando el cliente pide JSON explícitamente;
     el resto de la aplicación muestra error.html con navegación y sin trazas.
+    El 403 de CSRF y el 401 del gate también pasan por aquí.
     """
     if request.url.path.startswith(("/salud", "/api")) or \
             "application/json" in request.headers.get("accept", ""):
@@ -50,25 +57,48 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         status_code=exc.status_code,
     )
 
-static_dir = Path(__file__).parent / "static"
-static_dir.mkdir(exist_ok=True)
-app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-app.include_router(dashboard.router)
-app.include_router(entregas.router)
-app.include_router(cruces.router)
-app.include_router(qaqc.router)
-app.include_router(reemplazos.router)
-app.include_router(malla.router)
-app.include_router(mapa.router)
-app.include_router(exportar.router)
+def create_app() -> FastAPI:
+    """Construye la aplicación completa (middlewares, routers, static)."""
+    # Con autenticación activa y exposición de documentación desactivada, el
+    # esquema OpenAPI tampoco se publica: describe la superficie interna.
+    ocultar_docs = settings.auth_enabled and not settings.expose_docs
+
+    app = FastAPI(
+        title=settings.app_name,
+        lifespan=lifespan,
+        docs_url=None if ocultar_docs else "/docs",
+        redoc_url=None if ocultar_docs else "/redoc",
+        openapi_url=None if ocultar_docs else "/openapi.json",
+    )
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+
+    static_dir = Path(__file__).parent / "static"
+    static_dir.mkdir(exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    app.include_router(auth_router)
+    app.include_router(dashboard.router)
+    app.include_router(entregas.router)
+    app.include_router(cruces.router)
+    app.include_router(qaqc.router)
+    app.include_router(reemplazos.router)
+    app.include_router(malla.router)
+    app.include_router(mapa.router)
+    app.include_router(exportar.router)
+
+    @app.get("/salud")
+    def salud():
+        return {"estado": "ok"}
+
+    @app.get("/inicio")
+    def inicio():
+        return RedirectResponse("/", status_code=302)
+
+    # Orden de la pila: el último `add_middleware` queda más afuera.
+    app.add_middleware(AuthGateMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    return app
 
 
-@app.get("/salud")
-def salud():
-    return {"estado": "ok"}
-
-
-@app.get("/inicio")
-def inicio():
-    return RedirectResponse("/", status_code=302)
+app = create_app()

@@ -1,0 +1,51 @@
+{% extends "auth/base_auth.html" %}
+{% import "components/ui.html" as ui with context %}
+
+{% block title %}Acceso · Validador EET{% endblock %}
+{% block description %}Ingreso al Validador de Exactitud Temática de la AEP.{% endblock %}
+
+{% block avisos %}
+{%- if error %}
+<div class="mb-4">{{ ui.banner("danger", error) }}</div>
+{%- endif %}
+{% endblock %}
+
+{% block contenido %}
+<h1 class="text-xl font-semibold text-ink-900">Ingresar</h1>
+<p class="auth-intro">Use su usuario institucional. Si no tiene acceso, solicítelo a la coordinación del proyecto.</p>
+
+<form method="post" action="/auth/login" class="mt-6 flex flex-col gap-5">
+  {{ ui.csrf_input() }}
+  <input type="hidden" name="next" value="{{ next or '' }}">
+
+  {{ ui.field(
+    "Usuario o correo",
+    "login",
+    value=login or "",
+    hint="Nombre de usuario o correo institucional.",
+    required=True,
+    autocomplete="username",
+    autofocus=True,
+  ) }}
+
+  <div class="auth-secret">
+    {{ ui.field(
+      "Contraseña",
+      "password",
+      type="password",
+      hint="Distingue mayúsculas y minúsculas.",
+      required=True,
+      autocomplete="current-password",
+    ) }}
+    <button type="button" class="auth-secret__toggle js-only" data-password-toggle="campo-password"
+            aria-controls="campo-password" aria-pressed="false">Mostrar contraseña</button>
+  </div>
+
+  <button class="btn btn--primary w-full" type="submit">Entrar</button>
+</form>
+
+<p class="auth-links">
+  ¿Olvidó su contraseña? La recuperación por correo institucional se habilitará próximamente;
+  mientras tanto, comuníquese con la coordinación para un restablecimiento asistido.
+</p>
+{% endblock %}

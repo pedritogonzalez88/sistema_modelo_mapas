@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth.csrf import csrf_protect
 from app.core.database import get_db
 from app.models import Entrega, ResultadoCruce
 from app.services import persist
@@ -51,7 +52,7 @@ def listar(request: Request, asistente: str | None = None,
     })
 
 
-@router.post("/upload")
+@router.post("/upload", dependencies=[Depends(csrf_protect)])
 async def upload(request: Request, file: UploadFile,
                  asistente_letra: str = Form(...), semana: str = Form(...),
                  tipo: str = Form("avance"), db: Session = Depends(get_db)):
@@ -90,7 +91,7 @@ def preview(request: Request, entrega_id: int, db: Session = Depends(get_db)):
     })
 
 
-@router.post("/{entrega_id}/confirm")
+@router.post("/{entrega_id}/confirm", dependencies=[Depends(csrf_protect)])
 def confirm(entrega_id: int, db: Session = Depends(get_db)):
     try:
         stats = persist.confirmar_entrega(db, entrega_id)
@@ -100,7 +101,7 @@ def confirm(entrega_id: int, db: Session = Depends(get_db)):
     return RedirectResponse("/cruces?ok=entrega_confirmada", status_code=303)
 
 
-@router.post("/{entrega_id}/reject")
+@router.post("/{entrega_id}/reject", dependencies=[Depends(csrf_protect)])
 def reject(entrega_id: int, motivo: str = Form(""), db: Session = Depends(get_db)):
     try:
         persist.rechazar_entrega(db, entrega_id, motivo or "Sin motivo registrado.")

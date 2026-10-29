@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+from app.auth.csrf import csrf_protect
 from app.core.database import get_db
 from app.domain.classes import ClaseCobertura
 from app.domain.qaqc import EstadoQAQC, eventos_disponibles
@@ -136,7 +137,7 @@ def detalle(request: Request, ficha_id: int, db: Session = Depends(get_db)):
                                       _contexto(db, ficha, _eventos_disponibles(ficha)))
 
 
-@router.post("/{ficha_id}")
+@router.post("/{ficha_id}", dependencies=[Depends(csrf_protect)])
 async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_db)):
     form = await request.form()
     evidencias = [e.strip() for e in form.getlist("evidencias") if e and e.strip()]
@@ -199,7 +200,7 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
     return RedirectResponse(f"/qaqc/{ficha_id}?ok=ficha_guardada", status_code=303)
 
 
-@router.post("/{ficha_id}/evento")
+@router.post("/{ficha_id}/evento", dependencies=[Depends(csrf_protect)])
 def evento(ficha_id: int, evento: str = Form(...), db: Session = Depends(get_db)):
     try:
         persist.transicionar_ficha(db, ficha_id, evento)

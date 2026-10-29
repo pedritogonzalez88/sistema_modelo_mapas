@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth.csrf import csrf_protect
 from app.core.database import get_db
 from app.models import PuntoMalla
 from app.services import persist
@@ -61,7 +62,7 @@ def pagina(request: Request, q: str | None = None, page: int = 1,
     })
 
 
-@router.post("/upload")
+@router.post("/upload", dependencies=[Depends(csrf_protect)])
 async def upload(file: UploadFile, db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
     contenido = await file.read()
