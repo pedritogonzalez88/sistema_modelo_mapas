@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-1">Dashboard · {{ proyecto.nombre }}</h1>
+<p class="text-sm text-slate-500 mb-6">Protocolo {{ proyecto.protocolo_version }} · Período {{ proyecto.periodo }}</p>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Puntos con cruce</div><div class="text-3xl font-bold">{{ total_puntos }}</div></div>
+  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Evaluaciones aceptadas</div><div class="text-3xl font-bold">{{ total_evaluaciones }}</div></div>
+  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Fichas QA/QC pendientes</div><div class="text-3xl font-bold text-amber-600">{{ pendientes_qaqc }}</div></div>
+  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Cruces incompletos</div><div class="text-3xl font-bold text-slate-400">{{ incompleto }}</div></div>
+</div>
+
+<div class="bg-white rounded shadow p-4 mb-6">
+  <h2 class="font-semibold mb-3">Concordancia de la terna <span class="text-xs font-normal text-slate-500">(denominador: ternas completas)</span></h2>
+  <div class="grid grid-cols-3 gap-4 text-center">
+    <div class="bg-emerald-50 rounded p-3"><div class="text-2xl font-bold text-emerald-700">{{ unanimidad }}</div><div class="text-xs">Unanimidad · {{ pct_unanimidad }}%</div></div>
+    <div class="bg-sky-50 rounded p-3"><div class="text-2xl font-bold text-sky-700">{{ mayoria }}</div><div class="text-xs">Mayoría 2/3 · {{ pct_mayoria }}%</div></div>
+    <div class="bg-red-50 rounded p-3"><div class="text-2xl font-bold text-red-700">{{ discrepancia }}</div><div class="text-xs">Discrepancia absoluta · {{ pct_discrepancia }}%</div></div>
+  </div>
+</div>
+
+<div class="bg-white rounded shadow p-4 mb-6">
+  <h2 class="font-semibold mb-1">Etapa 2 · clases del mapa MADES</h2>
+  <p class="text-sm">{{ mapa_registros }} registros punto-año en {{ mapa_puntos }} puntos.
+  {% if not mapa_puntos %}<span class="text-amber-600">Sin clases del mapa: la matriz de confusión y la Sección 5 están bloqueadas (5.1).</span>{% endif %}
+  <a class="underline text-sky-700" href="/mapa">Cargar mapa</a> · <a class="underline text-sky-700" href="/malla">Ver malla y metadatos</a></p>
+</div>
+
+<div class="bg-white rounded shadow p-4">
+  <h2 class="font-semibold mb-3">Últimas entregas</h2>
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-500 border-b"><th>ID</th><th>Asistente</th><th>Semana</th><th>Tipo</th><th>Ver.</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for e in entregas %}
+      <tr class="border-b hover:bg-slate-50"><td>{{ e.id }}</td><td>{{ e.letra }}</td><td>{{ e.semana }}</td><td>{{ e.tipo }}</td><td>{{ e.version }}</td><td>{{ e.estado }}</td></tr>
+    {% else %}
+      <tr><td colspan="6" class="py-4 text-center text-slate-400">Sin entregas. <a class="underline" href="/entregas">Cargar la primera</a>.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

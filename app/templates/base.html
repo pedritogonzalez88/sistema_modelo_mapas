@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ proyecto.nombre if proyecto is defined else "EET" }} · Validador EET</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+<header class="bg-emerald-900 text-white">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-6">
+    <span class="font-bold text-lg">Validador EET · AEP</span>
+    <nav class="flex gap-4 text-sm">
+      <a class="hover:underline" href="/">Dashboard</a>
+      <a class="hover:underline" href="/entregas">Entregas</a>
+      <a class="hover:underline" href="/cruces">Cruces</a>
+      <a class="hover:underline" href="/qaqc">QA/QC</a>
+      <a class="hover:underline" href="/reemplazos">Reemplazos</a>
+      <a class="hover:underline" href="/malla">Malla</a>
+      <a class="hover:underline" href="/mapa">Mapa</a>
+      <a class="hover:underline" href="/exportar">Exportar</a>
+    </nav>
+  </div>
+</header>
+<main class="max-w-6xl mx-auto px-4 py-6">
+{% block contenido %}{% endblock %}
+</main>
+<footer class="max-w-6xl mx-auto px-4 pb-8 text-xs text-slate-500">
+  Trazabilidad: interpretaciones originales · cruce calculado · dictamen QA/QC — la clase consolidada nunca sobrescribe los originales.
+</footer>
+</body>
+</html>

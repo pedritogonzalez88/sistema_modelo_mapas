@@ -1,0 +1,47 @@
+from enum import Enum
+
+
+class EstadoQAQC(str, Enum):
+    DETECTADO = "Detectado"
+    EN_REVISION = "En revisión"
+    PENDIENTE_APROBACION = "Pendiente de aprobación"
+    RESUELTO_POR_CONSENSO = "Resuelto por consenso"
+    SIN_CONSENSO = "Sin consenso"
+    REEMPLAZO_AUTORIZADO = "Reemplazo autorizado"
+    RESERVA_EN_INTERPRETACION = "Reserva en interpretación"
+    REEMPLAZO_COMPLETADO = "Reemplazo completado"
+
+
+class EventoQAQC(str, Enum):
+    INICIAR_REVISION = "Iniciar revisión"
+    SOLICITAR_APROBACION = "Solicitar aprobación"
+    APROBAR_CONSENSO = "Aprobar consenso"
+    DECLARAR_SIN_CONSENSO = "Declarar sin consenso"
+    AUTORIZAR_REEMPLAZO = "Autorizar reemplazo"
+    RESERVAR_EN_INTERPRETACION = "Reservar en interpretación"
+    COMPLETAR_REEMPLAZO = "Completar reemplazo"
+
+
+ESTADO_INICIAL = EstadoQAQC.DETECTADO
+
+OUT = {
+    (EstadoQAQC.DETECTADO, EventoQAQC.INICIAR_REVISION): EstadoQAQC.EN_REVISION,
+    (EstadoQAQC.EN_REVISION, EventoQAQC.SOLICITAR_APROBACION): EstadoQAQC.PENDIENTE_APROBACION,
+    (EstadoQAQC.PENDIENTE_APROBACION, EventoQAQC.APROBAR_CONSENSO): EstadoQAQC.RESUELTO_POR_CONSENSO,
+    (EstadoQAQC.PENDIENTE_APROBACION, EventoQAQC.DECLARAR_SIN_CONSENSO): EstadoQAQC.SIN_CONSENSO,
+    (EstadoQAQC.RESUELTO_POR_CONSENSO, EventoQAQC.AUTORIZAR_REEMPLAZO): EstadoQAQC.REEMPLAZO_AUTORIZADO,
+    (EstadoQAQC.SIN_CONSENSO, EventoQAQC.AUTORIZAR_REEMPLAZO): EstadoQAQC.REEMPLAZO_AUTORIZADO,
+    (EstadoQAQC.SIN_CONSENSO, EventoQAQC.RESERVAR_EN_INTERPRETACION): EstadoQAQC.RESERVA_EN_INTERPRETACION,
+    (EstadoQAQC.REEMPLAZO_AUTORIZADO, EventoQAQC.RESERVAR_EN_INTERPRETACION): EstadoQAQC.RESERVA_EN_INTERPRETACION,
+    (EstadoQAQC.REEMPLAZO_AUTORIZADO, EventoQAQC.COMPLETAR_REEMPLAZO): EstadoQAQC.REEMPLAZO_COMPLETADO,
+    (EstadoQAQC.RESERVA_EN_INTERPRETACION, EventoQAQC.COMPLETAR_REEMPLAZO): EstadoQAQC.REEMPLAZO_COMPLETADO,
+    (EstadoQAQC.RESERVA_EN_INTERPRETACION, EventoQAQC.AUTORIZAR_REEMPLAZO): EstadoQAQC.REEMPLAZO_AUTORIZADO,
+}
+
+
+def transicion(estado, evento):
+    return OUT.get((estado, evento))
+
+
+def eventos_disponibles(estado):
+    return [evento for (origen, evento) in OUT if origen == estado]

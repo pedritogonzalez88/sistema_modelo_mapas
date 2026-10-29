@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-1">Vista previa · entrega #{{ entrega.id }}</h1>
+<p class="text-sm text-slate-500 mb-6">Asistente {{ entrega.asistente_letra }} · semana {{ entrega.semana }} · {{ entrega.tipo }} · v{{ entrega.version }}</p>
+
+<div class="grid md:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Cruces punto-año detectados</div><div class="text-3xl font-bold">{{ n_total }}</div></div>
+  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Nuevos (sin cruce previo)</div><div class="text-3xl font-bold text-sky-700">{{ n_nuevos }}</div></div>
+  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Errores</div><div class="text-3xl font-bold {% if detalle.errores %}text-red-600{% endif %}">{{ detalle.errores or 0 }}</div></div>
+</div>
+<p class="text-sm mb-4">{{ detalle.nota }}</p>
+
+{% if errores %}
+<div class="bg-white rounded shadow p-4 mb-6">
+  <h2 class="font-semibold mb-2 text-red-700">Primeros errores (máx. 50)</h2>
+  <ul class="text-xs space-y-1 max-h-64 overflow-auto">
+  {% for e in errores %}
+    <li class="border-b py-1"><span class="font-mono bg-slate-100 px-1 rounded">{{ e.tipo }}</span> {{ e.mensaje }}</li>
+  {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="flex gap-3">
+  <form action="/entregas/{{ entrega.id }}/confirm" method="post">
+    <button class="bg-emerald-700 text-white rounded px-5 py-2 text-sm">Confirmar y cruzar</button>
+  </form>
+  <form action="/entregas/{{ entrega.id }}/reject" method="post" class="flex gap-2">
+    <input name="motivo" placeholder="Motivo del rechazo" class="border rounded px-2 py-2 text-sm w-64">
+    <button class="bg-white border border-red-300 text-red-700 rounded px-4 py-2 text-sm">Rechazar (se conserva como evidencia)</button>
+  </form>
+</div>
+{% endblock %}

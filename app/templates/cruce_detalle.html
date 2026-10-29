@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-1">Punto {{ punto }} · año {{ anio }}</h1>
+<p class="text-sm text-slate-500 mb-6">Resultado: <strong>{{ cruce.resultado }}</strong> · regla {{ cruce.regla_version }} · clase consolidada: <strong>{{ cruce.clase_consolidada or "—" }}</strong></p>
+
+<div class="bg-white rounded shadow p-4 mb-4">
+  <h2 class="font-semibold mb-2">Interpretaciones de origen (no modificables)</h2>
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-500 border-b"><th>Asistente</th><th>Clase</th><th>Entrega</th><th>Semana / versión</th></tr></thead>
+    <tbody>
+    {% for o in origen %}
+      <tr class="border-b"><td>{{ o.letra }}</td><td class="font-semibold">{{ o.clase if o.clase is not none else "— (ausencia)" }}</td>
+      <td>{% if o.entrega %}#{{ o.entrega.id }} <span class="text-xs text-slate-500">sha {{ o.entrega.sha }}</span>{% else %}—{% endif %}</td>
+      <td>{% if o.entrega %}{{ o.entrega.semana }} / v{{ o.entrega.version }}{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if ficha %}
+<div class="bg-amber-50 border border-amber-200 rounded p-4 text-sm">
+  Ficha QA/QC <a class="underline font-semibold" href="/qaqc/{{ ficha.id }}">#{{ ficha.id }}</a> · estado {{ ficha.estado }}
+</div>
+{% else %}
+<p class="text-sm text-slate-500">Sin ficha QA/QC asociada.</p>
+{% endif %}
+{% endblock %}

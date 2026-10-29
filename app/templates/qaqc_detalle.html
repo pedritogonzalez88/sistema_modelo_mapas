@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-1">Ficha QA/QC #{{ ficha.id }}</h1>
+<p class="text-sm text-slate-500 mb-6">Punto {{ ficha.punto_id }} · año {{ ficha.anio }} <strong>(campo obligatorio del cruce resuelto)</strong> · estado <strong>{{ ficha.estado }}</strong></p>
+
+<div class="bg-white rounded shadow p-4 mb-4 text-sm">
+  <h2 class="font-semibold mb-2">Interpretaciones iniciales</h2>
+  <p class="font-mono text-xs bg-slate-50 p-2 rounded">{{ ficha.valores_iniciales }}</p>
+  <h2 class="font-semibold mt-4 mb-2">Evidencias registradas</h2>
+  <ul class="text-xs list-disc ml-5">{% for e in ficha.evidencias or [] %}<li>{{ e }}</li>{% else %}<li class="text-slate-400">Sin evidencias.</li>{% endfor %}</ul>
+  {% if ficha.debate %}<h2 class="font-semibold mt-4 mb-1">Debate técnico</h2><p class="text-sm whitespace-pre-wrap">{{ ficha.debate }}</p>{% endif %}
+  {% if ficha.dictamen %}<p class="mt-2 text-sm">Dictamen: <strong>{{ ficha.dictamen }}</strong> · clase definitiva: <strong>{{ ficha.clase_definitiva or "—" }}</strong></p>{% endif %}
+  {% if ficha.sensores %}<p class="mt-1 text-sm">Sensores: {{ (ficha.sensores or [])|join(", ") }}</p>{% endif %}
+  {% if ficha.causa_descarte %}<p class="text-sm">Causa de descarte: <strong>{{ ficha.causa_descarte }}</strong></p>{% endif %}
+  {% if ficha.fecha_sesion %}<p class="text-sm">Fecha de sesión: {{ ficha.fecha_sesion }}</p>{% endif %}
+  {% if ficha.firmas %}<p class="text-sm">Firmas: {{ ficha.firmas }}</p>{% endif %}
+</div>
+
+<div class="bg-white rounded shadow p-4 mb-4">
+  <h2 class="font-semibold mb-3 text-sm">Completar dictamen (campos estructurados)</h2>
+  <form action="/qaqc/{{ ficha.id }}" method="post" class="grid gap-3 text-sm">
+    <label>Debate técnico / fundamento<textarea name="debate" rows="3" class="block w-full border rounded px-2 py-1">{{ ficha.debate or "" }}</textarea></label>
+    <div class="grid md:grid-cols-3 gap-3">
+      <label>Dictamen
+        <select name="dictamen" class="block w-full border rounded px-2 py-1">
+          <option value="">—</option>
+          <option value="consenso" {% if ficha.dictamen=='consenso' %}selected{% endif %}>consenso técnico</option>
+          <option value="sin_consenso" {% if ficha.dictamen=='sin_consenso' %}selected{% endif %}>sin consenso</option>
+        </select></label>
+      <label>Clase definitiva (1–9)<input name="clase_definitiva" type="number" min="1" max="9" value="{{ ficha.clase_definitiva or '' }}" class="block w-full border rounded px-2 py-1"></label>
+      <label>Fecha de sesión<input name="fecha_sesion" type="date" value="{{ ficha.fecha_sesion or '' }}" class="block w-full border rounded px-2 py-1"></label>
+    </div>
+    <fieldset class="text-sm"><legend class="font-medium">Sensores evaluados en sesión (4.12.1)</legend>
+      <div class="flex gap-4 mt-1">
+      {% for s in ["Landsat", "Sentinel-2", "Google Earth"] %}
+        <label><input type="checkbox" name="sensores" value="{{ s }}" {% if s in (ficha.sensores or []) %}checked{% endif %}> {{ s }}</label>
+      {% endfor %}
+      </div></fieldset>
+    <div class="grid md:grid-cols-2 gap-3">
+      <label>Causa del descarte (solo SC)
+        <select name="causa_descarte" class="block w-full border rounded px-2 py-1">
+          <option value="">—</option>
+          <option value="Ambigüedad espectral severa" {% if ficha.causa_descarte=='Ambigüedad espectral severa' %}selected{% endif %}>Ambigüedad espectral severa</option>
+          <option value="Mezcla de coberturas sub-píxel" {% if ficha.causa_descarte=='Mezcla de coberturas sub-píxel' %}selected{% endif %}>Mezcla de coberturas sub-píxel</option>
+        </select></label>
+      <label>Evidencia / índices / datos complementarios (una por línea)<textarea name="evidencias" rows="2" class="block w-full border rounded px-2 py-1"></textarea></label>
+    </div>
+    <div class="grid md:grid-cols-3 gap-3">
+      <label>Firma Evaluadora A<input name="firma_a" value="{{ (ficha.firmas or {}).get('firma_a','') }}" class="block w-full border rounded px-2 py-1"></label>
+      <label>Firma Evaluador/a B<input name="firma_b" value="{{ (ficha.firmas or {}).get('firma_b','') }}" class="block w-full border rounded px-2 py-1"></label>
+      <label>Firma Evaluador/a C<input name="firma_c" value="{{ (ficha.firmas or {}).get('firma_c','') }}" class="block w-full border rounded px-2 py-1"></label>
+    </div>
+    <div><button class="bg-slate-800 text-white rounded px-4 py-2">Guardar dictamen</button></div>
+  </form>
+  <p class="text-xs text-slate-500 mt-2">Nota: el formulario acepta una evidencia por envío (campo multilínea se registra como lista). Para cerrar por consenso se exige clase definitiva.</p>
+</div>
+
+<div class="bg-white rounded shadow p-4">
+  <h2 class="font-semibold mb-3 text-sm">Transiciones de estado</h2>
+  <div class="flex flex-wrap gap-2">
+  {% for ev in eventos %}
+    <form action="/qaqc/{{ ficha.id }}/evento" method="post">
+      <input type="hidden" name="evento" value="{{ ev }}">
+      <button class="bg-emerald-700 text-white rounded px-4 py-2 text-sm">{{ ev }}</button>
+    </form>
+  {% else %}
+    <p class="text-sm text-slate-400">Estado final: sin transiciones disponibles.</p>
+  {% endfor %}
+  </div>
+</div>
+{% endblock %}

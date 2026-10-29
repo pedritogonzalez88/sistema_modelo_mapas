@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-6">Entregas semanales</h1>
+
+<div class="bg-white rounded shadow p-4 mb-6">
+  <h2 class="font-semibold mb-3">Nueva entrega</h2>
+  <form action="/entregas/upload" method="post" enctype="multipart/form-data" class="grid md:grid-cols-5 gap-3 items-end">
+    <label class="text-sm">Archivo .xlsx<input type="file" name="file" accept=".xlsx" required class="block mt-1 text-xs"></label>
+    <label class="text-sm">Asistente
+      <select name="asistente_letra" class="block mt-1 border rounded px-2 py-1"><option>A</option><option>B</option><option>C</option></select></label>
+    <label class="text-sm">Semana<input name="semana" required placeholder="2026-W41" class="block mt-1 border rounded px-2 py-1 w-full"></label>
+    <label class="text-sm">Tipo
+      <select name="tipo" class="block mt-1 border rounded px-2 py-1"><option value="avance">avance</option><option value="acumulado">acumulado</option><option value="correccion">corrección</option></select></label>
+    <button class="bg-emerald-700 text-white rounded px-4 py-2 text-sm">Subir y previsualizar</button>
+  </form>
+  <p class="text-xs text-slate-500 mt-2">El archivo se guarda con su huella SHA-256. Duplicados exactos se rechazan. Solo declara avance / acumulado / corrección: el sistema no lo infiere.</p>
+</div>
+
+<div class="bg-white rounded shadow p-4">
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-slate-500 border-b"><th>ID</th><th>Asist.</th><th>Semana</th><th>Tipo</th><th>Ver.</th><th>Estado</th><th>Recibida</th><th></th></tr></thead>
+    <tbody>
+    {% for e in entregas %}
+      <tr class="border-b hover:bg-slate-50">
+        <td>{{ e.id }}</td><td>{{ e.asistente_letra }}</td><td>{{ e.semana }}</td><td>{{ e.tipo }}</td><td>{{ e.version }}</td>
+        <td><span class="px-2 py-0.5 rounded text-xs {% if e.estado=='aceptada' %}bg-emerald-100 text-emerald-800{% elif e.estado=='rechazada' %}bg-red-100 text-red-800{% else %}bg-amber-100 text-amber-800{% endif %}">{{ e.estado }}</span></td>
+        <td class="text-xs">{{ e.recibida_en }}</td>
+        <td>{% if e.estado=='pendiente' %}<a class="underline text-sky-700" href="/entregas/{{ e.id }}/preview">revisar</a>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="py-4 text-center text-slate-400">Sin entregas registradas.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

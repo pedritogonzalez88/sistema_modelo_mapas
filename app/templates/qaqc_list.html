@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-6">Fichas QA/QC · resolución de discrepancias absolutas</h1>
+
+<form method="get" class="bg-white rounded shadow p-3 mb-4 flex gap-3 items-end text-sm">
+  <label>Estado
+    <select name="estado" class="block border rounded px-2 py-1">
+      <option value="">todos</option>
+      {% for e in estados %}<option value="{{ e }}" {% if f_estado==e %}selected{% endif %}>{{ e }}</option>{% endfor %}
+    </select></label>
+  <button class="bg-slate-800 text-white rounded px-4 py-1.5">Filtrar</button>
+</form>
+
+<div class="bg-white rounded shadow p-4">
+<table class="w-full text-sm">
+  <thead><tr class="text-left text-slate-500 border-b"><th>Ficha</th><th>Punto</th><th>Año</th><th>A/B/C iniciales</th><th>Estado</th><th>Dictamen</th></tr></thead>
+  <tbody>
+  {% for f in fichas %}
+    <tr class="border-b hover:bg-slate-50">
+      <td><a class="underline text-sky-700" href="/qaqc/{{ f.id }}">#{{ f.id }}</a></td>
+      <td>{{ f.punto_id }}</td><td>{{ f.anio }}</td>
+      <td class="font-mono text-xs">{{ f.valores_iniciales }}</td>
+      <td>{{ f.estado }}</td><td>{{ f.dictamen or "—" }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="py-4 text-center text-slate-400">Sin fichas. Se crean automáticamente ante ternas con 3 clases distintas.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

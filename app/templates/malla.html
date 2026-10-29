@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-1">Malla oficial y metadatos muestrales</h1>
+<p class="text-sm text-slate-500 mb-6">{{ total }} puntos · {{ reservas }} reservas · {{ con_peso }} con peso muestral. Se exige punto_id; opcionales: estrato, origen_anio (1990/2007/2017/2024), peso, x, y, es_reserva.</p>
+
+<div class="bg-white rounded shadow p-4 mb-6">
+  <h2 class="font-semibold mb-3 text-sm">Cargar metadatos (.csv o .xlsx)</h2>
+  <form action="/malla/upload" method="post" enctype="multipart/form-data" class="flex gap-3 items-end text-sm">
+    <input type="file" name="file" accept=".csv,.xlsx" required class="text-xs">
+    <button class="bg-emerald-700 text-white rounded px-4 py-2">Subir</button>
+  </form>
+</div>
+
+<div class="bg-white rounded shadow p-4">
+<table class="w-full text-sm">
+  <thead><tr class="text-left text-slate-500 border-b"><th>Punto</th><th>Estrato</th><th>Origen</th><th>Peso</th><th>Reserva</th><th>Activo</th></tr></thead>
+  <tbody>
+  {% for m in muestra %}
+    <tr class="border-b hover:bg-slate-50"><td>{{ m.punto_id }}</td><td>{{ m.estrato or "—" }}</td><td>{{ m.origen_anio or "—" }}</td><td>{{ m.peso or "—" }}</td><td>{{ "sí" if m.es_reserva else "—" }}</td><td>{{ "sí" if m.activo else "no" }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="py-4 text-center text-slate-400">Malla vacía: se puebla con las entregas o con esta carga.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="text-xs text-slate-400 mt-2">Primeros 100 puntos.</p>
+</div>
+{% endblock %}

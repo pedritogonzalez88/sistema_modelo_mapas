@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-1">Clases del mapa MADES (Etapa 2)</h1>
+<p class="text-sm text-slate-500 mb-6">Filas de la matriz de confusión (5.1): {{ registros }} registros en {{ puntos }} puntos. Formatos: .xlsx ancho (ID_PUNTO + A1990…A2024, clases 1–9) o .csv largo (punto,anio,clase).</p>
+
+<div class="bg-white rounded shadow p-4">
+  <form action="/mapa/upload" method="post" enctype="multipart/form-data" class="flex gap-3 items-end text-sm">
+    <input type="file" name="file" accept=".csv,.xlsx" required class="text-xs">
+    <button class="bg-emerald-700 text-white rounded px-4 py-2">Cargar mapa</button>
+  </form>
+  <p class="text-xs text-slate-500 mt-2">Fuente registrada por lote (UTCUTS-XLSX / UTCUTS-CSV). Recargas del mismo punto-año actualizan la clase con auditoría.</p>
+</div>
+{% endblock %}

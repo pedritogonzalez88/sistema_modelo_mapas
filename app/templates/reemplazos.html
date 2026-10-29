@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-1">Reemplazos · puntos de reserva (4.5–4.9)</h1>
+<p class="text-sm text-slate-500 mb-6">Los códigos R/A de la columna Notas generan estos expedientes. Ad-hoc prohibido: la reserva debe existir en la malla y ser del mismo estrato (4.7).</p>
+
+<div class="bg-white rounded shadow p-4 mb-6">
+  <h2 class="font-semibold mb-3 text-sm">Reportar píxel inválido (propuesto)</h2>
+  <form action="/reemplazos" method="post" class="flex flex-wrap gap-3 items-end text-sm">
+    <label>Punto origen<input name="punto_origen" type="number" required class="block border rounded px-2 py-1 w-32"></label>
+    <label>Causa
+      <select name="causa" class="block border rounded px-2 py-1">
+        <option value="">—</option>
+        {% for k, v in causas.items() %}<option value="{{ k }}">{{ k }} · {{ v }}</option>{% endfor %}
+      </select></label>
+    <button class="bg-slate-800 text-white rounded px-4 py-1.5">Crear propuesto</button>
+  </form>
+</div>
+
+<div class="bg-white rounded shadow p-4">
+<table class="w-full text-sm">
+  <thead><tr class="text-left text-slate-500 border-b"><th>ID</th><th>Origen</th><th>Reserva</th><th>Causa</th><th>Estado</th><th>Acciones</th></tr></thead>
+  <tbody>
+  {% for r in filas %}
+    <tr class="border-b hover:bg-slate-50">
+      <td>{{ r.id }}</td><td>{{ r.punto_origen }}</td><td>{{ r.punto_reserva or "—" }}</td>
+      <td>{{ r.causa or "—" }}</td><td>{{ r.estado }}</td>
+      <td class="flex gap-2">
+        {% if r.estado=='propuesto' and not r.punto_reserva %}
+        <form action="/reemplazos/{{ r.id }}/proponer" method="post"><button class="underline text-sky-700">proponer reserva</button></form>
+        {% endif %}
+        {% if r.estado=='propuesto' %}
+        <form action="/reemplazos/{{ r.id }}/estado" method="post"><input type="hidden" name="nuevo_estado" value="autorizado"><button class="underline text-sky-700">autorizar</button></form>
+        {% elif r.estado=='autorizado' %}
+        <form action="/reemplazos/{{ r.id }}/estado" method="post"><input type="hidden" name="nuevo_estado" value="completado"><button class="underline text-sky-700">completar</button></form>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="py-4 text-center text-slate-400">Sin reemplazos registrados.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

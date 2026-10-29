@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1 class="text-2xl font-bold mb-6">Tabla comparativa de la terna</h1>
+
+<form method="get" class="bg-white rounded shadow p-3 mb-4 flex flex-wrap gap-3 items-end text-sm">
+  <label>Resultado
+    <select name="resultado" class="block border rounded px-2 py-1">
+      <option value="">todos</option>
+      {% for r in ["unanimidad","mayoria","discrepancia","incompleto"] %}
+      <option value="{{ r }}" {% if f_resultado==r %}selected{% endif %}>{{ r }}</option>
+      {% endfor %}
+    </select></label>
+  <label>Punto<input name="punto" value="{{ f_punto }}" class="block border rounded px-2 py-1 w-28"></label>
+  <label>Año<input name="anio" value="{{ f_anio }}" class="block border rounded px-2 py-1 w-28"></label>
+  <button class="bg-slate-800 text-white rounded px-4 py-1.5">Filtrar</button>
+</form>
+
+<div class="bg-white rounded shadow p-4">
+<table class="w-full text-sm">
+  <thead><tr class="text-left text-slate-500 border-b"><th>Punto</th><th>Año</th><th>A</th><th>B</th><th>C</th><th>Resultado</th><th>Clase final</th><th>Ficha</th></tr></thead>
+  <tbody>
+  {% for c, ficha_id in filas %}
+    <tr class="border-b hover:bg-slate-50">
+      <td><a class="underline text-sky-700" href="/cruces/{{ c.punto_id }}/{{ c.anio }}">{{ c.punto_id }}</a></td>
+      <td>{{ c.anio }}</td><td>{{ c.a or "—" }}</td><td>{{ c.b or "—" }}</td><td>{{ c.c or "—" }}</td>
+      <td><span class="px-2 py-0.5 rounded text-xs {% if c.resultado=='unanimidad' %}bg-emerald-100 text-emerald-800{% elif c.resultado=='mayoria' %}bg-sky-100 text-sky-800{% elif c.resultado=='discrepancia' %}bg-red-100 text-red-800{% else %}bg-slate-200 text-slate-600{% endif %}">{{ c.resultado }}</span></td>
+      <td class="font-semibold">{{ c.clase_consolidada or "—" }}</td>
+      <td>{% if ficha_id %}<a class="underline text-amber-700" href="/qaqc/{{ ficha_id }}">ver</a>{% else %}—{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="py-4 text-center text-slate-400">Sin cruces. Cargue entregas aceptadas.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
