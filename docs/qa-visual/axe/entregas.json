@@ -1,0 +1,35 @@
+{
+  "ruta": "/entregas",
+  "slug": "entregas",
+  "ancho": "1440x900",
+  "url": "http://127.0.0.1:8017/entregas",
+  "timestamp": "2026-10-29T21:21:52.775Z",
+  "axeVersion": "4.14.0",
+  "runOnly": {
+    "type": "tag",
+    "values": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa",
+      "best-practice"
+    ]
+  },
+  "nota": "Se conservan íntegras las listas violations e incomplete. Las comprobaciones superadas (passes) e inaplicables (inapplicable) no se almacenan nodo a nodo para mantener el archivo legible.",
+  "conteos": {
+    "violations": 0,
+    "incomplete": 0,
+    "passes": 50,
+    "inapplicable": 41,
+    "nodosAfectados": 0,
+    "porImpacto": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    }
+  },
+  "violations": [],
+  "incomplete": []
+}

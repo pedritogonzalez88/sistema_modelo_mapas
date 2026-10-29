@@ -1,0 +1,509 @@
+{
+  "generado": "2026-10-29T21:23:11.661Z",
+  "base": "http://127.0.0.1:8017",
+  "navegador": "playwright channel=chrome",
+  "teclado": {
+    "ancho": "390x844",
+    "ruta": "/",
+    "pasos": [
+      {
+        "paso": "Primer Tab desde el inicio de la página",
+        "ok": true,
+        "detalle": "Foco en <a> href=\"#contenido\" texto=\"Saltar al contenido\""
+      },
+      {
+        "paso": "El skip link es visible al recibir foco",
+        "ok": true,
+        "detalle": "rect=151x36 en (16,16); clip-path=none; position=absolute; display=block"
+      },
+      {
+        "paso": "El destino #contenido existe",
+        "ok": true,
+        "detalle": "<main> con id=\"contenido\" (skippable)"
+      },
+      {
+        "paso": "Enter activa el skip link (#contenido)",
+        "ok": true,
+        "detalle": "hash=\"#contenido\" foco=<body#null> scrollY=57"
+      },
+      {
+        "paso": "El Tab posterior entra directamente en #contenido (no recorre la navegación)",
+        "ok": true,
+        "detalle": "foco=<a> \"Nueva entrega\" href=\"/entregas\" dentroDeContenido=true enNavegacion=false"
+      }
+    ],
+    "ordenDeTabulacion": [
+      {
+        "orden": 1,
+        "tag": "a",
+        "id": null,
+        "href": "#contenido",
+        "texto": "Saltar al contenido",
+        "ariaLabel": null,
+        "y": 16,
+        "visible": true
+      },
+      {
+        "orden": 2,
+        "tag": "button",
+        "id": "drawer-toggle",
+        "href": null,
+        "texto": "",
+        "ariaLabel": "Abrir menú de navegación",
+        "y": 9,
+        "visible": true
+      },
+      {
+        "orden": 3,
+        "tag": "a",
+        "id": null,
+        "href": "/entregas",
+        "texto": "Nueva entrega",
+        "ariaLabel": null,
+        "y": 149,
+        "visible": true
+      },
+      {
+        "orden": 4,
+        "tag": "a",
+        "id": null,
+        "href": "/malla",
+        "texto": "Ver malla",
+        "ariaLabel": null,
+        "y": 404,
+        "visible": true
+      },
+      {
+        "orden": 5,
+        "tag": "a",
+        "id": null,
+        "href": "/mapa",
+        "texto": "Abrir mapa",
+        "ariaLabel": null,
+        "y": 529,
+        "visible": true
+      },
+      {
+        "orden": 6,
+        "tag": "a",
+        "id": null,
+        "href": "/entregas",
+        "texto": "Ver entregas",
+        "ariaLabel": null,
+        "y": 654,
+        "visible": true
+      }
+    ],
+    "resultado": "PASA",
+    "todosLosPasosOk": true
+  },
+  "drawer": {
+    "ancho": "390x844",
+    "ruta": "/",
+    "metodoClick": "locator.click",
+    "estadoInicial": {
+      "toggleVisible": true,
+      "ariaExpanded": "false",
+      "ariaControls": "drawer",
+      "toggleLabel": "Abrir menú de navegación",
+      "drawerOpen": "false",
+      "overlayOpen": "false",
+      "drawerDisplay": "none",
+      "drawerRect": {
+        "w": 0,
+        "h": 0,
+        "x": 0
+      },
+      "scrollBloqueado": false,
+      "foco": {
+        "tag": "body",
+        "id": null,
+        "text": "Saltar al contenido\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n  \n    Validador EET · AEP\n    \n      \n\n    \n  \n  \n   ",
+        "href": null,
+        "ariaLabel": null,
+        "claseSrOnly": false,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 2636
+        },
+        "clipPath": "none",
+        "position": "static",
+        "display": "block",
+        "visibility": "visible",
+        "visible": true,
+        "enPantalla": true
+      }
+    },
+    "trasAbrir": {
+      "toggleVisible": true,
+      "ariaExpanded": "true",
+      "ariaControls": "drawer",
+      "toggleLabel": "Abrir menú de navegación",
+      "drawerOpen": "true",
+      "overlayOpen": "true",
+      "drawerDisplay": "flex",
+      "drawerRect": {
+        "w": 280,
+        "h": 844,
+        "x": 0
+      },
+      "scrollBloqueado": true,
+      "foco": {
+        "tag": "button",
+        "id": null,
+        "text": "",
+        "href": null,
+        "ariaLabel": "Cerrar menú de navegación",
+        "claseSrOnly": false,
+        "rect": {
+          "x": 232,
+          "y": 12,
+          "w": 36,
+          "h": 36
+        },
+        "clipPath": "none",
+        "position": "static",
+        "display": "flex",
+        "visibility": "visible",
+        "visible": true,
+        "enPantalla": true
+      }
+    },
+    "trasEscape": {
+      "toggleVisible": true,
+      "ariaExpanded": "false",
+      "ariaControls": "drawer",
+      "toggleLabel": "Abrir menú de navegación",
+      "drawerOpen": "false",
+      "overlayOpen": "false",
+      "drawerDisplay": "none",
+      "drawerRect": {
+        "w": 0,
+        "h": 0,
+        "x": 0
+      },
+      "scrollBloqueado": false,
+      "foco": {
+        "tag": "button",
+        "id": "drawer-toggle",
+        "text": "",
+        "href": null,
+        "ariaLabel": "Abrir menú de navegación",
+        "claseSrOnly": false,
+        "rect": {
+          "x": 16,
+          "y": 9,
+          "w": 38,
+          "h": 38
+        },
+        "clipPath": "none",
+        "position": "static",
+        "display": "flex",
+        "visibility": "visible",
+        "visible": true,
+        "enPantalla": true
+      }
+    },
+    "sondaTrampaDeFoco": {
+      "nota": "Sonda adicional no exigida por el encargo: con el drawer abierto (aria-modal=\"true\") se pulsó Tab 12 veces. Un 0 significaría que el foco nunca sale del diálogo.",
+      "fugaEn": null,
+      "secuencia": [
+        {
+          "paso": 1,
+          "tag": "a",
+          "texto": "Resumen",
+          "href": "/",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 2,
+          "tag": "a",
+          "texto": "Entregas",
+          "href": "/entregas",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 3,
+          "tag": "a",
+          "texto": "Malla oficial",
+          "href": "/malla",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 4,
+          "tag": "a",
+          "texto": "Mapa MADES",
+          "href": "/mapa",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 5,
+          "tag": "a",
+          "texto": "Cruces de terna",
+          "href": "/cruces",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 6,
+          "tag": "a",
+          "texto": "Fichas QA/QC",
+          "href": "/qaqc",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 7,
+          "tag": "a",
+          "texto": "Reemplazos",
+          "href": "/reemplazos",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 8,
+          "tag": "a",
+          "texto": "Exportar",
+          "href": "/exportar",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 9,
+          "tag": "button",
+          "texto": "",
+          "href": null,
+          "ariaLabel": "Cerrar menú de navegación",
+          "enDrawer": true
+        },
+        {
+          "paso": 10,
+          "tag": "a",
+          "texto": "Resumen",
+          "href": "/",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 11,
+          "tag": "a",
+          "texto": "Entregas",
+          "href": "/entregas",
+          "ariaLabel": null,
+          "enDrawer": true
+        },
+        {
+          "paso": 12,
+          "tag": "a",
+          "texto": "Malla oficial",
+          "href": "/malla",
+          "ariaLabel": null,
+          "enDrawer": true
+        }
+      ]
+    },
+    "pasos": [
+      {
+        "paso": "El botón hamburguesa es visible a 390 px",
+        "ok": true,
+        "detalle": "aria-label=\"Abrir menú de navegación\" aria-controls=\"drawer\""
+      },
+      {
+        "paso": "Al abrir, aria-expanded pasa a \"true\"",
+        "ok": true,
+        "detalle": "aria-expanded=\"true\", data-open=\"true\", overlay=\"true\""
+      },
+      {
+        "paso": "El drawer queda visible como diálogo",
+        "ok": true,
+        "detalle": "display=flex rect={\"w\":280,\"h\":844,\"x\":0} scroll-bloqueado=true"
+      },
+      {
+        "paso": "El foco entra en el drawer (botón cerrar)",
+        "ok": true,
+        "detalle": "foco=<button> aria-label=\"Cerrar menú de navegación\""
+      },
+      {
+        "paso": "Escape cierra el drawer y aria-expanded vuelve a \"false\"",
+        "ok": true,
+        "detalle": "aria-expanded=\"false\", data-open=\"false\", overlay=\"false\""
+      },
+      {
+        "paso": "El foco regresa al botón de apertura",
+        "ok": true,
+        "detalle": "foco=<button#drawer-toggle> aria-label=\"Abrir menú de navegación\""
+      }
+    ],
+    "resultado": "PASA",
+    "todosLosPasosOk": true
+  },
+  "drawerAxe": {
+    "archivo": "docs/qa-visual/axe/drawer-390.json",
+    "violaciones": 0,
+    "nodos": 0,
+    "detalle": []
+  },
+  "zoom": [
+    {
+      "ruta": "/",
+      "base1440": {
+        "innerWidth": 1440,
+        "scrollWidth": 1440,
+        "desborda": false,
+        "scrollHorizontalReal": false
+      },
+      "zoomCss200": {
+        "diagnostico": {
+          "zoomAplicado": "2",
+          "clientWidth": 1440,
+          "media1024": true,
+          "sidebarDisplay": "flex",
+          "bodyScrollWidth": 816
+        },
+        "medida": {
+          "innerWidth": 1440,
+          "scrollWidth": 1633,
+          "clientWidth": 1440,
+          "documentHeight": 3896,
+          "desborda": true,
+          "scrollHorizontalReal": true,
+          "scrollXmax": 193,
+          "totalFueraDeScroller": 13
+        },
+        "offenders": [
+          {
+            "selector": "section.card:nth-of-type(1) > div.card__body > div.flex.flex-col > div.flex.min-w-0:nth-of-type(2) > p.text-xs.text-ink-600 > span.font-semibold.text-ink-900",
+            "tag": "span",
+            "width": 67,
+            "right": 1503,
+            "inScroller": false
+          },
+          {
+            "selector": "div.card__body > div.flex.flex-col > div.flex.min-w-0:nth-of-type(2) > div.flex.flex-col:nth-of-type(1) > div.flex.flex-wrap:nth-of-type(1) > span.inline-flex.items-center:nth-of-type(1)",
+            "tag": "span",
+            "width": 190,
+            "right": 1627,
+            "inScroller": false
+          },
+          {
+            "selector": "div.flex.flex-col > div.flex.min-w-0:nth-of-type(2) > div.flex.flex-col:nth-of-type(1) > div.flex.flex-wrap:nth-of-type(1) > span.inline-flex.items-center:nth-of-type(1) > span.inline-block.h-3:nth-of-type(1)",
+            "tag": "span",
+            "width": 24,
+            "right": 1461,
+            "inScroller": false
+          },
+          {
+            "selector": "div.flex.flex-col > div.flex.min-w-0:nth-of-type(2) > div.flex.flex-col:nth-of-type(1) > div.flex.flex-wrap:nth-of-type(1) > span.inline-flex.items-center:nth-of-type(1) > span:nth-of-type(2)",
+            "tag": "span",
+            "width": 150,
+            "right": 1627,
+            "inScroller": false
+          },
+          {
+            "selector": "div.card__body > div.flex.flex-col > div.flex.min-w-0:nth-of-type(2) > div.flex.flex-col:nth-of-type(1) > div.flex.flex-wrap:nth-of-type(1) > span.tabular.text-ink-600:nth-of-type(2)",
+            "tag": "span",
+            "width": 75,
+            "right": 1512,
+            "inScroller": false
+          }
+        ]
+      },
+      "zoomNavegador200": {
+        "emulacion": "viewport 720x450 con deviceScaleFactor 2",
+        "diagnostico": {
+          "dpr": 2,
+          "media1024": false,
+          "sidebarDisplay": "none"
+        },
+        "medida": {
+          "innerWidth": 720,
+          "scrollWidth": 720,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalFueraDeScroller": 0
+        },
+        "offenders": [],
+        "ok": true
+      },
+      "reflow720": {
+        "medida": {
+          "innerWidth": 720,
+          "scrollWidth": 720,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalFueraDeScroller": 0
+        },
+        "offenders": [],
+        "ok": true
+      }
+    },
+    {
+      "ruta": "/qaqc/1",
+      "base1440": {
+        "innerWidth": 1440,
+        "scrollWidth": 1440,
+        "desborda": false,
+        "scrollHorizontalReal": false
+      },
+      "zoomCss200": {
+        "diagnostico": {
+          "zoomAplicado": "2",
+          "clientWidth": 1440,
+          "media1024": true,
+          "sidebarDisplay": "flex",
+          "bodyScrollWidth": 720
+        },
+        "medida": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentHeight": 6146,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalFueraDeScroller": 0
+        },
+        "offenders": []
+      },
+      "zoomNavegador200": {
+        "emulacion": "viewport 720x450 con deviceScaleFactor 2",
+        "diagnostico": {
+          "dpr": 2,
+          "media1024": false,
+          "sidebarDisplay": "none"
+        },
+        "medida": {
+          "innerWidth": 720,
+          "scrollWidth": 720,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalFueraDeScroller": 0
+        },
+        "offenders": [],
+        "ok": true
+      },
+      "reflow720": {
+        "medida": {
+          "innerWidth": 720,
+          "scrollWidth": 720,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalFueraDeScroller": 0
+        },
+        "offenders": [],
+        "ok": true
+      }
+    }
+  ],
+  "navegadorVersion": "156.0.8078.74"
+}

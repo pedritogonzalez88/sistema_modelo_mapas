@@ -1,0 +1,82 @@
+{
+  "ruta": "/",
+  "slug": "inicio",
+  "ancho": "390x844",
+  "url": "http://127.0.0.1:8017/",
+  "timestamp": "2026-10-29T21:21:49.242Z",
+  "axeVersion": "4.14.0",
+  "runOnly": {
+    "type": "tag",
+    "values": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa",
+      "best-practice"
+    ]
+  },
+  "nota": "Se conservan íntegras las listas violations e incomplete. Las comprobaciones superadas (passes) e inaplicables (inapplicable) no se almacenan nodo a nodo para mantener el archivo legible.",
+  "conteos": {
+    "violations": 0,
+    "incomplete": 1,
+    "passes": 45,
+    "inapplicable": 46,
+    "nodosAfectados": 0,
+    "porImpacto": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    }
+  },
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+      "nodes": [
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "21.0pt (28px)",
+                "fontWeight": "normal",
+                "messageKey": "bgOverlap",
+                "expectedContrastRatio": "3:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because it is overlapped by another element"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<text x=\"70.0\" y=\"70.0\" text-anchor=\"middle\" dominant-baseline=\"central\" class=\"fill-ink-900 tabular\" font-size=\"28\" font-weight=\"600\">15400</text>",
+          "target": [
+            "text"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+        }
+      ]
+    }
+  ]
+}

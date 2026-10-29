@@ -1,0 +1,1907 @@
+{
+  "generado": "2026-10-29T21:21:44.176Z",
+  "base": "http://127.0.0.1:8017",
+  "navegador": "playwright channel=chrome",
+  "navegadorVersion": "156.0.8078.74",
+  "fallosLanzamiento": [],
+  "axeTags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa",
+    "best-practice"
+  ],
+  "axeVersion": "4.14.0",
+  "viewports": [
+    {
+      "name": "1440",
+      "width": 1440,
+      "height": 900,
+      "shot": true
+    },
+    {
+      "name": "1024",
+      "width": 1024,
+      "height": 768,
+      "shot": false
+    },
+    {
+      "name": "768",
+      "width": 768,
+      "height": 1024,
+      "shot": true
+    },
+    {
+      "name": "390",
+      "width": 390,
+      "height": 844,
+      "shot": true
+    },
+    {
+      "name": "360",
+      "width": 360,
+      "height": 800,
+      "shot": false
+    },
+    {
+      "name": "320",
+      "width": 320,
+      "height": 720,
+      "shot": false
+    }
+  ],
+  "rutas": [
+    {
+      "slug": "inicio",
+      "url": "/",
+      "nombre": "Resumen",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodos": 1
+        }
+      ],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 2736,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 38,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > section.card > div.card__body > div.table-wrap > table.table",
+              "tag": "table",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card > div.card__body > div.table-wrap > table.table > thead",
+              "tag": "thead",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "section.card > div.card__body > div.table-wrap > table.table > thead > tr",
+              "tag": "tr",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(5)",
+              "tag": "th",
+              "width": 49,
+              "right": 358,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(6)",
+              "tag": "th",
+              "width": 95,
+              "right": 453,
+              "inScroller": true
+            }
+          ]
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 2688,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 31,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > section.card > div.card__body > div.table-wrap > table.table",
+              "tag": "table",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card > div.card__body > div.table-wrap > table.table > thead",
+              "tag": "thead",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "section.card > div.card__body > div.table-wrap > table.table > thead > tr",
+              "tag": "tr",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(6)",
+              "tag": "th",
+              "width": 95,
+              "right": 453,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(7)",
+              "tag": "th",
+              "width": 24,
+              "right": 477,
+              "inScroller": true
+            }
+          ]
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 2636,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 31,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > section.card > div.card__body > div.table-wrap > table.table",
+              "tag": "table",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card > div.card__body > div.table-wrap > table.table > thead",
+              "tag": "thead",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "section.card > div.card__body > div.table-wrap > table.table > thead > tr",
+              "tag": "tr",
+              "width": 439,
+              "right": 477,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(6)",
+              "tag": "th",
+              "width": 95,
+              "right": 453,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(7)",
+              "tag": "th",
+              "width": 24,
+              "right": 477,
+              "inScroller": true
+            }
+          ]
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 1796,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 1694,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 1304,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/inicio-1440.png",
+        "docs/qa-visual/capturas/inicio-768.png",
+        "docs/qa-visual/capturas/inicio-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/",
+      "timestamp": "2026-10-29T21:21:45.623Z",
+      "archivoAxe": "docs/qa-visual/axe/inicio.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/inicio-390.json",
+        "violaciones": [],
+        "incompletos": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "help": "Elements must meet minimum color contrast ratio thresholds",
+            "nodos": 1
+          }
+        ],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "entregas",
+      "url": "/entregas",
+      "nombre": "Entregas (listado y carga)",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 2130,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 32,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table",
+              "tag": "table",
+              "width": 323,
+              "right": 361,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > caption",
+              "tag": "caption",
+              "width": 323,
+              "right": 361,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead",
+              "tag": "thead",
+              "width": 323,
+              "right": 361,
+              "inScroller": true
+            },
+            {
+              "selector": "section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead > tr",
+              "tag": "tr",
+              "width": 323,
+              "right": 361,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(6)",
+              "tag": "th",
+              "width": 95,
+              "right": 337,
+              "inScroller": true
+            }
+          ]
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 2034,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 1998,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 1445,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 1395,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 1319,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/entregas-1440.png",
+        "docs/qa-visual/capturas/entregas-768.png",
+        "docs/qa-visual/capturas/entregas-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/entregas",
+      "timestamp": "2026-10-29T21:21:52.775Z",
+      "archivoAxe": "docs/qa-visual/axe/entregas.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/entregas-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "entrega-preview",
+      "url": "/entregas/1/preview",
+      "nombre": "Vista previa de entrega",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodos": 1
+        }
+      ],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 2106,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 2010,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 1916,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 1392,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 1182,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 1036,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/entrega-preview-1440.png",
+        "docs/qa-visual/capturas/entrega-preview-768.png",
+        "docs/qa-visual/capturas/entrega-preview-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/entregas/1/preview",
+      "timestamp": "2026-10-29T21:21:59.701Z",
+      "archivoAxe": "docs/qa-visual/axe/entrega-preview.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/entrega-preview-390.json",
+        "violaciones": [],
+        "incompletos": [
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "help": "Elements must meet minimum color contrast ratio thresholds",
+            "nodos": 2
+          }
+        ],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "cruces",
+      "url": "/cruces",
+      "nombre": "Cruces de terna",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 13595,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 10543,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 10509,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 4450,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 4450,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 2850,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/cruces-1440.png",
+        "docs/qa-visual/capturas/cruces-768.png",
+        "docs/qa-visual/capturas/cruces-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/cruces",
+      "timestamp": "2026-10-29T21:22:07.535Z",
+      "archivoAxe": "docs/qa-visual/axe/cruces.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/cruces-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "cruce-detalle",
+      "url": "/cruces/81/2008",
+      "nombre": "Detalle de cruce",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 1585,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 1501,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 1501,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 1024,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 865,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 900,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/cruce-detalle-1440.png",
+        "docs/qa-visual/capturas/cruce-detalle-768.png",
+        "docs/qa-visual/capturas/cruce-detalle-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/cruces/81/2008",
+      "timestamp": "2026-10-29T21:22:15.163Z",
+      "archivoAxe": "docs/qa-visual/axe/cruce-detalle.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/cruce-detalle-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "qaqc-lista",
+      "url": "/qaqc",
+      "nombre": "Fichas QA/QC (lista)",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 7997,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 80,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table",
+              "tag": "table",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead",
+              "tag": "thead",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr",
+              "tag": "tr",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr > th:nth-of-type(4)",
+              "tag": "th",
+              "width": 100,
+              "right": 417,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr > th:nth-of-type(5)",
+              "tag": "th",
+              "width": 86,
+              "right": 504,
+              "inScroller": true
+            }
+          ]
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 7997,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 80,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table",
+              "tag": "table",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead",
+              "tag": "thead",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr",
+              "tag": "tr",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr > th:nth-of-type(4)",
+              "tag": "th",
+              "width": 100,
+              "right": 417,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr > th:nth-of-type(5)",
+              "tag": "th",
+              "width": 86,
+              "right": 504,
+              "inScroller": true
+            }
+          ]
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 7929,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 80,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table",
+              "tag": "table",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead",
+              "tag": "thead",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr",
+              "tag": "tr",
+              "width": 666,
+              "right": 683,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr > th:nth-of-type(4)",
+              "tag": "th",
+              "width": 100,
+              "right": 417,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > div.table-wrap:nth-of-type(1) > table.table > thead > tr > th:nth-of-type(5)",
+              "tag": "th",
+              "width": 86,
+              "right": 504,
+              "inScroller": true
+            }
+          ]
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 5049,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 5721,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 3461,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/qaqc-lista-1440.png",
+        "docs/qa-visual/capturas/qaqc-lista-768.png",
+        "docs/qa-visual/capturas/qaqc-lista-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/qaqc",
+      "timestamp": "2026-10-29T21:22:22.626Z",
+      "archivoAxe": "docs/qa-visual/axe/qaqc-lista.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/qaqc-lista-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "qaqc-ficha",
+      "url": "/qaqc/1",
+      "nombre": "Ficha QA/QC (formulario)",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 4051,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 3887,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 3787,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 2987,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 2517,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 2261,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/qaqc-ficha-1440.png",
+        "docs/qa-visual/capturas/qaqc-ficha-768.png",
+        "docs/qa-visual/capturas/qaqc-ficha-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/qaqc/1",
+      "timestamp": "2026-10-29T21:22:30.281Z",
+      "archivoAxe": "docs/qa-visual/axe/qaqc-ficha.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/qaqc-ficha-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "reemplazos",
+      "url": "/reemplazos",
+      "nombre": "Reemplazos",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 1531,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 1435,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 1415,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 1109,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 1023,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 935,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/reemplazos-1440.png",
+        "docs/qa-visual/capturas/reemplazos-768.png",
+        "docs/qa-visual/capturas/reemplazos-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/reemplazos",
+      "timestamp": "2026-10-29T21:22:37.369Z",
+      "archivoAxe": "docs/qa-visual/axe/reemplazos.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/reemplazos-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "malla",
+      "url": "/malla",
+      "nombre": "Malla oficial",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 4123,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 80,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table",
+              "tag": "table",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead",
+              "tag": "thead",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead > tr",
+              "tag": "tr",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(4)",
+              "tag": "th",
+              "width": 54,
+              "right": 331,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(5)",
+              "tag": "th",
+              "width": 91,
+              "right": 422,
+              "inScroller": true
+            }
+          ]
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 4031,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 80,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table",
+              "tag": "table",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead",
+              "tag": "thead",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead > tr",
+              "tag": "tr",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(5)",
+              "tag": "th",
+              "width": 91,
+              "right": 422,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(6)",
+              "tag": "th",
+              "width": 78,
+              "right": 501,
+              "inScroller": true
+            }
+          ]
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 4031,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 80,
+          "totalFueraDeScroller": 0,
+          "offenders": [
+            {
+              "selector": "main#contenido > div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table",
+              "tag": "table",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "div.mx-auto.max-w-\\[1400px\\] > section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead",
+              "tag": "thead",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "section.card:nth-of-type(2) > div.card__body > div.table-wrap > table.table > thead > tr",
+              "tag": "tr",
+              "width": 463,
+              "right": 501,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(5)",
+              "tag": "th",
+              "width": 91,
+              "right": 422,
+              "inScroller": true
+            },
+            {
+              "selector": "div.card__body > div.table-wrap > table.table > thead > tr > th:nth-of-type(6)",
+              "tag": "th",
+              "width": 78,
+              "right": 501,
+              "inScroller": true
+            }
+          ]
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 3646,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 3482,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 3430,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/malla-1440.png",
+        "docs/qa-visual/capturas/malla-768.png",
+        "docs/qa-visual/capturas/malla-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/malla",
+      "timestamp": "2026-10-29T21:22:44.347Z",
+      "archivoAxe": "docs/qa-visual/axe/malla.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/malla-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "mapa",
+      "url": "/mapa",
+      "nombre": "Mapa MADES",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 1445,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 1357,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 1341,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 1039,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 1039,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 985,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/mapa-1440.png",
+        "docs/qa-visual/capturas/mapa-768.png",
+        "docs/qa-visual/capturas/mapa-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/mapa",
+      "timestamp": "2026-10-29T21:22:51.521Z",
+      "archivoAxe": "docs/qa-visual/axe/mapa.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/mapa-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    },
+    {
+      "slug": "exportar",
+      "url": "/exportar",
+      "nombre": "Exportar",
+      "status": 200,
+      "ok": true,
+      "errorCarga": null,
+      "consola": [],
+      "pageErrors": [],
+      "recursosFallidos": [],
+      "violaciones": [],
+      "incompletos": [],
+      "impactos": {
+        "porImpacto": {
+          "critical": 0,
+          "serious": 0,
+          "moderate": 0,
+          "minor": 0
+        },
+        "totalReglas": 0,
+        "totalNodos": 0
+      },
+      "axeVersion": "4.14.0",
+      "anchos": {
+        "320": {
+          "innerWidth": 320,
+          "scrollWidth": 320,
+          "clientWidth": 320,
+          "documentScrollWidth": 320,
+          "viewportHeight": 720,
+          "documentHeight": 900,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "360": {
+          "innerWidth": 360,
+          "scrollWidth": 360,
+          "clientWidth": 360,
+          "documentScrollWidth": 360,
+          "viewportHeight": 800,
+          "documentHeight": 844,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "390": {
+          "innerWidth": 390,
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "documentScrollWidth": 390,
+          "viewportHeight": 844,
+          "documentHeight": 844,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "768": {
+          "innerWidth": 768,
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "documentScrollWidth": 768,
+          "viewportHeight": 1024,
+          "documentHeight": 1024,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1024": {
+          "innerWidth": 1024,
+          "scrollWidth": 1024,
+          "clientWidth": 1024,
+          "documentScrollWidth": 1024,
+          "viewportHeight": 768,
+          "documentHeight": 768,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        },
+        "1440": {
+          "innerWidth": 1440,
+          "scrollWidth": 1440,
+          "clientWidth": 1440,
+          "documentScrollWidth": 1440,
+          "viewportHeight": 900,
+          "documentHeight": 900,
+          "desborda": false,
+          "scrollHorizontalReal": false,
+          "scrollXmax": 0,
+          "totalOffenders": 0,
+          "totalFueraDeScroller": 0,
+          "offenders": []
+        }
+      },
+      "capturas": [
+        "docs/qa-visual/capturas/exportar-1440.png",
+        "docs/qa-visual/capturas/exportar-768.png",
+        "docs/qa-visual/capturas/exportar-390.png"
+      ],
+      "urlFinal": "http://127.0.0.1:8017/exportar",
+      "timestamp": "2026-10-29T21:22:58.242Z",
+      "archivoAxe": "docs/qa-visual/axe/exportar.json",
+      "axe390": {
+        "archivo": "docs/qa-visual/axe/exportar-390.json",
+        "violaciones": [],
+        "incompletos": [],
+        "impactos": {
+          "porImpacto": {
+            "critical": 0,
+            "serious": 0,
+            "moderate": 0,
+            "minor": 0
+          },
+          "totalReglas": 0,
+          "totalNodos": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "ruta": "/entregas/1/preview",
+  "slug": "entrega-preview",
+  "ancho": "390x844",
+  "url": "http://127.0.0.1:8017/entregas/1/preview",
+  "timestamp": "2026-10-29T21:22:03.450Z",
+  "axeVersion": "4.14.0",
+  "runOnly": {
+    "type": "tag",
+    "values": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa",
+      "best-practice"
+    ]
+  },
+  "nota": "Se conservan íntegras las listas violations e incomplete. Las comprobaciones superadas (passes) e inaplicables (inapplicable) no se almacenan nodo a nodo para mantener el archivo legible.",
+  "conteos": {
+    "violations": 0,
+    "incomplete": 1,
+    "passes": 48,
+    "inapplicable": 43,
+    "nodosAfectados": 0,
+    "porImpacto": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0
+    }
+  },
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+      "nodes": [
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "messageKey": "elmPartiallyObscuring",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because it partially overlaps other elements"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p class=\"max-w-sm text-xs text-ink-600\">Al confirmar, la entrega queda aceptada y se recalculan los cruces de la terna. Las interpretaciones originales no se sobrescriben.</p>",
+          "target": [
+            ".max-w-sm"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "messageKey": "elmPartiallyObscuring",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because it partially overlaps other elements"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p class=\"mt-2 text-xs text-ink-600\">Una entrega rechazada conserva su archivo y su huella SHA-256 como evidencia; no se elimina del proyecto.</p>",
+          "target": [
+            ".mt-2"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+        }
+      ]
+    }
+  ]
+}

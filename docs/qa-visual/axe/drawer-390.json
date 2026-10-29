@@ -1,0 +1,74 @@
+{
+  "ruta": "/ (drawer abierto)",
+  "slug": "drawer",
+  "ancho": "390x844",
+  "url": "http://127.0.0.1:8017/",
+  "timestamp": "2026-10-29T21:23:16.773Z",
+  "runOnly": {
+    "type": "tag",
+    "values": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa",
+      "best-practice"
+    ]
+  },
+  "nota": "axe se ejecutó sobre el elemento [data-drawer] con el drawer abierto (aria-modal=\"true\").",
+  "conteos": {
+    "violations": 0,
+    "incomplete": 1,
+    "passes": 20,
+    "nodosAfectados": 0
+  },
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+      "nodes": [
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.3pt (11px)",
+                "fontWeight": "normal",
+                "messageKey": "elmPartiallyObscuring",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because it partially overlaps other elements"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p class=\"text-[11px] leading-snug text-brand-100\">Trazabilidad: interpretaciones originales · cruce calculado · dictamen QA/QC — la clase consolidada nunca sobrescribe los originales.</p>",
+          "target": [
+            "#drawer > .border-t.border-white\\/10.px-3 > .leading-snug.text-\\[11px\\].text-brand-100"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+        }
+      ]
+    }
+  ]
+}

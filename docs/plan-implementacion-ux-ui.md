@@ -1028,15 +1028,17 @@ F2, F4 y F6.1, con commits separados por función.
 
 ### Verificación ejecutada
 
-- `npm run css:build` genera `app/static/css/app.css` (52 050 bytes; la imagen
-  Docker sirve 47 177 bytes) con las utilidades usadas por las plantillas.
+- `npm run css:build` genera `app/static/css/app.css` (51 964 bytes; la imagen
+  Docker sirve 47 343 bytes) con las utilidades usadas por las plantillas.
 - Sin referencias a `cdn.tailwindcss.com` en `app/`.
 - `uv run pytest -q`: 129 pruebas en verde (unitarias y de contrato).
-- `uv run pytest -m integration -q`: 104 pruebas en verde contra PostgreSQL en
+- `uv run pytest -m integration -q`: 108 pruebas en verde contra PostgreSQL en
   `localhost:5432`.
 - `docker compose build app` y `docker compose up -d app`: contenedor saludable;
-  `/`, `/cruces` y `/qaqc` responden 200 HTML, `/salud` JSON y
-  `/static/css/app.css` 200 `text/css` con contenido no vacío.
+  `/`, `/cruces`, `/qaqc` y `/entregas/1/preview` responden 200 HTML, `/salud`
+  JSON y `/static/css/app.css` 200 `text/css` con contenido no vacío.
+- Auditoría axe-core con navegador real sobre las 11 rutas a 1440 y 390 px:
+  **0 violaciones** (informe en `docs/qa-visual/resumen-auditoria.md`).
 - Informe de accesibilidad en `docs/qa-accesibilidad.md`.
 
 ### Desviaciones conocidas
@@ -1054,8 +1056,11 @@ F2, F4 y F6.1, con commits separados por función.
   con evidencias, dictámenes y firmas de prueba). No se revirtieron porque
   forman parte del expediente de demostración; la estructura y las reglas de
   negocio no cambiaron.
-- **`/qaqc` no pagina**: muestra todas las fichas ordenadas por trabajo
-  pendiente y antigüedad. El contador "X de Y" se conserva.
+- **`/qaqc` pagina en servidor** (25, 50 o 100 fichas por página, 50 por
+  defecto). El contador "Mostrando X–Y de N" y el número de páginas se calculan
+  sobre el total filtrado; los conteos de los chips siguen siendo globales. Una
+  página fuera de rango se acota a la última disponible en lugar de mostrar una
+  tabla vacía (ver "Correcciones de la fase 7").
 - **Contrato JSON en `/cruces`**: cuando la petición envía
   `Accept: application/json` la ruta devuelve la página serializada en JSON en
   lugar de HTML. Se añadió en la fase 7 para conservar el acceso de solo lectura
@@ -1066,9 +1071,15 @@ F2, F4 y F6.1, con commits separados por función.
 - **Tamaño del CSS distinto entre local y Docker** (52 KB vs 47 KB): Tailwind
   detecta fuentes adicionales en el árbol de trabajo local; el CSS de la imagen
   es un subconjunto suficiente y contiene todas las clases verificadas.
-- **Aviso de deprecación de Jinja** por `pattern="\d{4}-W\d{2}"` en
-  `entregas.html`; no bloquea el build ni las pruebas y se deja como está para
-  no alterar el atributo renderizado.
+- **Aviso de deprecación de Jinja resuelto**: `pattern="\d{4}-W\d{2}"` en
+  `entregas.html` se sustituyó por `pattern="[0-9]{4}-W[0-9]{2}"`. Jinja
+  interpretaba `\d` como una secuencia inválida y avisaba en cada render; el
+  patrón equivalente no cambia la validación del navegador.
+- **`@app.on_event("startup")` migrado a `lifespan`**: la preparación de la base
+  y la siembra idempotente se ejecutan en el ciclo de vida `lifespan` de FastAPI
+  con una sesión `SessionLocal` que se cierra en `finally` (antes se usaba
+  `next(get_db())`, que dejaba el generador sin finalizar). Sin avisos de
+  deprecación en el arranque.
 
 ### Correcciones de la fase 7
 
@@ -1079,14 +1090,26 @@ F2, F4 y F6.1, con commits separados por función.
 - Nuevas pruebas `tests/test_web_routes.py`, `tests/test_form_contracts.py` y
   `tests/test_a11y_static.py`; markers de pytest configurados en
   `pyproject.toml`.
+- **Paginación de `/qaqc`** (`app/routers/qaqc.py` + `qaqc_list.html`): 25/50/100
+  filas por página, contador "Mostrando X–Y de N", selector "Filas por página" y
+  la macro `ui.pagination` compartida con `/cruces` y `/malla`. Cuatro pruebas
+  nuevas en `tests/test_web_routes.py`.
+- **`on_event("startup")` → `lifespan`** en `app/main.py` (sin avisos de
+  deprecación).
+- **Warning de Jinja por `pattern`** resuelto con `[0-9]{4}-W[0-9]{2}`.
+- **Accesibilidad (29/10/2026)**: corregidas las 4 reglas de axe pendientes
+  (`link-in-text-block`, `dlitem`, `definition-list`, `landmark-unique`), el
+  `label-content-name-mismatch` incompleto de la paginación y la contención del
+  foco del drawer. Detalle en `docs/qa-visual/resumen-auditoria.md` §11.
 
 ### Pendientes reales
 
-- Revisión manual de accesibilidad: teclado, zoom 200 %, contraste y lectores de
-  pantalla (checklist en `docs/qa-accesibilidad.md`).
-- Lighthouse o `axe-core` sobre `/` y `/qaqc/{id}` (no disponible Chrome en el
-  entorno de cierre).
-- Regresión visual con capturas "antes/después" (`docs/baseline/after/`).
-- Paginación de `/qaqc` cuando el volumen de fichas lo justifique.
-- Migrar `@app.on_event("startup")` al ciclo de vida `lifespan` de FastAPI para
-  eliminar el aviso de deprecación.
+- Lectores de pantalla reales (NVDA/JAWS + Firefox/Chrome, VoiceOver + Safari)
+  sobre las 11 vistas: anuncio de landmarks, tablas y mensajes `role="status"`.
+- Lighthouse (puntaje numérico) en `/` y `/qaqc/{id}`; la auditoría actual usa
+  axe-core 4.14 directamente, el motor de su categoría.
+- Regresión visual manual con capturas "antes/después"
+  (`docs/qa-visual/capturas/` ya se regenera con cada auditoría, pero la
+  comparación lado a lado sigue siendo revisión humana).
+- Recorrido completo con teclado (incluido envío de formularios y carga de
+  archivo) en las 11 vistas: hoy están cubiertos el skip link y el drawer.
