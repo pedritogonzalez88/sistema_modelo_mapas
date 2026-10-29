@@ -1,18 +1,37 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
-from app.core.database import get_db, init_db
+from app.core.database import SessionLocal, init_db
 from app.routers import cruces, dashboard, entregas, exportar, malla, mapa, qaqc, reemplazos
 from app.services import persist
 from app.web import templates
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Prepara la base y siembra los datos mínimos antes de atender tráfico.
+
+    Se usa el ciclo de vida `lifespan` (y no `@app.on_event`) porque es el
+    mecanismo vigente de FastAPI. La sesión se abre con `SessionLocal` y se
+    cierra en `finally`: `next(get_db())` dejaría el generador sin finalizar.
+    `persist.seed` es idempotente, así que repetir el arranque no duplica datos.
+    """
+    init_db()
+    db = SessionLocal()
+    try:
+        persist.seed(db)
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -43,16 +62,6 @@ app.include_router(reemplazos.router)
 app.include_router(malla.router)
 app.include_router(mapa.router)
 app.include_router(exportar.router)
-
-
-@app.on_event("startup")
-def _startup():
-    init_db()
-    db: Session = next(get_db())
-    try:
-        persist.seed(db)
-    finally:
-        db.close()
 
 
 @app.get("/salud")
