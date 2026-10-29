@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+
+{% set CODIGO = codigo|int if codigo else 500 %}
+{% set TITULOS = {
+  400: "Solicitud no válida",
+  403: "Acceso restringido",
+  404: "Página no encontrada",
+  405: "Método no permitido",
+  500: "Error interno del servidor"
+} %}
+{% set TEXTOS = {
+  400: "La solicitud no pudo procesarse. Revise los datos enviados e intente nuevamente.",
+  403: "No tiene permiso para acceder a este recurso.",
+  404: "La dirección solicitada no existe o el registro fue movido. Use la navegación para continuar.",
+  405: "La acción solicitada no está permitida en esta dirección.",
+  500: "Ocurrió un fallo inesperado. El equipo técnico fue notificado; intente nuevamente en unos minutos."
+} %}
+{% set titulo = TITULOS.get(CODIGO, "Ocurrió un error") %}
+{% set texto = TEXTOS.get(CODIGO, "No fue posible completar la operación solicitada.") %}
+
+{% block title %}{{ CODIGO }} · {{ titulo }} · Validador EET{% endblock %}
+{% block description %}{{ titulo }} ({{ CODIGO }}) en el Validador EET.{% endblock %}
+
+{% block contenido %}
+<div class="mx-auto flex max-w-2xl flex-col items-start gap-4 py-8">
+  <p class="badge badge--warn">{{ CODIGO }}</p>
+  <h1 class="text-2xl font-semibold">{{ titulo }}</h1>
+  <p class="text-sm text-ink-600">{{ texto }}</p>
+
+  {% if mensaje and mensaje|string|lower not in ["not found", "bad request", "forbidden", "method not allowed", "internal server error", "none"] %}
+  <p class="w-full rounded-card border border-line bg-white px-4 py-3 text-sm text-ink-700">{{ mensaje }}</p>
+  {% endif %}
+
+  <div class="flex flex-wrap items-center gap-2">
+    <a class="btn btn--primary" href="/" data-back>Volver</a>
+    {{ ui.btn("Ir al resumen", href="/", variant="secondary") }}
+    {{ ui.btn("Ver entregas", href="/entregas", variant="ghost") }}
+  </div>
+
+  <nav class="mt-2 w-full border-t border-line pt-4 text-sm text-ink-600" aria-label="Navegación disponible">
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-600">Secciones</p>
+    <ul class="flex flex-wrap gap-x-4 gap-y-1">
+      <li><a class="hover:text-brand-700 hover:underline" href="/">Resumen</a></li>
+      <li><a class="hover:text-brand-700 hover:underline" href="/entregas">Entregas</a></li>
+      <li><a class="hover:text-brand-700 hover:underline" href="/cruces">Cruces de terna</a></li>
+      <li><a class="hover:text-brand-700 hover:underline" href="/qaqc">Fichas QA/QC</a></li>
+      <li><a class="hover:text-brand-700 hover:underline" href="/malla">Malla oficial</a></li>
+      <li><a class="hover:text-brand-700 hover:underline" href="/mapa">Mapa MADES</a></li>
+      <li><a class="hover:text-brand-700 hover:underline" href="/reemplazos">Reemplazos</a></li>
+      <li><a class="hover:text-brand-700 hover:underline" href="/exportar">Exportar</a></li>
+    </ul>
+  </nav>
+</div>
+{% endblock %}
