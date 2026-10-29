@@ -1,31 +1,122 @@
 {% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+{% block title %}Fichas QA/QC · Validador EET{% endblock %}
+
+{#
+  Chip de una interpretación inicial. Acepta el código 1–9, "SC", None y los
+  restos legados (dict o cadena con la representación del JSON) que no deben
+  imprimirse crudos en pantalla.
+#}
+{% macro terna_chip(valor) -%}
+{%- if valor is none -%}
+<span class="text-ink-400" aria-label="sin dato">—</span>
+{%- elif valor is mapping -%}
+<span class="text-ink-400" aria-label="sin dato">—</span>
+{%- elif valor is number -%}
+{%- if 1 <= valor <= 9 -%}{{ ui.chip_clase(valor) }}{%- else -%}<span class="text-ink-400" aria-label="sin dato">—</span>{%- endif -%}
+{%- else -%}
+{%- set texto = valor|string|trim -%}
+{%- if texto == "" or texto in ("-", "None", "none") or "{" in texto or "}" in texto -%}
+<span class="text-ink-400" aria-label="sin dato">—</span>
+{%- else -%}
+{{ ui.chip_clase(valor) }}
+{%- endif -%}
+{%- endif -%}
+{%- endmacro %}
+
 {% block contenido %}
-<h1 class="text-2xl font-bold mb-6">Fichas QA/QC · resolución de discrepancias absolutas</h1>
+{{ ui.page_header("Fichas QA/QC", "Resolución de discrepancias absolutas") }}
 
-<form method="get" class="bg-white rounded shadow p-3 mb-4 flex gap-3 items-end text-sm">
-  <label>Estado
-    <select name="estado" class="block border rounded px-2 py-1">
-      <option value="">todos</option>
-      {% for e in estados %}<option value="{{ e }}" {% if f_estado==e %}selected{% endif %}>{{ e }}</option>{% endfor %}
-    </select></label>
-  <button class="bg-slate-800 text-white rounded px-4 py-1.5">Filtrar</button>
-</form>
-
-<div class="bg-white rounded shadow p-4">
-<table class="w-full text-sm">
-  <thead><tr class="text-left text-slate-500 border-b"><th>Ficha</th><th>Punto</th><th>Año</th><th>A/B/C iniciales</th><th>Estado</th><th>Dictamen</th></tr></thead>
-  <tbody>
-  {% for f in fichas %}
-    <tr class="border-b hover:bg-slate-50">
-      <td><a class="underline text-sky-700" href="/qaqc/{{ f.id }}">#{{ f.id }}</a></td>
-      <td>{{ f.punto_id }}</td><td>{{ f.anio }}</td>
-      <td class="font-mono text-xs">{{ f.valores_iniciales }}</td>
-      <td>{{ f.estado }}</td><td>{{ f.dictamen or "—" }}</td>
-    </tr>
-  {% else %}
-    <tr><td colspan="6" class="py-4 text-center text-slate-400">Sin fichas. Se crean automáticamente ante ternas con 3 clases distintas.</td></tr>
+<nav class="mb-4 flex flex-wrap gap-2" aria-label="Filtrar fichas por estado">
+  <a href="/qaqc"
+     class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium {{ 'border-brand-700 bg-brand-700 text-white' if not f_estado else 'border-line bg-white text-ink-700 hover:bg-canvas' }}"
+     {% if not f_estado %}aria-current="true"{% endif %}>
+    Todas <span class="tabular {{ 'text-brand-100' if not f_estado else 'text-ink-600' }}">{{ total }}</span>
+  </a>
+  {% for e in estados %}
+  <a href="/qaqc?estado={{ e|urlencode }}"
+     class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium {{ 'border-brand-700 bg-brand-700 text-white' if f_estado == e else 'border-line bg-white text-ink-700 hover:bg-canvas' }}"
+     {% if f_estado == e %}aria-current="true"{% endif %}>
+    {{ e }} <span class="tabular {{ 'text-brand-100' if f_estado == e else 'text-ink-600' }}">{{ conteos.get(e, 0) }}</span>
+  </a>
   {% endfor %}
+</nav>
+
+{% if not filas %}
+  {% if f_estado %}
+    {{ ui.empty("Ninguna ficha en «" ~ f_estado ~ "»",
+                "El filtro no devuelve fichas. Pruebe con otro estado o consulte todas.",
+                "Ver todas", "/qaqc") }}
+  {% else %}
+    {{ ui.empty("Sin fichas QA/QC",
+                "Se crean automáticamente ante ternas con 3 clases distintas.",
+                "Revisar cruces", "/cruces") }}
+  {% endif %}
+{% else %}
+{% call ui.table_wrap("Fichas QA/QC por punto y año") %}
+<table class="table">
+  <caption class="sr-only">Fichas QA/QC ordenadas por trabajo pendiente y antigüedad</caption>
+  <thead>
+    <tr>
+      <th scope="col">Ficha</th>
+      <th scope="col">Punto / año</th>
+      <th scope="col">Terna inicial</th>
+      <th scope="col">Estado</th>
+      <th scope="col">Dictamen</th>
+      <th scope="col">Antigüedad</th>
+      <th scope="col"><span class="sr-only">Acción</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in filas %}
+    {% set f = fila.ficha %}
+    {% set valores = f.valores_iniciales if f.valores_iniciales is mapping else {} %}
+    <tr>
+      <td class="whitespace-nowrap">
+        <a class="font-medium text-brand-700 underline-offset-2 hover:underline" href="/qaqc/{{ f.id }}">#{{ f.id }}</a>
+      </td>
+      <td class="whitespace-nowrap">
+        <span class="tabular">{{ f.punto_id }}</span>
+        <span class="text-ink-400">·</span>
+        <span class="tabular">{{ f.anio }}</span>
+      </td>
+      <td>
+        <span class="inline-flex flex-wrap items-center gap-1">
+          <span class="text-xs text-ink-400" aria-hidden="true">A</span>{{ terna_chip(valores.get("A")) }}
+          <span class="text-xs text-ink-400" aria-hidden="true">B</span>{{ terna_chip(valores.get("B")) }}
+          <span class="text-xs text-ink-400" aria-hidden="true">C</span>{{ terna_chip(valores.get("C")) }}
+        </span>
+      </td>
+      <td>
+        {% if f.estado in ("Resuelto por consenso", "Reemplazo completado") %}
+          {{ ui.badge(f.estado, "ok") }}
+        {% elif f.estado == "En revisión" %}
+          {{ ui.badge(f.estado, "info") }}
+        {% else %}
+          {{ ui.badge(f.estado, "warn") }}
+        {% endif %}
+      </td>
+      <td class="whitespace-nowrap">
+        {% if f.dictamen == "consenso" %}Consenso
+        {% elif f.dictamen == "sin_consenso" %}Sin consenso
+        {% else %}<span class="text-ink-400">—</span>{% endif %}
+      </td>
+      <td class="whitespace-nowrap text-ink-600">
+        {% if fila.dias is none %}—
+        {% elif fila.dias == 0 %}hoy
+        {% elif fila.dias == 1 %}hace 1 día
+        {% else %}hace {{ fila.dias }} días{% endif %}
+      </td>
+      <td class="whitespace-nowrap">
+        <a class="btn btn--secondary btn--sm" href="/qaqc/{{ f.id }}">Abrir</a>
+      </td>
+    </tr>
+    {% endfor %}
   </tbody>
 </table>
-</div>
+{% endcall %}
+<p class="mt-3 text-xs text-ink-600">
+  {{ filas|length }} de {{ total }} fichas{% if f_estado %} · filtro: {{ f_estado }}{% endif %}.
+</p>
+{% endif %}
 {% endblock %}

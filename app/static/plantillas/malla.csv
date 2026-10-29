@@ -1,0 +1,4 @@
+punto_id,estrato,origen_anio,peso,x,y,es_reserva
+101,Bosque Atlántico - Alto Paraná,2017,0.1850,-25.3120,-57.5810,0
+102,Pastizal - Amambay,2007,0.0925,-25.2985,-57.6235,1
+103,Tierras de cultivo - Caaguazú,2024,0.1312,-25.3410,-57.5490,0

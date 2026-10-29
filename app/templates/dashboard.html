@@ -1,42 +1,204 @@
 {% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+{% import "components/icons.html" as icons %}
+
+{% block title %}Resumen · {{ proyecto.nombre }}{% endblock %}
+
 {% block contenido %}
-<h1 class="text-2xl font-bold mb-1">Dashboard · {{ proyecto.nombre }}</h1>
-<p class="text-sm text-slate-500 mb-6">Protocolo {{ proyecto.protocolo_version }} · Período {{ proyecto.periodo }}</p>
+{% call ui.page_header(
+  proyecto.nombre,
+  "Protocolo " ~ (proyecto.protocolo_version or "sin versión") ~ " · Período " ~ (proyecto.periodo or "sin período")
+) %}
+  {{ ui.btn("Nueva entrega", href="/entregas", icon="upload") }}
+{% endcall %}
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Puntos con cruce</div><div class="text-3xl font-bold">{{ total_puntos }}</div></div>
-  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Evaluaciones aceptadas</div><div class="text-3xl font-bold">{{ total_evaluaciones }}</div></div>
-  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Fichas QA/QC pendientes</div><div class="text-3xl font-bold text-amber-600">{{ pendientes_qaqc }}</div></div>
-  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Cruces incompletos</div><div class="text-3xl font-bold text-slate-400">{{ incompleto }}</div></div>
+{# --- KPIs: mismos cálculos que la versión anterior ---------------------- #}
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  {{ ui.stat("Puntos con cruce", total_puntos,
+             hint="Puntos distintos con al menos un cruce calculado") }}
+  {{ ui.stat("Evaluaciones aceptadas", total_evaluaciones,
+             hint="Interpretaciones de entregas aceptadas") }}
+  {{ ui.stat("Fichas QA/QC pendientes", pendientes_qaqc,
+             hint="Fichas abiertas que requieren dictamen",
+             tone="warn" if pendientes_qaqc else "neutral") }}
+  {{ ui.stat("Cruces incompletos", incompleto,
+             hint="Ternas con menos de tres interpretaciones",
+             tone="warn" if incompleto else "neutral") }}
 </div>
 
-<div class="bg-white rounded shadow p-4 mb-6">
-  <h2 class="font-semibold mb-3">Concordancia de la terna <span class="text-xs font-normal text-slate-500">(denominador: ternas completas)</span></h2>
-  <div class="grid grid-cols-3 gap-4 text-center">
-    <div class="bg-emerald-50 rounded p-3"><div class="text-2xl font-bold text-emerald-700">{{ unanimidad }}</div><div class="text-xs">Unanimidad · {{ pct_unanimidad }}%</div></div>
-    <div class="bg-sky-50 rounded p-3"><div class="text-2xl font-bold text-sky-700">{{ mayoria }}</div><div class="text-xs">Mayoría 2/3 · {{ pct_mayoria }}%</div></div>
-    <div class="bg-red-50 rounded p-3"><div class="text-2xl font-bold text-red-700">{{ discrepancia }}</div><div class="text-xs">Discrepancia absoluta · {{ pct_discrepancia }}%</div></div>
-  </div>
-</div>
+{% set total_ternas = unanimidad + mayoria + discrepancia %}
+{% set filas_concordancia = [
+  {"label": "Unanimidad", "valor": unanimidad, "pct": pct_unanimidad, "color": "#059669"},
+  {"label": "Mayoría 2/3", "valor": mayoria, "pct": pct_mayoria, "color": "#0284C7"},
+  {"label": "Discrepancia absoluta", "valor": discrepancia, "pct": pct_discrepancia, "color": "#DC2626"},
+] %}
 
-<div class="bg-white rounded shadow p-4 mb-6">
-  <h2 class="font-semibold mb-1">Etapa 2 · clases del mapa MADES</h2>
-  <p class="text-sm">{{ mapa_registros }} registros punto-año en {{ mapa_puntos }} puntos.
-  {% if not mapa_puntos %}<span class="text-amber-600">Sin clases del mapa: la matriz de confusión y la Sección 5 están bloqueadas (5.1).</span>{% endif %}
-  <a class="underline text-sky-700" href="/mapa">Cargar mapa</a> · <a class="underline text-sky-700" href="/malla">Ver malla y metadatos</a></p>
-</div>
-
-<div class="bg-white rounded shadow p-4">
-  <h2 class="font-semibold mb-3">Últimas entregas</h2>
-  <table class="w-full text-sm">
-    <thead><tr class="text-left text-slate-500 border-b"><th>ID</th><th>Asistente</th><th>Semana</th><th>Tipo</th><th>Ver.</th><th>Estado</th></tr></thead>
-    <tbody>
-    {% for e in entregas %}
-      <tr class="border-b hover:bg-slate-50"><td>{{ e.id }}</td><td>{{ e.letra }}</td><td>{{ e.semana }}</td><td>{{ e.tipo }}</td><td>{{ e.version }}</td><td>{{ e.estado }}</td></tr>
+<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+  {# --- Concordancia de la terna -------------------------------------- #}
+  {% call ui.card("Concordancia de la terna",
+                  "Denominador: ternas completas (" ~ total_ternas ~ "). Solo cuentan los cruces con las tres interpretaciones presentes.") %}
+    {% if total_ternas == 0 %}
+      {{ ui.empty("Sin ternas completas",
+                  "La concordancia se calcula cuando las evaluadoras A, B y C han registrado el mismo punto-año.",
+                  "Cargar entregas", "/entregas") }}
     {% else %}
-      <tr><td colspan="6" class="py-4 text-center text-slate-400">Sin entregas. <a class="underline" href="/entregas">Cargar la primera</a>.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div class="shrink-0">
+          {{ ui.donut([
+            {"label": "Unanimidad", "value": unanimidad, "color": "#059669"},
+            {"label": "Mayoría 2/3", "value": mayoria, "color": "#0284C7"},
+            {"label": "Discrepancia absoluta", "value": discrepancia, "color": "#DC2626"},
+          ]) }}
+        </div>
+        <div class="flex min-w-0 flex-1 flex-col gap-3">
+          <p class="text-xs text-ink-600">
+            Total de ternas completas: <span class="font-semibold text-ink-900 tabular">{{ total_ternas }}</span>.
+            Los cruces incompletos ({{ incompleto }}) no entran en este denominador.
+          </p>
+          {% for f in filas_concordancia %}
+          <div class="flex flex-col gap-1">
+            <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span class="inline-flex items-center gap-2">
+                <span class="inline-block h-3 w-3 shrink-0 rounded-sm border border-black/10"
+                      style="background-color: {{ f.color }}" aria-hidden="true"></span>
+                <span>{{ f.label }}</span>
+              </span>
+              <span class="tabular text-ink-600">{{ f.valor }} · {{ f.pct }} %</span>
+            </div>
+            {{ ui.progress(f.valor, total_ternas, f.label ~ ": " ~ f.valor ~ " de " ~ total_ternas) }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endcall %}
+
+  {# --- Estado del flujo ---------------------------------------------- #}
+  {% call ui.card("Estado del flujo",
+                  "Cinco controles que deben estar completos antes de cerrar la validación.") %}
+    <ul class="-my-1 divide-y divide-line">
+      <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div class="flex min-w-0 items-start gap-3">
+          {{ icons.icon("map", "mt-0.5 h-4 w-4 shrink-0 text-ink-400") }}
+          <div class="min-w-0">
+            <p class="text-sm font-medium">Malla oficial cargada</p>
+            <p class="text-xs text-ink-600">Puntos de muestreo y metadatos del diseño.</p>
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+          {{ ui.badge("Cargada", "ok") if tiene_malla else ui.badge("Pendiente", "warn") }}
+          {{ ui.btn("Ver malla", href="/malla", variant="secondary", size="sm") }}
+        </div>
+      </li>
+      <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div class="flex min-w-0 items-start gap-3">
+          {{ icons.icon("layers", "mt-0.5 h-4 w-4 shrink-0 text-ink-400") }}
+          <div class="min-w-0">
+            <p class="text-sm font-medium">Mapa MADES cargado</p>
+            <p class="text-xs text-ink-600">
+              {{ mapa_puntos }} puntos · {{ mapa_registros }} registros punto-año.
+              {% if ultima_mapa %}Última carga: {{ ultima_mapa.strftime("%d/%m/%Y %H:%M") }}.{% endif %}
+              {% if not mapa_puntos %}Sin clases del mapa: la matriz de confusión (5.1) queda bloqueada.{% endif %}
+            </p>
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+          {{ ui.badge("Cargado", "ok") if mapa_puntos else ui.badge("Pendiente", "warn") }}
+          {{ ui.btn("Abrir mapa", href="/mapa", variant="secondary", size="sm") }}
+        </div>
+      </li>
+      <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div class="flex min-w-0 items-start gap-3">
+          {{ icons.icon("upload", "mt-0.5 h-4 w-4 shrink-0 text-ink-400") }}
+          <div class="min-w-0">
+            <p class="text-sm font-medium">Entregas por revisar</p>
+            <p class="text-xs text-ink-600">Archivos recibidos que esperan confirmación o rechazo.</p>
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+          {% if entregas_pendientes %}
+            {{ ui.badge(entregas_pendientes|string ~ " pendientes", "warn") }}
+          {% else %}
+            {{ ui.badge("Sin pendientes", "ok") }}
+          {% endif %}
+          {{ ui.btn("Ver entregas", href="/entregas", variant="secondary", size="sm") }}
+        </div>
+      </li>
+      <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div class="flex min-w-0 items-start gap-3">
+          {{ icons.icon("clipboard-check", "mt-0.5 h-4 w-4 shrink-0 text-ink-400") }}
+          <div class="min-w-0">
+            <p class="text-sm font-medium">Fichas QA/QC abiertas</p>
+            <p class="text-xs text-ink-600">Discrepancias absolutas pendientes de dictamen.</p>
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+          {% if pendientes_qaqc %}
+            {{ ui.badge(pendientes_qaqc|string ~ " abiertas", "warn") }}
+          {% else %}
+            {{ ui.badge("Sin abiertas", "ok") }}
+          {% endif %}
+          {{ ui.btn("Abrir fichas", href="/qaqc", variant="secondary", size="sm") }}
+        </div>
+      </li>
+      <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div class="flex min-w-0 items-start gap-3">
+          {{ icons.icon("download", "mt-0.5 h-4 w-4 shrink-0 text-ink-400") }}
+          <div class="min-w-0">
+            <p class="text-sm font-medium">Exportación disponible</p>
+            <p class="text-xs text-ink-600">Consolidado de cruces y ternas por año.</p>
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+          {{ ui.badge("Disponible", "ok") if total_puntos else ui.badge("Bloqueada", "warn") }}
+          {{ ui.btn("Exportar", href="/exportar", variant="secondary", size="sm") }}
+        </div>
+      </li>
+    </ul>
+  {% endcall %}
 </div>
+
+{# --- Últimas entregas ---------------------------------------------------- #}
+{% call ui.card("Últimas entregas", "Las 20 recepciones más recientes del proyecto.") %}
+  {% if entregas %}
+    {% call ui.table_wrap("Últimas entregas recibidas") %}
+      <table class="table">
+        <caption class="sr-only">Últimas entregas recibidas, ordenadas de la más reciente a la más antigua.</caption>
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Asistente</th>
+            <th scope="col">Semana</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Ver.</th>
+            <th scope="col">Estado</th>
+            <th scope="col"><span class="sr-only">Acción</span></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for e in entregas %}
+          {% set tono = "ok" if e.estado == "aceptada" else ("danger" if e.estado == "rechazada" else "warn") %}
+          <tr>
+            <td class="tabular">{{ e.id }}</td>
+            <td>Evaluadora {{ e.letra }}</td>
+            <td class="tabular">{{ e.semana }}</td>
+            <td>{{ e.tipo }}</td>
+            <td class="tabular">v{{ e.version }}</td>
+            <td>{{ ui.badge(e.estado|capitalize, tono) }}</td>
+            <td class="text-right">
+              {% if e.estado == "pendiente" %}
+                {{ ui.btn("Revisar", href="/entregas/" ~ e.id ~ "/preview", variant="secondary", size="sm") }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endcall %}
+  {% else %}
+    {{ ui.empty("Aún no hay entregas",
+                "Cada semana las evaluadoras A, B y C cargan su archivo .xlsx; el sistema lo valida antes de confirmarlo.",
+                "Subir la primera", "/entregas") }}
+  {% endif %}
+{% endcall %}
 {% endblock %}

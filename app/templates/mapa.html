@@ -1,13 +1,106 @@
 {% extends "base.html" %}
-{% block contenido %}
-<h1 class="text-2xl font-bold mb-1">Clases del mapa MADES (Etapa 2)</h1>
-<p class="text-sm text-slate-500 mb-6">Filas de la matriz de confusión (5.1): {{ registros }} registros en {{ puntos }} puntos. Formatos: .xlsx ancho (ID_PUNTO + A1990…A2024, clases 1–9) o .csv largo (punto,anio,clase).</p>
+{% import "components/ui.html" as ui %}
+{% import "components/icons.html" as icons %}
 
-<div class="bg-white rounded shadow p-4">
-  <form action="/mapa/upload" method="post" enctype="multipart/form-data" class="flex gap-3 items-end text-sm">
-    <input type="file" name="file" accept=".csv,.xlsx" required class="text-xs">
-    <button class="bg-emerald-700 text-white rounded px-4 py-2">Cargar mapa</button>
-  </form>
-  <p class="text-xs text-slate-500 mt-2">Fuente registrada por lote (UTCUTS-XLSX / UTCUTS-CSV). Recargas del mismo punto-año actualizan la clase con auditoría.</p>
+{% block title %}Mapa MADES · {{ proyecto.nombre }}{% endblock %}
+
+{% block contenido %}
+{{ ui.page_header(
+  "Mapa MADES",
+  "Clases de la Etapa 2"
+) }}
+
+{# --- Estado actual ------------------------------------------------------- #}
+<div class="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+  {{ ui.stat("Registros punto-año", registros,
+             hint=("Última carga: " ~ ultima_mapa.strftime("%d/%m/%Y %H:%M")) if ultima_mapa else "Sin cargas registradas") }}
+  {{ ui.stat("Puntos con clase", puntos,
+             hint="Puntos distintos con al menos un año clasificado") }}
 </div>
+<p class="mb-6 text-xs text-ink-600">
+  Última carga:
+  <span class="tabular">
+    {% if ultima_mapa %}{{ ultima_mapa.strftime("%d/%m/%Y %H:%M") }}{% else %}sin registros{% endif %}
+  </span>
+  · Fuente registrada por lote: UTCUTS-XLSX (formato ancho) o UTCUTS-CSV (formato largo).
+</p>
+
+{# --- Estado del flujo ---------------------------------------------------- #}
+<div class="mb-6 flex flex-col gap-3">
+  {% if puntos == 0 %}
+    {{ ui.banner(
+      "warn",
+      "Sin clases cargadas: la matriz de confusión y la Sección 5 están bloqueadas (5.1). Cargue el mapa MADES para habilitarlas.",
+      dismissible=False
+    ) }}
+  {% elif not tiene_cruces %}
+    {{ ui.banner(
+      "info",
+      "Mapa cargado. Cargue entregas y confirme los cruces para habilitar la matriz de confusión: se calcula con los cruces consolidados y las clases del mapa.",
+      dismissible=False
+    ) }}
+  {% else %}
+    {{ ui.banner(
+      "ok",
+      "Mapa y cruces disponibles: la matriz de confusión (5.1) y el consolidado por año pueden generarse con " ~ cruce_count ~ " cruces punto-año.",
+      dismissible=False
+    ) }}
+    <div class="flex flex-wrap items-center gap-2">
+      {{ ui.btn("Ver exportación", href="/exportar", variant="secondary", size="sm", icon="download") }}
+    </div>
+  {% endif %}
+</div>
+
+{# --- Carga del mapa ------------------------------------------------------ #}
+<section id="cargar-mapa" class="card" aria-labelledby="titulo-carga-mapa">
+  <header class="card__header">
+    <h2 class="card__title" id="titulo-carga-mapa">Cargar clases del mapa</h2>
+    <p class="card__subtitle">Un archivo por lote. La carga solo agrega o actualiza clases del mapa; no toca las interpretaciones de las evaluadoras.</p>
+  </header>
+  <div class="card__body">
+    <form action="/mapa/upload" method="post" enctype="multipart/form-data" class="flex flex-col gap-5">
+      <div class="rounded-card border border-dashed border-line bg-canvas/40 p-4">
+        <label class="field__label" for="campo-file-mapa">Archivo del mapa MADES</label>
+        <p class="field__hint" id="hint-file-mapa">
+          Arrastre el archivo sobre el selector o haga clic para elegirlo. Formatos admitidos: .xlsx (ancho) o .csv (largo).
+        </p>
+        <input class="input mt-2" id="campo-file-mapa" name="file" type="file"
+               accept=".csv,.xlsx" required aria-describedby="hint-file-mapa">
+      </div>
+
+      {# Dos pestañas sin JavaScript: detalles nativos del navegador. #}
+      <div class="flex flex-col gap-2">
+        <details class="rounded-lg border border-line bg-white p-3" open>
+          <summary class="cursor-pointer text-sm font-medium">Formato ancho (.xlsx)</summary>
+          <div class="mt-2 flex flex-col gap-1 text-xs text-ink-600">
+            <p>Una fila por punto y una columna por año. La primera columna es el identificador del punto y el resto son años entre 1990 y 2024.</p>
+            <p class="overflow-x-auto rounded-md bg-canvas/60 px-3 py-2 font-mono text-[11px] whitespace-nowrap">
+              ID_PUNTO · A1990 · A1991 · … · A2024
+            </p>
+            <p>Cada celda contiene la clase 1–9 del mapa; una celda vacía significa que el mapa no tiene dato para ese punto-año.</p>
+          </div>
+        </details>
+
+        <details class="rounded-lg border border-line bg-white p-3">
+          <summary class="cursor-pointer text-sm font-medium">Formato largo (.csv)</summary>
+          <div class="mt-2 flex flex-col gap-1 text-xs text-ink-600">
+            <p>Una fila por combinación de punto y año, con la clase en su propia columna.</p>
+            <p class="overflow-x-auto rounded-md bg-canvas/60 px-3 py-2 font-mono text-[11px] whitespace-nowrap">
+              punto,anio,clase
+            </p>
+            <p>Ejemplo: <span class="font-mono">101,2017,1</span> indica que el punto 101 tiene clase 1 (bosque natural) en 2017.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        {{ ui.btn("Cargar mapa", icon="upload", type="submit") }}
+      </div>
+    </form>
+
+    <p class="mt-4 border-t border-line pt-4 text-xs text-ink-600">
+      Auditoría de recargas: la misma combinación punto-año actualiza la clase existente y deja un registro de auditoría con la fuente y el número de registros del lote. No se duplican filas ni se borran años previos.
+    </p>
+  </div>
+</section>
 {% endblock %}

@@ -683,6 +683,16 @@ def resumen_dashboard(db: Session, proyecto_id: int) -> dict:
     entregas = db.scalars(select(Entrega).where(
         Entrega.proyecto_id == proyecto_id).order_by(Entrega.recibida_en.desc()).limit(20)).all()
     mapa = estado_mapa(db, proyecto_id)
+    entregas_pendientes = db.scalar(
+        select(func.count()).select_from(Entrega).where(
+            Entrega.proyecto_id == proyecto_id,
+            Entrega.estado == "pendiente")) or 0
+    tiene_malla = (db.scalar(
+        select(func.count()).select_from(PuntoMalla).where(
+            PuntoMalla.proyecto_id == proyecto_id)) or 0) > 0
+    ultima_mapa = db.scalar(
+        select(func.max(ClaseMapa.cargada_en)).where(
+            ClaseMapa.proyecto_id == proyecto_id))
     return {
         "total_puntos": total_puntos, "total_evaluaciones": total_eval,
         "unanimidad": conteo.get("unanimidad", 0), "mayoria": conteo.get("mayoria", 0),
@@ -692,6 +702,9 @@ def resumen_dashboard(db: Session, proyecto_id: int) -> dict:
         "pct_mayoria": round(conteo.get("mayoria", 0) / completas * 100, 1) if completas else 0.0,
         "pct_discrepancia": round(conteo.get("discrepancia", 0) / completas * 100, 1) if completas else 0.0,
         "pendientes_qaqc": pendientes,
+        "entregas_pendientes": entregas_pendientes,
+        "tiene_malla": tiene_malla,
+        "ultima_mapa": ultima_mapa,
         "mapa_registros": mapa["registros"], "mapa_puntos": mapa["puntos"],
         "entregas": [{"id": e.id, "letra": e.asistente_letra, "semana": e.semana,
                       "tipo": e.tipo, "version": e.version, "estado": e.estado} for e in entregas],
@@ -699,19 +712,73 @@ def resumen_dashboard(db: Session, proyecto_id: int) -> dict:
 
 
 def listar_cruces(db: Session, proyecto_id: int, resultado: str | None = None,
-                  punto: int | None = None, anio: int | None = None, limit: int = 500):
-    q = (select(ResultadoCruce, FichaQAQC.id)
-         .outerjoin(FichaQAQC, (FichaQAQC.proyecto_id == ResultadoCruce.proyecto_id)
-                    & (FichaQAQC.punto_id == ResultadoCruce.punto_id)
-                    & (FichaQAQC.anio == ResultadoCruce.anio))
-         .where(ResultadoCruce.proyecto_id == proyecto_id))
+                  punto: int | None = None, anio: int | None = None,
+                  page: int = 1, per_page: int = 50) -> tuple[list, int]:
+    """Cruces de la terna paginados, con el id de ficha QA/QC si existe.
+
+    Devuelve ``(filas, total)``, donde cada fila es ``(ResultadoCruce, id_ficha)``
+    y ``total`` cuenta los cruces que cumplen los filtros (sin paginar).
+
+    El id de la ficha se resuelve con una subconsulta escalar correlacionada en
+    lugar de un ``outerjoin``: un cruce tiene como maximo una ficha, pero si en
+    el futuro apareciera un duplicado (mismo punto-anio) el join multiplicaria
+    filas y descuadraria el total frente a las filas de la pagina. Comprobado en
+    la base del contenedor ``eet-mapa-aep`` antes de implementar::
+
+        SELECT punto_id, anio, count(*) FROM fichas_qaqc
+        GROUP BY 1, 2 HAVING count(*) > 1;   -- 0 filas
+
+    La subconsulta deja el resultado estable sin depender de esa comprobacion.
+    """
+    page = max(int(page or 1), 1)
+    per_page = max(int(per_page or 50), 1)
+
+    cond = [ResultadoCruce.proyecto_id == proyecto_id]
     if resultado:
-        q = q.where(ResultadoCruce.resultado == resultado)
+        cond.append(ResultadoCruce.resultado == resultado)
     if punto:
-        q = q.where(ResultadoCruce.punto_id == punto)
+        cond.append(ResultadoCruce.punto_id == punto)
     if anio:
-        q = q.where(ResultadoCruce.anio == anio)
-    return db.execute(q.order_by(ResultadoCruce.punto_id, ResultadoCruce.anio).limit(limit)).all()
+        cond.append(ResultadoCruce.anio == anio)
+
+    total = db.scalar(
+        select(func.count()).select_from(ResultadoCruce).where(*cond)) or 0
+
+    ficha_id = (
+        select(FichaQAQC.id)
+        .where(FichaQAQC.proyecto_id == ResultadoCruce.proyecto_id,
+               FichaQAQC.punto_id == ResultadoCruce.punto_id,
+               FichaQAQC.anio == ResultadoCruce.anio)
+        .order_by(FichaQAQC.id)
+        .limit(1)
+        .correlate(ResultadoCruce)
+        .scalar_subquery()
+    )
+
+    filas = db.execute(
+        select(ResultadoCruce, ficha_id.label("ficha_id"))
+        .where(*cond)
+        .order_by(ResultadoCruce.punto_id, ResultadoCruce.anio)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    ).all()
+    return filas, total
+
+
+def conteo_resultados(db: Session, proyecto_id: int) -> dict[str, int]:
+    """Conteo de cruces por resultado, con las cuatro claves siempre presentes.
+
+    Alimenta los chips de filtro de la vista de cruces: si un resultado no
+    aparece en la base (por ejemplo ``incompleto``), el chip muestra 0 en lugar
+    de desaparecer.
+    """
+    conteo = dict(db.execute(
+        select(ResultadoCruce.resultado, func.count())
+        .where(ResultadoCruce.proyecto_id == proyecto_id)
+        .group_by(ResultadoCruce.resultado)
+    ).all())
+    return {clave: conteo.get(clave, 0)
+            for clave in ("unanimidad", "mayoria", "discrepancia", "incompleto")}
 
 
 def detalle_cruce(db: Session, proyecto_id: int, punto: int, anio: int) -> dict | None:

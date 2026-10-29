@@ -1,71 +1,416 @@
 {% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+{% block title %}Ficha QA/QC #{{ ficha.id }} · Validador EET{% endblock %}
+
 {% block contenido %}
-<h1 class="text-2xl font-bold mb-1">Ficha QA/QC #{{ ficha.id }}</h1>
-<p class="text-sm text-slate-500 mb-6">Punto {{ ficha.punto_id }} · año {{ ficha.anio }} <strong>(campo obligatorio del cruce resuelto)</strong> · estado <strong>{{ ficha.estado }}</strong></p>
+{#
+  Prellenado: si el POST falló, manda lo que el usuario escribió (valores_form);
+  si no, el estado guardado de la ficha. Ningún campo se imprime sin normalizar.
+#}
+{% set v = valores_form if valores_form is defined and valores_form else none %}
+{% set valores = valores if valores is mapping else {} %}
+{% set cruce = cruce if cruce is defined else none %}
+{% set resultado = cruce.cruce.resultado if cruce and cruce.cruce else none %}
+{% set cerrada = ficha.estado in ("Resuelto por consenso", "Reemplazo completado") %}
 
-<div class="bg-white rounded shadow p-4 mb-4 text-sm">
-  <h2 class="font-semibold mb-2">Interpretaciones iniciales</h2>
-  <p class="font-mono text-xs bg-slate-50 p-2 rounded">{{ ficha.valores_iniciales }}</p>
-  <h2 class="font-semibold mt-4 mb-2">Evidencias registradas</h2>
-  <ul class="text-xs list-disc ml-5">{% for e in ficha.evidencias or [] %}<li>{{ e }}</li>{% else %}<li class="text-slate-400">Sin evidencias.</li>{% endfor %}</ul>
-  {% if ficha.debate %}<h2 class="font-semibold mt-4 mb-1">Debate técnico</h2><p class="text-sm whitespace-pre-wrap">{{ ficha.debate }}</p>{% endif %}
-  {% if ficha.dictamen %}<p class="mt-2 text-sm">Dictamen: <strong>{{ ficha.dictamen }}</strong> · clase definitiva: <strong>{{ ficha.clase_definitiva or "—" }}</strong></p>{% endif %}
-  {% if ficha.sensores %}<p class="mt-1 text-sm">Sensores: {{ (ficha.sensores or [])|join(", ") }}</p>{% endif %}
-  {% if ficha.causa_descarte %}<p class="text-sm">Causa de descarte: <strong>{{ ficha.causa_descarte }}</strong></p>{% endif %}
-  {% if ficha.fecha_sesion %}<p class="text-sm">Fecha de sesión: {{ ficha.fecha_sesion }}</p>{% endif %}
-  {% if ficha.firmas %}<p class="text-sm">Firmas: {{ ficha.firmas }}</p>{% endif %}
-</div>
+{% set d_debate = v.debate if v else (ficha.debate or "") %}
+{% set d_dictamen = v.dictamen if v else (ficha.dictamen or "") %}
+{% set d_clase = v.clase_definitiva if v else (ficha.clase_definitiva if ficha.clase_definitiva else "") %}
+{% set d_clase_txt = d_clase|string|trim %}
+{% set d_sensores = v.sensores if v else (ficha.sensores or []) %}
+{% set d_causa = v.causa_descarte if v else (ficha.causa_descarte or "") %}
+{% set d_firmas = v.firmas if v else (ficha.firmas or {}) %}
+{% if v %}
+  {% set d_fecha = v.fecha_sesion %}
+{% elif ficha.fecha_sesion %}
+  {% set d_fecha = ficha.fecha_sesion.isoformat() %}
+{% else %}
+  {% set d_fecha = "" %}
+{% endif %}
+{% set d_evidencias = (v.evidencias if v else (ficha.evidencias or []))|map("string")|list %}
 
-<div class="bg-white rounded shadow p-4 mb-4">
-  <h2 class="font-semibold mb-3 text-sm">Completar dictamen (campos estructurados)</h2>
-  <form action="/qaqc/{{ ficha.id }}" method="post" class="grid gap-3 text-sm">
-    <label>Debate técnico / fundamento<textarea name="debate" rows="3" class="block w-full border rounded px-2 py-1">{{ ficha.debate or "" }}</textarea></label>
-    <div class="grid md:grid-cols-3 gap-3">
-      <label>Dictamen
-        <select name="dictamen" class="block w-full border rounded px-2 py-1">
-          <option value="">—</option>
-          <option value="consenso" {% if ficha.dictamen=='consenso' %}selected{% endif %}>consenso técnico</option>
-          <option value="sin_consenso" {% if ficha.dictamen=='sin_consenso' %}selected{% endif %}>sin consenso</option>
-        </select></label>
-      <label>Clase definitiva (1–9)<input name="clase_definitiva" type="number" min="1" max="9" value="{{ ficha.clase_definitiva or '' }}" class="block w-full border rounded px-2 py-1"></label>
-      <label>Fecha de sesión<input name="fecha_sesion" type="date" value="{{ ficha.fecha_sesion or '' }}" class="block w-full border rounded px-2 py-1"></label>
+{% set RESULTADOS = {
+  "unanimidad": "Unanimidad",
+  "mayoria": "Mayoría 2/3",
+  "discrepancia": "Discrepancia absoluta",
+  "incompleto": "Incompleto"
+} %}
+
+{% set EVENTOS = {
+  "Iniciar revisión": {"label": "Iniciar revisión", "efecto": "La ficha pasa a revisión técnica de la supervisión.", "cierra": false},
+  "Solicitar aprobación": {"label": "Solicitar aprobación", "efecto": "Queda pendiente de aprobación del dictamen.", "cierra": false},
+  "Aprobar consenso": {"label": "Cerrar por consenso", "efecto": "Cierra la ficha y consolida la clase definitiva en el cruce (regla qaqc-consenso).", "cierra": true},
+  "Declarar sin consenso": {"label": "Declarar sin consenso", "efecto": "Deja el cruce sin clase consolidada (regla qaqc-sin-consenso).", "cierra": false},
+  "Autorizar reemplazo": {"label": "Autorizar reemplazo", "efecto": "Habilita la sustitución del punto por una reserva de la malla (4.5–4.9).", "cierra": false},
+  "Reservar en interpretación": {"label": "Reservar en interpretación", "efecto": "Marca el punto como reserva en interpretación.", "cierra": false},
+  "Completar reemplazo": {"label": "Completar reemplazo", "efecto": "Cierra la ficha con el reemplazo ejecutado.", "cierra": true}
+} %}
+
+{{ ui.page_header("Ficha QA/QC #" ~ ficha.id,
+     "Punto " ~ ficha.punto_id ~ " · año " ~ ficha.anio ~ " · estado " ~ ficha.estado,
+     breadcrumb=[{"label": "Fichas QA/QC", "href": "/qaqc"}, {"label": "#" ~ ficha.id}]) }}
+
+{% if error is defined and error %}
+<div class="mb-4">{{ ui.banner("danger", error) }}</div>
+{% endif %}
+{% if cerrada %}
+<div class="mb-4">{{ ui.banner("warn", "La ficha está cerrada: el dictamen se conserva como evidencia y ya no admite cambios.", dismissible=False) }}</div>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+
+  {# ---------------------------------------------------------------- RAIL #}
+  <aside class="order-first flex flex-col gap-6 lg:order-last lg:col-span-1">
+    <details class="card" open>
+      <summary class="cursor-pointer px-5 pt-5 text-base font-semibold marker:text-brand-700">
+        Resumen y pendientes
+      </summary>
+      <div class="card__body flex flex-col gap-6">
+
+        <section>
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-ink-600">Cruce de la terna</h2>
+          {% if cruce and cruce.cruce %}
+          <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            {% if resultado %}
+            {{ ui.badge(RESULTADOS.get(resultado, resultado), "danger") }}
+            {% endif %}
+            <span class="text-ink-600">Clase consolidada:</span>
+            {{ ui.chip_clase(cruce.cruce.clase_consolidada) }}
+          </div>
+          <p class="mt-2 text-xs text-ink-600">
+            Regla {{ cruce.cruce.regla_version }}{% if cruce.cruce.actualizado_en %} · calculado el {{ cruce.cruce.actualizado_en.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+          </p>
+          <p class="mt-3 text-sm">
+            <a class="text-brand-700 underline-offset-2 hover:underline" href="/cruces/{{ ficha.punto_id }}/{{ ficha.anio }}">Ver el cruce de origen</a>
+          </p>
+          {% else %}
+          <p class="mt-2 text-sm text-ink-600">Sin cruce calculado para este punto y año. La ficha se conserva como expediente.</p>
+          <p class="mt-3 text-sm">
+            <a class="text-brand-700 underline-offset-2 hover:underline" href="/cruces">Ir a cruces</a>
+          </p>
+          {% endif %}
+        </section>
+
+        <section>
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-ink-600">Para cerrar falta…</h2>
+          <ul class="mt-2 flex flex-col gap-2 text-sm">
+            <li class="flex items-center justify-between gap-2">
+              <span>Clase definitiva 1–9</span>
+              {% if ficha.clase_definitiva %}{{ ui.badge("Listo", "ok") }}{% else %}{{ ui.badge("Falta", "warn") }}{% endif %}
+            </li>
+            <li class="flex items-center justify-between gap-2">
+              <span>Fecha de sesión</span>
+              {% if ficha.fecha_sesion %}{{ ui.badge("Listo", "ok") }}{% else %}{{ ui.badge("Falta", "warn") }}{% endif %}
+            </li>
+            <li class="flex items-center justify-between gap-2">
+              <span>Firmas A, B y C</span>
+              {% if (ficha.firmas or {}).get("firma_a") and (ficha.firmas or {}).get("firma_b") and (ficha.firmas or {}).get("firma_c") %}
+                {{ ui.badge("Listo", "ok") }}
+              {% else %}
+                {{ ui.badge("Falta", "warn") }}
+              {% endif %}
+            </li>
+            <li class="flex items-center justify-between gap-2">
+              <span>Dictamen registrado</span>
+              {% if ficha.dictamen %}{{ ui.badge("Listo", "ok") }}{% else %}{{ ui.badge("Falta", "warn") }}{% endif %}
+            </li>
+          </ul>
+          <p class="mt-2 text-xs text-ink-600">
+            La clase definitiva solo es obligatoria cuando el dictamen es consenso; la regla se valida al guardar.
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-ink-600">Historial</h2>
+          {% set items = [] %}
+          {% if ficha.creada_en %}
+            {% set _ = items.append({"fecha": ficha.creada_en.strftime("%Y-%m-%d %H:%M"), "texto": "Ficha creada", "tono": "neutral"}) %}
+          {% endif %}
+          {% if ficha.actualizada_en and ficha.actualizada_en != ficha.creada_en %}
+            {% set _ = items.append({"fecha": ficha.actualizada_en.strftime("%Y-%m-%d %H:%M"), "texto": "Última actualización del dictamen", "tono": "info"}) %}
+          {% endif %}
+          {% if ficha.cerrada_en %}
+            {% set _ = items.append({"fecha": ficha.cerrada_en.strftime("%Y-%m-%d %H:%M"), "texto": "Ficha cerrada", "tono": "ok"}) %}
+          {% endif %}
+          <div class="mt-3">{{ ui.timeline(items) }}</div>
+        </section>
+
+        <details>
+          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-ink-600">Leyenda de clases de cobertura</summary>
+          <ul class="mt-3 flex flex-col gap-1.5 text-sm">
+            {% for clase in clases %}
+            {% set codigo = loop.index %}
+            <li class="flex items-center gap-2">
+              <span class="clase clase-{{ codigo }}"><span class="clase__code">{{ codigo }}</span></span>
+              <span>{{ clase.value }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          <p class="mt-2 text-xs text-ink-600">SC (sin consenso) no es una clase de cobertura: describe una terna no resuelta.</p>
+        </details>
+
+        <details>
+          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-ink-600">Referencias del protocolo</summary>
+          <ul class="mt-3 flex flex-col gap-1 text-xs text-ink-600">
+            <li>4.12.1 · Ficha de resolución: sensores, causa de descarte, fecha y firmas.</li>
+            <li>4.5–4.9 · Reemplazo del punto por una reserva de la misma malla y estrato.</li>
+            <li>5.1 · La clase consolidada alimenta la matriz de confusión.</li>
+          </ul>
+        </details>
+
+      </div>
+    </details>
+  </aside>
+
+  {# ----------------------------------------------------------- FORMULARIO #}
+  <form action="/qaqc/{{ ficha.id }}" method="post"
+        class="order-last card divide-y divide-line lg:order-first lg:col-span-2">
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">1. Contexto del cruce</legend>
+      <p class="mt-1 text-xs text-ink-600">Estos datos vienen del cálculo del cruce y no se editan aquí.</p>
+      <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Punto</dt>
+          <dd class="tabular">{{ ficha.punto_id }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Año</dt>
+          <dd class="tabular">{{ ficha.anio }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Resultado</dt>
+          <dd>{{ RESULTADOS.get(resultado, resultado) if resultado else "—" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Clase consolidada</dt>
+          <dd>{{ ui.chip_clase(cruce.cruce.clase_consolidada) if cruce and cruce.cruce else "—" }}</dd>
+        </div>
+      </dl>
+      <div class="mt-4">
+        <p class="text-xs font-medium uppercase tracking-wide text-ink-600">Terna inicial</p>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <span class="text-xs text-ink-400" aria-hidden="true">A</span>{{ ui.chip_clase(valores.get("A")) }}
+          <span class="text-xs text-ink-400" aria-hidden="true">B</span>{{ ui.chip_clase(valores.get("B")) }}
+          <span class="text-xs text-ink-400" aria-hidden="true">C</span>{{ ui.chip_clase(valores.get("C")) }}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">2. Fundamento</legend>
+      <p class="mt-1 text-xs text-ink-600">Debate técnico que sustenta el dictamen: interpretaciones enfrentadas, evidencia y criterio aplicado.</p>
+      <div class="mt-3">
+        {{ ui.field("Debate técnico / fundamento", "debate", type="textarea",
+                    value=d_debate, rows=8, maxlength=4000,
+                    hint=(d_debate|length|string) ~ " caracteres escritos. Se conserva el texto aunque falle la validación.") }}
+      </div>
+    </fieldset>
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">3. Dictamen</legend>
+      <p class="mt-1 text-xs text-ink-600">El dictamen decide el cierre: consenso consolida una clase; sin consenso deja el cruce sin clase.</p>
+      <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-white p-3 hover:bg-canvas has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input class="mt-0.5 h-4 w-4 accent-brand-700" type="radio" name="dictamen" value="consenso"
+                 {% if d_dictamen == "consenso" %}checked{% endif %}>
+          <span class="flex flex-col gap-1">
+            <span class="text-sm font-medium">Consenso técnico</span>
+            <span class="text-xs text-ink-600">Cierra la ficha por consenso: exige clase definitiva 1–9 y actualiza la clase consolidada del cruce.</span>
+          </span>
+        </label>
+        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-white p-3 hover:bg-canvas has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input class="mt-0.5 h-4 w-4 accent-brand-700" type="radio" name="dictamen" value="sin_consenso"
+                 {% if d_dictamen == "sin_consenso" %}checked{% endif %}>
+          <span class="flex flex-col gap-1">
+            <span class="text-sm font-medium">Sin consenso</span>
+            <span class="text-xs text-ink-600">La terna no se resuelve por acuerdo: el cruce queda sin clase y se abre la vía de reemplazo o reserva.</span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">4. Clase definitiva<span class="field__req" data-clase-requerida aria-hidden="true" {% if d_dictamen != "consenso" %}hidden{% endif %}>*</span></legend>
+      <p class="mt-1 text-xs text-ink-600">
+        Obligatoria cuando el dictamen es consenso (la regla se valida en el servidor, no aquí).
+        Con dictamen sin consenso se deja vacía.
+      </p>
+      <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {% for clase in clases %}
+        {% set codigo = loop.index %}
+        <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-white p-2.5 text-sm hover:bg-canvas has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input class="h-4 w-4 shrink-0 accent-brand-700" type="radio" name="clase_definitiva" value="{{ codigo }}"
+                 {% if d_clase_txt == codigo|string %}checked{% endif %}>
+          {{ ui.chip_clase(codigo) }}
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">5. Sensores evaluados en la sesión</legend>
+      <p class="mt-1 text-xs text-ink-600">Protocolo 4.12.1: registre las fuentes revisadas durante la sesión de resolución.</p>
+      <input type="hidden" name="sensores_present" value="1">
+      <div class="mt-3 flex flex-wrap gap-4">
+        {% for sensor in ["Landsat", "Sentinel-2", "Google Earth"] %}
+        <label class="flex cursor-pointer items-center gap-2 text-sm">
+          <input class="h-4 w-4 accent-brand-700" type="checkbox" name="sensores" value="{{ sensor }}"
+                 {% if sensor in d_sensores %}checked{% endif %}>
+          {{ sensor }}
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">6. Causa de descarte</legend>
+      <p class="mt-1 text-xs text-ink-600">Solo aplica cuando el dictamen es sin consenso (SC): describe por qué la terna no permite asignar una clase.</p>
+      <div class="mt-3 grid gap-2">
+        {% for causa in ["Ambigüedad espectral severa", "Mezcla de coberturas sub-píxel"] %}
+        <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-white p-2.5 text-sm hover:bg-canvas has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input class="h-4 w-4 shrink-0 accent-brand-700" type="radio" name="causa_descarte" value="{{ causa }}"
+                 {% if d_causa == causa %}checked{% endif %}>
+          {{ causa }}
+        </label>
+        {% endfor %}
+        <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-white p-2.5 text-sm hover:bg-canvas has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input class="h-4 w-4 shrink-0 accent-brand-700" type="radio" name="causa_descarte" value=""
+                 {% if not d_causa %}checked{% endif %}>
+          Sin causa de descarte
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">7. Evidencias</legend>
+      <p class="mt-1 text-xs text-ink-600">Una evidencia por fila: índices, imágenes de apoyo, notas de campo o datos complementarios. Se guardan todas las filas no vacías.</p>
+      <input type="hidden" name="evidencias_present" value="1">
+      <div class="mt-3 flex flex-col gap-2" data-evidencias>
+        {% for evidencia in (d_evidencias if d_evidencias else [""]) %}
+        <div class="flex items-center gap-2" data-evidencia-row>
+          <label class="sr-only" for="evidencia-{{ loop.index }}">Evidencia o dato complementario, fila {{ loop.index }}</label>
+          <input class="input" id="evidencia-{{ loop.index }}" type="text" name="evidencias" value="{{ evidencia }}"
+                 placeholder="Ej.: índices NDVI y NDWI de la escena 2024-03">
+          <button type="button" class="btn btn--secondary btn--sm js-only" data-evidencia-quitar>Quitar</button>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="mt-3">
+        <button type="button" class="btn btn--secondary btn--sm js-only" data-evidencia-agregar>Agregar evidencia</button>
+        <p class="mt-2 text-xs text-ink-600">Sin JavaScript, agregue cada evidencia editando las filas visibles.</p>
+      </div>
+    </fieldset>
+
+    <fieldset class="p-5">
+      <legend class="text-sm font-semibold text-ink-900">8. Sesión y firmas</legend>
+      <p class="mt-1 text-xs text-ink-600">Cierre formal del acta: fecha de la sesión y firma de cada evaluador de la terna.</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        {{ ui.field("Fecha de sesión", "fecha_sesion", type="date", value=d_fecha) }}
+        {{ ui.field("Firma evaluadora A", "firma_a", value=d_firmas.get("firma_a", ""), autocomplete="off") }}
+        {{ ui.field("Firma evaluador/a B", "firma_b", value=d_firmas.get("firma_b", ""), autocomplete="off") }}
+        {{ ui.field("Firma evaluador/a C", "firma_c", value=d_firmas.get("firma_c", ""), autocomplete="off") }}
+      </div>
+    </fieldset>
+
+    <div class="z-10 flex flex-wrap items-center gap-3 bg-white/95 p-4 backdrop-blur lg:sticky lg:bottom-0 lg:rounded-b-card">
+      <button type="submit" class="btn btn--primary" {% if cerrada %}disabled{% endif %}>Guardar dictamen</button>
+      <span class="dirty-indicator badge badge--warn"
+            data-dirty-indicator hidden role="status">Cambios sin guardar</span>
+      <p class="text-xs text-ink-600">El dictamen queda auditado con actor <span class="font-medium">supervision</span>.</p>
     </div>
-    <fieldset class="text-sm"><legend class="font-medium">Sensores evaluados en sesión (4.12.1)</legend>
-      <div class="flex gap-4 mt-1">
-      {% for s in ["Landsat", "Sentinel-2", "Google Earth"] %}
-        <label><input type="checkbox" name="sensores" value="{{ s }}" {% if s in (ficha.sensores or []) %}checked{% endif %}> {{ s }}</label>
-      {% endfor %}
-      </div></fieldset>
-    <div class="grid md:grid-cols-2 gap-3">
-      <label>Causa del descarte (solo SC)
-        <select name="causa_descarte" class="block w-full border rounded px-2 py-1">
-          <option value="">—</option>
-          <option value="Ambigüedad espectral severa" {% if ficha.causa_descarte=='Ambigüedad espectral severa' %}selected{% endif %}>Ambigüedad espectral severa</option>
-          <option value="Mezcla de coberturas sub-píxel" {% if ficha.causa_descarte=='Mezcla de coberturas sub-píxel' %}selected{% endif %}>Mezcla de coberturas sub-píxel</option>
-        </select></label>
-      <label>Evidencia / índices / datos complementarios (una por línea)<textarea name="evidencias" rows="2" class="block w-full border rounded px-2 py-1"></textarea></label>
-    </div>
-    <div class="grid md:grid-cols-3 gap-3">
-      <label>Firma Evaluadora A<input name="firma_a" value="{{ (ficha.firmas or {}).get('firma_a','') }}" class="block w-full border rounded px-2 py-1"></label>
-      <label>Firma Evaluador/a B<input name="firma_b" value="{{ (ficha.firmas or {}).get('firma_b','') }}" class="block w-full border rounded px-2 py-1"></label>
-      <label>Firma Evaluador/a C<input name="firma_c" value="{{ (ficha.firmas or {}).get('firma_c','') }}" class="block w-full border rounded px-2 py-1"></label>
-    </div>
-    <div><button class="bg-slate-800 text-white rounded px-4 py-2">Guardar dictamen</button></div>
   </form>
-  <p class="text-xs text-slate-500 mt-2">Nota: el formulario acepta una evidencia por envío (campo multilínea se registra como lista). Para cerrar por consenso se exige clase definitiva.</p>
 </div>
 
-<div class="bg-white rounded shadow p-4">
-  <h2 class="font-semibold mb-3 text-sm">Transiciones de estado</h2>
-  <div class="flex flex-wrap gap-2">
-  {% for ev in eventos %}
-    <form action="/qaqc/{{ ficha.id }}/evento" method="post">
+{# ---------------------------------------------------------- TRANSICIONES #}
+<section class="card mt-6">
+  <header class="card__header">
+    <h2 class="card__title">Cerrar ficha / transiciones</h2>
+    <p class="card__subtitle">Cada transición queda registrada en auditoría. Las que cierran la ficha no admiten correcciones posteriores del dictamen.</p>
+  </header>
+  <div class="card__body grid gap-3 sm:grid-cols-2">
+    {% for ev in eventos %}
+    {% set meta = EVENTOS.get(ev, {"label": ev, "efecto": "", "cierra": false}) %}
+    <form action="/qaqc/{{ ficha.id }}/evento" method="post"
+          class="flex flex-col gap-2 rounded-lg border border-line bg-white p-3"
+          {% if meta.cierra %}data-confirm="Esta transición cierra la ficha y no admite cambios posteriores en el dictamen. ¿Desea continuar?"{% endif %}>
       <input type="hidden" name="evento" value="{{ ev }}">
-      <button class="bg-emerald-700 text-white rounded px-4 py-2 text-sm">{{ ev }}</button>
+      <p class="text-sm font-medium">{{ meta.label }}</p>
+      <p class="text-xs text-ink-600">{{ meta.efecto }}</p>
+      <div class="mt-auto pt-1">
+        {{ ui.btn(meta.label, variant="secondary" if not meta.cierra else "primary", size="sm", type="submit") }}
+      </div>
     </form>
-  {% else %}
-    <p class="text-sm text-slate-400">Estado final: sin transiciones disponibles.</p>
-  {% endfor %}
+    {% else %}
+    <p class="text-sm text-ink-600">Estado final: la ficha no tiene transiciones disponibles.</p>
+    {% endfor %}
   </div>
-</div>
+</section>
+
+<script>
+  /* Mejoras progresivas locales a esta vista: filas de evidencia y confirmación
+     de las transiciones que cierran la ficha. Sin JS todo sigue enviándose. */
+  (function () {
+    "use strict";
+
+    var cont = document.querySelector("[data-evidencias]");
+    var agregar = document.querySelector("[data-evidencia-agregar]");
+    var marcaRequerida = document.querySelector("[data-clase-requerida]");
+
+    /* Marca visual de "clase exigida": solo cuando el dictamen es consenso.
+       El atributo required no se usa: la regla la valida el servidor. */
+    var dictamenes = document.querySelectorAll('input[name="dictamen"]');
+    for (var i = 0; i < dictamenes.length; i += 1) {
+      dictamenes[i].addEventListener("change", function () {
+        if (!marcaRequerida) return;
+        marcaRequerida.hidden = this.value !== "consenso";
+      });
+    }
+
+    function filas() {
+      return cont ? cont.querySelectorAll("[data-evidencia-row]") : [];
+    }
+
+    if (agregar && cont) {
+      agregar.addEventListener("click", function () {
+        var lista = filas();
+        var ultima = lista[lista.length - 1];
+        if (!ultima) return;
+        var copia = ultima.cloneNode(true);
+        var campo = copia.querySelector('input[name="evidencias"]');
+        var etiqueta = copia.querySelector("label[for]");
+        if (campo) {
+          campo.value = "";
+          /* Id único también en las filas agregadas: dos campos con el mismo
+             id romperían la asociación con su etiqueta. */
+          var n = lista.length + 1;
+          while (document.getElementById("evidencia-" + n)) n += 1;
+          campo.id = "evidencia-" + n;
+        }
+        cont.appendChild(copia);
+        if (etiqueta && campo) etiqueta.setAttribute("for", campo.id);
+        if (campo) campo.focus();
+      });
+
+      cont.addEventListener("click", function (ev) {
+        var quitar = ev.target.closest("[data-evidencia-quitar]");
+        if (!quitar) return;
+        var fila = quitar.closest("[data-evidencia-row]");
+        if (!fila) return;
+        if (filas().length <= 1) {
+          var campo = fila.querySelector('input[name="evidencias"]');
+          if (campo) campo.value = "";
+          return;
+        }
+        fila.remove();
+      });
+    }
+
+    document.addEventListener("submit", function (ev) {
+      var form = ev.target;
+      var aviso = form && form.getAttribute ? form.getAttribute("data-confirm") : null;
+      if (aviso && !window.confirm(aviso)) ev.preventDefault();
+    });
+  })();
+</script>
 {% endblock %}

@@ -1,9 +1,96 @@
 {% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+{% import "components/icons.html" as icons %}
+
+{% block title %}Exportar · {{ proyecto.nombre }}{% endblock %}
+
 {% block contenido %}
-<h1 class="text-2xl font-bold mb-6">Exportación consolidada y auditoría</h1>
-<div class="bg-white rounded shadow p-4 text-sm">
-  <p class="mb-2">{{ n_cruces }} cruces punto-año calculados en el proyecto <strong>{{ proyecto.nombre }}</strong>.</p>
-  <p class="mb-4 text-slate-500">Reconstruye las columnas A1990–A2024 desde el formato largo, con hoja de ternas (A/B/C, resultado, clase final, ficha) para trazabilidad.</p>
-  <a href="/exportar/consolidado.xlsx" class="bg-emerald-700 text-white rounded px-5 py-2">Descargar consolidado .xlsx</a>
-</div>
+{{ ui.page_header(
+  "Exportar",
+  "Consolidado y auditoría"
+) }}
+
+{% set primer_anio = anios[0] if anios else 1990 %}
+{% set ultimo_anio = anios[-1] if anios else 2024 %}
+
+{% if n_cruces == 0 %}
+  {% call ui.card("Exportación no disponible") %}
+    {{ ui.empty(
+      "Todavía no hay cruces para exportar",
+      "El consolidado se habilita cuando las entregas están confirmadas y el sistema calcula los cruces punto-año. Confirme al menos una entrega para generar el archivo.",
+      "Revisar entregas",
+      "/entregas"
+    ) }}
+  {% endcall %}
+{% else %}
+  {% call ui.card(
+    "Alcance de la exportación",
+    "El archivo se genera al momento de la descarga con los últimos cruces calculados del proyecto " ~ proyecto.nombre ~ "."
+  ) %}
+    <ul class="mb-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+      <li class="flex items-center justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2">
+        <span class="text-ink-600">Cruces punto-año</span>
+        <span class="font-semibold tabular">{{ n_cruces }}</span>
+      </li>
+      <li class="flex items-center justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2">
+        <span class="text-ink-600">Hojas incluidas</span>
+        <span class="flex flex-wrap items-center justify-end gap-1">
+          {{ ui.badge("Consolidado", "info") }}
+          {{ ui.badge("Ternas", "info") }}
+        </span>
+      </li>
+      <li class="flex items-center justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2">
+        <span class="text-ink-600">Columnas de años</span>
+        <span class="font-semibold tabular">A{{ primer_anio }}–A{{ ultimo_anio }}</span>
+      </li>
+      <li class="flex items-center justify-between gap-3 rounded-lg border border-line bg-canvas/40 px-3 py-2">
+        <span class="text-ink-600">Formato</span>
+        <span class="font-semibold">.xlsx</span>
+      </li>
+    </ul>
+
+    <div class="mb-5 flex flex-col gap-2 text-xs text-ink-600">
+      <p>
+        <span class="font-medium text-ink-900">Hoja Consolidado:</span>
+        una fila por punto con <span class="tabular">ID_PUNTO</span>, origen, estrato, coordenadas y las columnas
+        <span class="tabular">A{{ primer_anio }}</span>–<span class="tabular">A{{ ultimo_anio }}</span> reconstruidas desde el formato largo.
+      </p>
+      <p>
+        <span class="font-medium text-ink-900">Hoja Ternas:</span>
+        una fila por cruce con las interpretaciones A, B y C, el resultado de la terna, la clase final y la ficha QA/QC asociada, para trazabilidad.
+      </p>
+      <p>
+        Las interpretaciones originales de las entregas no se sobrescriben: el consolidado es una vista derivada y la auditoría conserva cada recálculo.
+      </p>
+    </div>
+
+    <div class="flex flex-col items-start gap-2 border-t border-line pt-5">
+      {{ ui.btn(
+        "Descargar consolidado (.xlsx)",
+        href="/exportar/consolidado.xlsx",
+        icon="download",
+        download=true,
+        data_download=true
+      ) }}
+      <p class="text-xs text-ink-600" hidden role="status" aria-live="polite" data-download-status>
+        Generando el archivo. La descarga comienza en unos segundos.
+      </p>
+      <p class="text-xs text-ink-400">La descarga no modifica datos: solo lee los cruces y las fichas vigentes.</p>
+    </div>
+  {% endcall %}
+{% endif %}
+
+<script>
+/* Estado de espera del botón de descarga (mejora progresiva, sin dependencias). */
+(function () {
+  "use strict";
+  var boton = document.querySelector("[data-download]");
+  if (!boton) return;
+  var estado = document.querySelector("[data-download-status]");
+  boton.addEventListener("click", function () {
+    boton.setAttribute("aria-busy", "true");
+    if (estado) { estado.hidden = false; }
+  });
+})();
+</script>
 {% endblock %}

@@ -1006,3 +1006,87 @@ F2, F4 y F6.1, con commits separados por función.
 - [ ] `docker compose build` produce CSS en la imagen.
 - [ ] `app/static/css/app.css` > 10 KB y < 60 KB.
 - [ ] `docs/qa-accesibilidad.md` completado.
+
+---
+
+## 18. Estado de ejecución
+
+**Fecha de cierre:** 29/10/2026
+
+### Fases completadas
+
+| Fase | Alcance | Estado |
+|---|---|---|
+| 0 | Red de seguridad, baseline e inventario | Completada |
+| 1 | Tokens, build CSS, shell, macros, `error.html`, flash | Completada |
+| 2 | Dashboard, entregas y vista previa | Completada |
+| 3 | Cruces y detalle de cruce | Completada |
+| 4 | QA/QC: lista y ficha en dos columnas | Completada |
+| 5 | Reemplazos, malla, mapa y exportar | Completada |
+| 6 | Resto de vistas y consistencia | Completada |
+| 7 | Calidad: pruebas, accesibilidad estática, Docker y documentación | Completada |
+
+### Verificación ejecutada
+
+- `npm run css:build` genera `app/static/css/app.css` (52 050 bytes; la imagen
+  Docker sirve 47 177 bytes) con las utilidades usadas por las plantillas.
+- Sin referencias a `cdn.tailwindcss.com` en `app/`.
+- `uv run pytest -q`: 129 pruebas en verde (unitarias y de contrato).
+- `uv run pytest -m integration -q`: 104 pruebas en verde contra PostgreSQL en
+  `localhost:5432`.
+- `docker compose build app` y `docker compose up -d app`: contenedor saludable;
+  `/`, `/cruces` y `/qaqc` responden 200 HTML, `/salud` JSON y
+  `/static/css/app.css` 200 `text/css` con contenido no vacío.
+- Informe de accesibilidad en `docs/qa-accesibilidad.md`.
+
+### Desviaciones conocidas
+
+- **Tailwind 4.3.3** fijado en `package.json` y `package-lock.json`; el build se
+  ejecuta con `@tailwindcss/cli` en una etapa Node del Dockerfile.
+- **`@utility tabular`** definida en `input.css` porque el proyecto necesita la
+  utilidad también dentro de `@apply` de los componentes.
+- **Subconsulta escalar** en `persist.listar_cruces` para resolver el `ficha_id`
+  en lugar de un `outerjoin`, evitando duplicar filas si existiera más de una
+  ficha por punto-año.
+- **`punto` y `anio` se reciben como `str`** en el router de cruces y se
+  normalizan con `_entero`; así un filtro vacío no produce 422.
+- **Datos semilla modificados en QA/QC** durante la verificación manual (fichas
+  con evidencias, dictámenes y firmas de prueba). No se revirtieron porque
+  forman parte del expediente de demostración; la estructura y las reglas de
+  negocio no cambiaron.
+- **`/qaqc` no pagina**: muestra todas las fichas ordenadas por trabajo
+  pendiente y antigüedad. El contador "X de Y" se conserva.
+- **Contrato JSON en `/cruces`**: cuando la petición envía
+  `Accept: application/json` la ruta devuelve la página serializada en JSON en
+  lugar de HTML. Se añadió en la fase 7 para conservar el acceso de solo lectura
+  por máquina; el HTML sigue siendo la respuesta por defecto.
+- **`md:grid-cols-4` no existe en el CSS compilado** porque ninguna plantilla la
+  usa; las rejillas de cuatro columnas emplean `xl:grid-cols-4` o
+  `lg:grid-cols-4`.
+- **Tamaño del CSS distinto entre local y Docker** (52 KB vs 47 KB): Tailwind
+  detecta fuentes adicionales en el árbol de trabajo local; el CSS de la imagen
+  es un subconjunto suficiente y contiene todas las clases verificadas.
+- **Aviso de deprecación de Jinja** por `pattern="\d{4}-W\d{2}"` en
+  `entregas.html`; no bloquea el build ni las pruebas y se deja como está para
+  no alterar el atributo renderizado.
+
+### Correcciones de la fase 7
+
+- Campo de evidencias de la ficha QA/QC: `id` único y `<label class="sr-only">`
+  por fila, con actualización del clonado en JavaScript.
+- Indicador "Cambios sin guardar": sustituidas las clases de paleta sueltas por
+  `badge badge--warn`.
+- Nuevas pruebas `tests/test_web_routes.py`, `tests/test_form_contracts.py` y
+  `tests/test_a11y_static.py`; markers de pytest configurados en
+  `pyproject.toml`.
+
+### Pendientes reales
+
+- Revisión manual de accesibilidad: teclado, zoom 200 %, contraste y lectores de
+  pantalla (checklist en `docs/qa-accesibilidad.md`).
+- Lighthouse o `axe-core` sobre `/` y `/qaqc/{id}` (no disponible Chrome en el
+  entorno de cierre).
+- Regresión visual con capturas "antes/después" (`docs/baseline/after/`).
+- Paginación de `/qaqc` cuando el volumen de fichas lo justifique.
+- Migrar `@app.on_event("startup")` al ciclo de vida `lifespan` de FastAPI para
+  eliminar el aviso de deprecación.

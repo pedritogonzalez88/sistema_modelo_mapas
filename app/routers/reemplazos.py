@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -17,6 +19,7 @@ def listar(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "reemplazos.html", {
         "proyecto": proyecto, "filas": filas, "causas": CAUSAS_RESERVA,
         "estados": list(persist.ESTADOS_REEMPLAZO),
+        "now": datetime.now(),
     })
 
 
@@ -29,7 +32,7 @@ def crear(punto_origen: int = Form(...), causa: str = Form(""),
                                           causa or None)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    return RedirectResponse("/reemplazos", status_code=303)
+    return RedirectResponse("/reemplazos?ok=reemplazo_creado", status_code=303)
 
 
 @router.post("/{rid}/proponer")
@@ -42,7 +45,7 @@ def proponer(rid: int, db: Session = Depends(get_db)):
         persist.proponer_reserva(db, proyecto.id, rep.punto_origen)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    return RedirectResponse("/reemplazos", status_code=303)
+    return RedirectResponse("/reemplazos?ok=reserva_propuesta", status_code=303)
 
 
 @router.post("/{rid}/estado")
@@ -51,4 +54,4 @@ def estado(rid: int, nuevo_estado: str = Form(...), db: Session = Depends(get_db
         persist.transicionar_reemplazo(db, rid, nuevo_estado)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    return RedirectResponse("/reemplazos", status_code=303)
+    return RedirectResponse("/reemplazos?ok=reemplazo_estado", status_code=303)

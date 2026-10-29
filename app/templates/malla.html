@@ -1,27 +1,167 @@
 {% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+{% import "components/icons.html" as icons %}
+
+{% block title %}Malla oficial · {{ proyecto.nombre }}{% endblock %}
+
 {% block contenido %}
-<h1 class="text-2xl font-bold mb-1">Malla oficial y metadatos muestrales</h1>
-<p class="text-sm text-slate-500 mb-6">{{ total }} puntos · {{ reservas }} reservas · {{ con_peso }} con peso muestral. Se exige punto_id; opcionales: estrato, origen_anio (1990/2007/2017/2024), peso, x, y, es_reserva.</p>
+{{ ui.page_header(
+  "Malla oficial",
+  "Metadatos muestrales"
+) }}
 
-<div class="bg-white rounded shadow p-4 mb-6">
-  <h2 class="font-semibold mb-3 text-sm">Cargar metadatos (.csv o .xlsx)</h2>
-  <form action="/malla/upload" method="post" enctype="multipart/form-data" class="flex gap-3 items-end text-sm">
-    <input type="file" name="file" accept=".csv,.xlsx" required class="text-xs">
-    <button class="bg-emerald-700 text-white rounded px-4 py-2">Subir</button>
-  </form>
+{# --- KPIs ---------------------------------------------------------------- #}
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  {{ ui.stat("Puntos", total, hint="Puntos oficiales del diseño muestral") }}
+  {{ ui.stat("Reservas", reservas,
+             hint="Puntos de reemplazo habilitados (4.5–4.9)",
+             tone="neutral") }}
+  {{ ui.stat("Con peso muestral", con_peso,
+             hint="Puntos con peso de estrato consolidado",
+             tone="warn" if con_peso < total else "neutral") }}
 </div>
 
-<div class="bg-white rounded shadow p-4">
-<table class="w-full text-sm">
-  <thead><tr class="text-left text-slate-500 border-b"><th>Punto</th><th>Estrato</th><th>Origen</th><th>Peso</th><th>Reserva</th><th>Activo</th></tr></thead>
-  <tbody>
-  {% for m in muestra %}
-    <tr class="border-b hover:bg-slate-50"><td>{{ m.punto_id }}</td><td>{{ m.estrato or "—" }}</td><td>{{ m.origen_anio or "—" }}</td><td>{{ m.peso or "—" }}</td><td>{{ "sí" if m.es_reserva else "—" }}</td><td>{{ "sí" if m.activo else "no" }}</td></tr>
-  {% else %}
-    <tr><td colspan="6" class="py-4 text-center text-slate-400">Malla vacía: se puebla con las entregas o con esta carga.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
-<p class="text-xs text-slate-400 mt-2">Primeros 100 puntos.</p>
-</div>
+{# --- Carga de metadatos -------------------------------------------------- #}
+<section id="cargar-malla" class="card mb-6" aria-labelledby="titulo-carga-malla">
+  <header class="card__header">
+    <h2 class="card__title" id="titulo-carga-malla">Cargar metadatos de la malla</h2>
+    <p class="card__subtitle">La carga actualiza los metadatos del punto; nunca crea puntos ad-hoc ni modifica las interpretaciones de las entregas.</p>
+  </header>
+  <div class="card__body">
+    <form action="/malla/upload" method="post" enctype="multipart/form-data" class="flex flex-col gap-5">
+      <div class="rounded-card border border-dashed border-line bg-canvas/40 p-4">
+        <label class="field__label" for="campo-file-malla">Archivo de la malla</label>
+        <p class="field__hint" id="hint-file-malla">
+          Arrastre el archivo sobre el selector o haga clic para elegirlo. Formatos admitidos: .csv o .xlsx.
+        </p>
+        <input class="input mt-2" id="campo-file-malla" name="file" type="file"
+               accept=".csv,.xlsx" required aria-describedby="hint-file-malla">
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="lg:col-span-2">
+          <p class="field__label">Columnas esperadas</p>
+          <ul class="mt-1 flex flex-col gap-1 text-xs text-ink-600">
+            <li><code class="font-semibold text-ink-900">punto_id</code> obligatorio: ID_PUNTO oficial.</li>
+            <li><code class="font-semibold text-ink-900">estrato</code>: nombre del estrato del diseño muestral.</li>
+            <li><code class="font-semibold text-ink-900">origen_anio</code>: 1990, 2007, 2017 o 2024.</li>
+            <li><code class="font-semibold text-ink-900">peso</code>: peso muestral del estrato (0–1).</li>
+            <li><code class="font-semibold text-ink-900">x</code> y <code class="font-semibold text-ink-900">y</code>: coordenadas en WGS 84.</li>
+            <li><code class="font-semibold text-ink-900">es_reserva</code>: 1 o 0 para marcar el punto de reserva.</li>
+          </ul>
+        </div>
+        <div class="flex flex-col items-start gap-2 lg:items-end">
+          <p class="field__label lg:text-right">Plantilla de ejemplo</p>
+          <p class="field__hint lg:text-right">Tres filas coherentes con el esquema, listas para reemplazar por los datos reales.</p>
+          {{ ui.btn("Descargar plantilla CSV", href="/static/plantillas/malla.csv",
+                    variant="secondary", size="sm", icon="download", download=true) }}
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        {{ ui.btn("Subir metadatos", icon="upload", type="submit") }}
+      </div>
+    </form>
+  </div>
+</section>
+
+{# --- Búsqueda ------------------------------------------------------------ #}
+<form method="get" action="/malla" class="card mb-4" aria-label="Buscar puntos de la malla">
+  <div class="card__body grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="field lg:col-span-2">
+      <label class="field__label" for="f-q">Punto o estrato</label>
+      <input class="input" id="f-q" name="q" type="search" value="{{ q }}"
+             placeholder="1234 o Bosque Atlántico"
+             aria-describedby="f-q-hint" autocomplete="off">
+      <p class="field__hint" id="f-q-hint">Un número busca el punto exacto; un texto busca en el nombre del estrato.</p>
+    </div>
+    <div class="field">
+      <label class="field__label" for="f-per-page">Filas por página</label>
+      <select class="select" id="f-per-page" name="per_page">
+        {% for n in [25, 50, 100] %}
+        <option value="{{ n }}"{% if per_page == n %} selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {{ ui.btn("Buscar", variant="secondary", icon="search", type="submit") }}
+      {{ ui.btn("Limpiar", href="/malla", variant="ghost") }}
+    </div>
+  </div>
+</form>
+
+{# --- Tabla --------------------------------------------------------------- #}
+<section class="card" aria-labelledby="titulo-puntos-malla">
+  <header class="card__header">
+    <h2 class="card__title" id="titulo-puntos-malla">Puntos de la malla</h2>
+    <p class="card__subtitle">
+      {% if q %}
+        Búsqueda «{{ q }}»: {{ total_filtrado }} punto{{ "" if total_filtrado == 1 else "s" }} de {{ total }}.
+      {% else %}
+        {{ total }} punto{{ "" if total == 1 else "s" }} en el proyecto.
+      {% endif %}
+    </p>
+  </header>
+  <div class="card__body">
+    {% if muestra %}
+      {% set inicio = (page - 1) * per_page + 1 %}
+      {% set hasta = inicio + muestra|length - 1 %}
+      {% call ui.table_wrap("Puntos de la malla oficial") %}
+        <table class="table">
+          <caption class="sr-only">Puntos de la malla oficial ordenados por identificador, con estrato, origen, peso, reserva y estado.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Punto</th>
+              <th scope="col">Estrato</th>
+              <th scope="col">Origen</th>
+              <th scope="col">Peso</th>
+              <th scope="col">Reserva</th>
+              <th scope="col">Activo</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for m in muestra %}
+            <tr>
+              <td class="tabular whitespace-nowrap">{{ m.punto_id }}</td>
+              <td>{{ m.estrato or "—" }}</td>
+              <td class="tabular whitespace-nowrap">
+                {% if m.origen_anio %}{{ m.origen_anio }}
+                {% elif m.origen %}{{ m.origen }}
+                {% else %}<span class="text-ink-400">—</span>{% endif %}
+              </td>
+              <td class="tabular whitespace-nowrap">
+                {% if m.peso is not none %}{{ "%.4f"|format(m.peso) }}{% else %}<span class="text-ink-400">—</span>{% endif %}
+              </td>
+              <td>
+                {% if m.es_reserva %}{{ ui.badge("Reserva", "ok") }}{% else %}{{ ui.badge("Principal", "neutral") }}{% endif %}
+              </td>
+              <td>
+                {% if m.activo %}{{ ui.badge("Activo", "ok") }}{% else %}{{ ui.badge("Inactivo", "neutral") }}{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% endcall %}
+      {{ ui.pagination(page, pages, request) }}
+      <p class="text-xs text-ink-600">
+        Mostrando {{ inicio }}–{{ hasta }} de {{ total_filtrado }}{% if q %} con la búsqueda aplicada{% endif %}.
+      </p>
+    {% elif q %}
+      {{ ui.empty(
+        "Ningún punto coincide con la búsqueda",
+        "Pruebe con otro número de punto o con parte del nombre del estrato; también puede limpiar la búsqueda.",
+        "Limpiar búsqueda",
+        "/malla"
+      ) }}
+    {% else %}
+      {{ ui.empty(
+        "La malla está vacía",
+        "Cargue el archivo de metadatos de la malla oficial para habilitar el contraste de coordenadas y la selección de reservas.",
+        "Cargar metadatos",
+        "#cargar-malla"
+      ) }}
+    {% endif %}
+  </div>
+</section>
 {% endblock %}

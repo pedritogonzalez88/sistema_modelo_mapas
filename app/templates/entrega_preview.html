@@ -1,33 +1,207 @@
 {% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+{% import "components/icons.html" as icons %}
+
+{% block title %}Entrega #{{ entrega.id }} · {{ proyecto.nombre if proyecto is defined and proyecto else "Validador EET" }}{% endblock %}
+
 {% block contenido %}
-<h1 class="text-2xl font-bold mb-1">Vista previa · entrega #{{ entrega.id }}</h1>
-<p class="text-sm text-slate-500 mb-6">Asistente {{ entrega.asistente_letra }} · semana {{ entrega.semana }} · {{ entrega.tipo }} · v{{ entrega.version }}</p>
+{% set n_actualizados = n_total - n_nuevos %}
+{% set n_errores = detalle.errores or 0 %}
 
-<div class="grid md:grid-cols-3 gap-4 mb-6">
-  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Cruces punto-año detectados</div><div class="text-3xl font-bold">{{ n_total }}</div></div>
-  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Nuevos (sin cruce previo)</div><div class="text-3xl font-bold text-sky-700">{{ n_nuevos }}</div></div>
-  <div class="bg-white rounded shadow p-4"><div class="text-xs text-slate-500">Errores</div><div class="text-3xl font-bold {% if detalle.errores %}text-red-600{% endif %}">{{ detalle.errores or 0 }}</div></div>
-</div>
-<p class="text-sm mb-4">{{ detalle.nota }}</p>
+{{ ui.page_header(
+  "Vista previa · entrega #" ~ entrega.id,
+  "Evaluadora " ~ entrega.asistente_letra ~ " · semana " ~ entrega.semana ~ " · " ~ entrega.tipo ~ " · versión " ~ entrega.version
+) }}
 
-{% if errores %}
-<div class="bg-white rounded shadow p-4 mb-6">
-  <h2 class="font-semibold mb-2 text-red-700">Primeros errores (máx. 50)</h2>
-  <ul class="text-xs space-y-1 max-h-64 overflow-auto">
-  {% for e in errores %}
-    <li class="border-b py-1"><span class="font-mono bg-slate-100 px-1 rounded">{{ e.tipo }}</span> {{ e.mensaje }}</li>
-  {% endfor %}
-  </ul>
+<div class="mb-4">
+  {{ ui.stepper(["Archivo", "Validación", "Confirmar"], 2) }}
 </div>
-{% endif %}
 
-<div class="flex gap-3">
-  <form action="/entregas/{{ entrega.id }}/confirm" method="post">
-    <button class="bg-emerald-700 text-white rounded px-5 py-2 text-sm">Confirmar y cruzar</button>
-  </form>
-  <form action="/entregas/{{ entrega.id }}/reject" method="post" class="flex gap-2">
-    <input name="motivo" placeholder="Motivo del rechazo" class="border rounded px-2 py-2 text-sm w-64">
-    <button class="bg-white border border-red-300 text-red-700 rounded px-4 py-2 text-sm">Rechazar (se conserva como evidencia)</button>
-  </form>
+<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+  {# --- Archivo ------------------------------------------------------- #}
+  {% call ui.card("Archivo", "Original recibido, conservado con su huella SHA-256.") %}
+    <dl class="flex flex-col gap-3 text-sm">
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Nombre</dt>
+        <dd class="mt-0.5 break-all font-medium" title="{{ entrega.archivo_path }}">{{ nombre_archivo }}</dd>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Tamaño</dt>
+          <dd class="mt-0.5 tabular">
+            {%- if tamano is none %}No disponible
+            {%- elif tamano >= 1048576 %}{{ "%.2f"|format(tamano / 1048576) }} MB
+            {%- elif tamano >= 1024 %}{{ "%.1f"|format(tamano / 1024) }} KB
+            {%- else %}{{ tamano }} B{% endif -%}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Recibida</dt>
+          <dd class="mt-0.5 tabular">{{ entrega.recibida_en.strftime("%d/%m/%Y %H:%M") if entrega.recibida_en else "—" }}</dd>
+        </div>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">SHA-256 (16 primeros caracteres)</dt>
+        <dd class="mt-1 flex flex-wrap items-center gap-2">
+          <code class="rounded-md bg-canvas px-2 py-1 font-mono text-xs" title="{{ entrega.sha256 }}">{{ sha_corto }}</code>
+          <button type="button" class="btn btn--secondary btn--sm" data-copy="{{ sha_corto }}">
+            {{ icons.icon("file", "w-3.5 h-3.5") }}<span data-copy-label>Copiar</span>
+          </button>
+        </dd>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Semana</dt>
+          <dd class="mt-0.5 tabular">{{ entrega.semana }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Tipo</dt>
+          <dd class="mt-0.5">{{ entrega.tipo|capitalize }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Versión</dt>
+          <dd class="mt-0.5 tabular">v{{ entrega.version }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Estado</dt>
+          <dd class="mt-1">
+            {% set tono_estado = "ok" if entrega.estado == "aceptada" else ("danger" if entrega.estado == "rechazada" else "warn") %}
+            {{ ui.badge(entrega.estado|capitalize, tono_estado) }}
+          </dd>
+        </div>
+      </div>
+    </dl>
+  {% endcall %}
+
+  {# --- Resumen de la validación -------------------------------------- #}
+  {% call ui.card("Validación del contenido", "Resultado de leer el archivo antes de tocar los cruces.") %}
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {{ ui.stat("Cruces detectados", n_total, hint="Pares punto-año leídos del archivo") }}
+      {{ ui.stat("Nuevos", n_nuevos, hint="Sin cruce previo en el proyecto", tone="info" if n_nuevos else "neutral") }}
+      {{ ui.stat("Actualizados", n_actualizados, hint="Pares punto-año que ya existían") }}
+      {{ ui.stat("Errores", n_errores, hint="Filas descartadas en la validación",
+                tone="danger" if n_errores else "neutral") }}
+    </div>
+    {% if detalle.nota %}
+    <p class="mt-4 text-xs text-ink-600">{{ detalle.nota }}</p>
+    {% endif %}
+  {% endcall %}
 </div>
+
+{# --- Errores de validación --------------------------------------------- #}
+<section class="mb-6" aria-labelledby="errores-validacion">
+  <h2 class="mb-2 text-base font-semibold" id="errores-validacion">Errores de validación</h2>
+  {% if errores %}
+    {% call ui.table_wrap("Errores de validación") %}
+      <table class="table">
+        <caption>
+          Se muestran {{ errores|length }} de {{ n_errores }} error{{ "" if n_errores == 1 else "es" }}.
+          Los cruces con errores no se confirmarán.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" class="w-56">Tipo</th>
+            <th scope="col">Mensaje</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for e in errores %}
+          <tr>
+            <td><code class="rounded bg-canvas px-1.5 py-0.5 font-mono text-xs">{{ e.tipo }}</code></td>
+            <td>{{ e.mensaje }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endcall %}
+  {% else %}
+    {{ ui.banner("ok", "Sin errores de validación.") }}
+  {% endif %}
+</section>
+
+{# --- Acciones ----------------------------------------------------------- #}
+<div class="sticky bottom-0 z-20 -mx-4 border-t border-line bg-white/95 px-4 py-3 backdrop-blur lg:-mx-6 lg:px-6">
+  <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <form action="/entregas/{{ entrega.id }}/confirm" method="post" class="flex flex-wrap items-center gap-3">
+      {{ ui.btn("Confirmar y cruzar", icon="check", type="submit") }}
+      <p class="max-w-sm text-xs text-ink-600">Al confirmar, la entrega queda aceptada y se recalculan los cruces de la terna. Las interpretaciones originales no se sobrescriben.</p>
+    </form>
+
+    <form action="/entregas/{{ entrega.id }}/reject" method="post"
+          class="flex flex-col gap-2 sm:flex-row sm:items-end" data-reject-form>
+      <div class="w-full sm:w-72">
+        {{ ui.field("Motivo del rechazo", "motivo",
+                    placeholder="Explique el motivo del rechazo",
+                    hint="Queda registrado en la auditoría de la entrega.",
+                    required=True, autocomplete="off") }}
+      </div>
+      {{ ui.btn("Rechazar", variant="danger", type="submit") }}
+    </form>
+  </div>
+  <p class="mt-2 text-xs text-ink-600">Una entrega rechazada conserva su archivo y su huella SHA-256 como evidencia; no se elimina del proyecto.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* Copiar el hash corto: mejora progresiva, sin dependencias. */
+  document.querySelectorAll("[data-copy]").forEach(function (boton) {
+    boton.addEventListener("click", function () {
+      var texto = boton.getAttribute("data-copy") || "";
+      var etiqueta = boton.querySelector("[data-copy-label]");
+      function avisa(mensaje) {
+        if (!etiqueta) return;
+        var original = "Copiar";
+        etiqueta.textContent = mensaje;
+        window.setTimeout(function () { etiqueta.textContent = original; }, 2000);
+      }
+      function respaldo() {
+        var area = document.createElement("textarea");
+        area.value = texto;
+        area.setAttribute("readonly", "");
+        area.style.position = "absolute";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        try {
+          document.execCommand("copy");
+          avisa("Copiado");
+        } catch (e) {
+          avisa("No disponible");
+        }
+        document.body.removeChild(area);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(function () { avisa("Copiado"); }, respaldo);
+      } else {
+        respaldo();
+      }
+    });
+  });
+
+  /* Rechazo: el motivo es obligatorio y la acción pide confirmación. */
+  var form = document.querySelector("[data-reject-form]");
+  if (!form) return;
+  var motivo = form.querySelector('[name="motivo"]');
+  if (motivo) {
+    motivo.addEventListener("input", function () {
+      if (motivo.value.trim()) motivo.removeAttribute("aria-invalid");
+    });
+  }
+  form.addEventListener("submit", function (ev) {
+    if (motivo && !motivo.value.trim()) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      motivo.setAttribute("aria-invalid", "true");
+      motivo.focus();
+      return;
+    }
+    if (!window.confirm("¿Rechazar la entrega #{{ entrega.id }}? El archivo se conservará como evidencia.")) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+  });
+})();
+</script>
 {% endblock %}

@@ -21,7 +21,8 @@ def pagina(request: Request, db: Session = Depends(get_db)):
     n = db.scalar(select(func.count()).select_from(ResultadoCruce).where(
         ResultadoCruce.proyecto_id == proyecto.id)) or 0
     return templates.TemplateResponse(request, "exportar.html",
-                                       {"proyecto": proyecto, "n_cruces": n})
+                                       {"proyecto": proyecto, "n_cruces": n,
+                                        "anios": _ANIOS})
 
 
 @router.get("/consolidado.xlsx")

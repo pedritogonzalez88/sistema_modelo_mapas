@@ -1,27 +1,144 @@
 {% extends "base.html" %}
+{% import "components/ui.html" as ui %}
+{% import "components/icons.html" as icons %}
+
+{% block title %}Punto {{ punto }} · año {{ anio }} · Cruces · Validador EET{% endblock %}
+
+{% set TONOS = {"unanimidad": "ok", "mayoria": "info",
+                "discrepancia": "danger", "incompleto": "warn"} %}
+{% set ETIQUETAS = {"unanimidad": "Unanimidad", "mayoria": "Mayoría 2/3",
+                    "discrepancia": "Discrepancia absoluta", "incompleto": "Incompleto"} %}
+{% set TEXTO_RESULTADO = {
+  "unanimidad": "Las tres evaluadoras registraron la misma clase: la terna es unánime.",
+  "mayoria": "Dos de las tres evaluadoras coinciden: la clase consolidada surge de la mayoría.",
+  "discrepancia": "Las tres evaluadoras registraron clases distintas: la terna requiere ficha QA/QC.",
+  "incompleto": "Faltan interpretaciones de origen: la terna no puede consolidarse todavía."
+} %}
+
 {% block contenido %}
-<h1 class="text-2xl font-bold mb-1">Punto {{ punto }} · año {{ anio }}</h1>
-<p class="text-sm text-slate-500 mb-6">Resultado: <strong>{{ cruce.resultado }}</strong> · regla {{ cruce.regla_version }} · clase consolidada: <strong>{{ cruce.clase_consolidada or "—" }}</strong></p>
+{# `return_to` llega validado del router; se vuelve a comprobar aquí para no
+   generar nunca un destino protocol-relative ("//dominio") en el HTML. #}
+{% set volver = return_to if return_to and return_to.startswith("/") and not return_to.startswith("//") else "/cruces" %}
+{% set tono = TONOS.get(cruce.resultado, "neutral") %}
+{% set etiqueta = ETIQUETAS.get(cruce.resultado, cruce.resultado) %}
 
-<div class="bg-white rounded shadow p-4 mb-4">
-  <h2 class="font-semibold mb-2">Interpretaciones de origen (no modificables)</h2>
-  <table class="w-full text-sm">
-    <thead><tr class="text-left text-slate-500 border-b"><th>Asistente</th><th>Clase</th><th>Entrega</th><th>Semana / versión</th></tr></thead>
-    <tbody>
-    {% for o in origen %}
-      <tr class="border-b"><td>{{ o.letra }}</td><td class="font-semibold">{{ o.clase if o.clase is not none else "— (ausencia)" }}</td>
-      <td>{% if o.entrega %}#{{ o.entrega.id }} <span class="text-xs text-slate-500">sha {{ o.entrega.sha }}</span>{% else %}—{% endif %}</td>
-      <td>{% if o.entrega %}{{ o.entrega.semana }} / v{{ o.entrega.version }}{% else %}—{% endif %}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+{% call ui.page_header(
+  "Punto " ~ punto ~ " · año " ~ anio,
+  "Cruce calculado a partir de las interpretaciones de origen, no modificables.",
+  breadcrumb=[{"label": "Cruces", "href": volver},
+              "Punto " ~ punto,
+              {"label": anio|string}]
+) %}
+  {{ ui.btn("Volver a cruces", href=volver, variant="secondary", size="sm") }}
+{% endcall %}
+
+{# --- Banner de resultado ------------------------------------------------ #}
+<section class="banner banner--{{ tono }} mb-6"
+         role="{{ 'alert' if tono in ('warn', 'danger') else 'status' }}"
+         aria-label="Resultado del cruce">
+  <span class="banner__icon" aria-hidden="true">
+    {{ icons.icon("check" if tono == "ok" else ("alert" if tono in ("warn", "danger") else "info"), "w-5 h-5") }}
+  </span>
+  <div class="banner__text flex flex-col gap-2">
+    <p class="font-semibold">{{ etiqueta }}</p>
+    <p class="text-sm">{{ TEXTO_RESULTADO.get(cruce.resultado, "Resultado registrado por el motor de cruces.") }}</p>
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <span class="inline-flex items-center gap-2">
+        Clase consolidada
+        {% if cruce.clase_consolidada is not none %}{{ ui.chip_clase(cruce.clase_consolidada) }}
+        {% else %}<span class="text-ink-600">— (sin consolidar)</span>{% endif %}
+      </span>
+      <span>Regla aplicada: <span class="tabular font-medium">{{ cruce.regla_version }}</span></span>
+    </div>
+  </div>
+</section>
+
+{# --- Interpretaciones de origen (A, B, C) ------------------------------- #}
+<h2 class="mb-2 text-base font-semibold">Interpretaciones de origen (no modificables)</h2>
+<p class="mb-3 text-sm text-ink-600">
+  Cada tarjeta reproduce lo registrado por la evaluadora en la entrega aceptada. La validación
+  temática no altera estas clases: solo las compara y, si hay discrepancia absoluta, abre una ficha QA/QC.
+</p>
+
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  {% for o in origen %}
+  {% call ui.card("Evaluadora " ~ o.letra) %}
+    <dl class="flex flex-col gap-2 text-sm">
+      <div class="flex items-center justify-between gap-3">
+        <dt class="text-ink-600">Clase</dt>
+        <dd class="text-right">
+          {% if o.clase is not none %}{{ ui.chip_clase(o.clase) }}
+          {% else %}<span class="text-ink-600">— (ausencia)</span>{% endif %}
+        </dd>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <dt class="text-ink-600">Entrega</dt>
+        <dd class="tabular text-right">
+          {% if o.entrega %}#{{ o.entrega.id }}{% else %}<span class="text-ink-400">—</span>{% endif %}
+        </dd>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <dt class="text-ink-600">Semana / versión</dt>
+        <dd class="tabular text-right">
+          {% if o.entrega %}{{ o.entrega.semana }} · v{{ o.entrega.version }}{% else %}<span class="text-ink-400">—</span>{% endif %}
+        </dd>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <dt class="text-ink-600">Hash</dt>
+        <dd class="text-right">
+          {% if o.entrega %}<code class="rounded bg-canvas px-1.5 py-0.5 text-xs">{{ o.entrega.sha }}</code>
+          {% else %}<span class="text-ink-400">—</span>{% endif %}
+        </dd>
+      </div>
+    </dl>
+  {% endcall %}
+  {% endfor %}
 </div>
 
+{# --- Ficha QA/QC asociada ----------------------------------------------- #}
 {% if ficha %}
-<div class="bg-amber-50 border border-amber-200 rounded p-4 text-sm">
-  Ficha QA/QC <a class="underline font-semibold" href="/qaqc/{{ ficha.id }}">#{{ ficha.id }}</a> · estado {{ ficha.estado }}
-</div>
+{% call ui.card("Ficha QA/QC", "Expediente de resolución de la discrepancia absoluta de esta terna.") %}
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <dl class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+      <div class="flex items-center gap-2">
+        <dt class="text-ink-600">Ficha</dt>
+        <dd><a class="font-medium text-brand-700 underline-offset-2 hover:underline tabular"
+               href="/qaqc/{{ ficha.id }}">#{{ ficha.id }}</a></dd>
+      </div>
+      <div class="flex items-center gap-2">
+        <dt class="text-ink-600">Estado</dt>
+        <dd>
+          {% if ficha.estado in ("Resuelto por consenso", "Reemplazo completado") %}
+            {{ ui.badge(ficha.estado, "ok") }}
+          {% elif ficha.estado == "En revisión" %}
+            {{ ui.badge(ficha.estado, "info") }}
+          {% else %}
+            {{ ui.badge(ficha.estado, "warn") }}
+          {% endif %}
+        </dd>
+      </div>
+      <div class="flex items-center gap-2">
+        <dt class="text-ink-600">Dictamen</dt>
+        <dd>
+          {% if ficha.dictamen == "consenso" %}Consenso técnico
+          {% elif ficha.dictamen == "sin_consenso" %}Sin consenso
+          {% else %}<span class="text-ink-400">pendiente</span>{% endif %}
+        </dd>
+      </div>
+    </dl>
+    {{ ui.btn("Abrir ficha", href="/qaqc/" ~ ficha.id, variant="primary", size="sm") }}
+  </div>
+{% endcall %}
 {% else %}
-<p class="text-sm text-slate-500">Sin ficha QA/QC asociada.</p>
+{% call ui.card("Ficha QA/QC") %}
+  <p class="text-sm text-ink-600">
+    Sin ficha QA/QC asociada. Se abre automáticamente cuando la terna presenta tres clases distintas
+    (discrepancia absoluta) y exige dictamen de la supervisión.
+  </p>
+{% endcall %}
 {% endif %}
+
+<div class="mt-6">
+  {{ ui.btn("Volver a cruces", href=volver, variant="secondary", size="sm") }}
+</div>
 {% endblock %}
