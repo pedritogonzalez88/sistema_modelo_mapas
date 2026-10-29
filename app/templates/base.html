@@ -1,32 +1,37 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ proyecto.nombre if proyecto is defined else "EET" }} · Validador EET</title>
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ proyecto.nombre if proyecto is defined and proyecto else "EET" }} · Validador EET{% endblock %}</title>
+  <meta name="description" content="{% block description %}Validación de exactitud temática (EET) de la AEP: interpretaciones originales, cruce calculado y dictamen QA/QC con trazabilidad completa.{% endblock %}">
+  <meta name="theme-color" content="#0B3B2E">
+  <link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
+  {# Marca de "JS disponible": el CSS degrada drawer y controles sin JS #}
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  {% block head %}{% endblock %}
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen">
-<header class="bg-emerald-900 text-white">
-  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-6">
-    <span class="font-bold text-lg">Validador EET · AEP</span>
-    <nav class="flex gap-4 text-sm">
-      <a class="hover:underline" href="/">Dashboard</a>
-      <a class="hover:underline" href="/entregas">Entregas</a>
-      <a class="hover:underline" href="/cruces">Cruces</a>
-      <a class="hover:underline" href="/qaqc">QA/QC</a>
-      <a class="hover:underline" href="/reemplazos">Reemplazos</a>
-      <a class="hover:underline" href="/malla">Malla</a>
-      <a class="hover:underline" href="/mapa">Mapa</a>
-      <a class="hover:underline" href="/exportar">Exportar</a>
-    </nav>
+<body class="min-h-screen">
+{%- import "components/ui.html" as ui %}
+<a href="#contenido"
+   class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-brand-900 focus:shadow">
+  Saltar al contenido
+</a>
+
+{% include "components/shell.html" %}
+
+<main id="contenido" class="lg:pl-64">
+  <div class="mx-auto max-w-[1400px] px-4 py-6 lg:px-6">
+    {%- set f = flash(request) if flash is defined else None %}
+    {%- if f %}
+    <div class="mb-4">{{ ui.banner(f.tone, f.text) }}</div>
+    {%- endif %}
+    {% block breadcrumb %}{% endblock %}
+    {% block contenido %}{% endblock %}
   </div>
-</header>
-<main class="max-w-6xl mx-auto px-4 py-6">
-{% block contenido %}{% endblock %}
 </main>
-<footer class="max-w-6xl mx-auto px-4 pb-8 text-xs text-slate-500">
-  Trazabilidad: interpretaciones originales · cruce calculado · dictamen QA/QC — la clase consolidada nunca sobrescribe los originales.
-</footer>
+
+<script src="{{ url_for('static', path='js/app.js') }}" defer></script>
 </body>
 </html>
