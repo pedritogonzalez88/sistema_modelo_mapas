@@ -1,6 +1,7 @@
 from datetime import date, datetime
+from math import ceil
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
@@ -22,6 +23,11 @@ ESTADOS_CERRADOS = {"Resuelto por consenso", "Reemplazo completado"}
 # persist.transicionar_ficha al aprobar, para que el usuario lea lo mismo en
 # el formulario y en la transición.
 MENSAJE_CLASE_REQUERIDA = "Para cerrar por consenso se exige una clase definitiva 1–9."
+
+# Tamaños de página ofrecidos en la lista. Cualquier otro valor cae a 50 para no
+# permitir consultas arbitrariamente grandes desde la URL.
+PER_PAGE_OPCIONES = (25, 50, 100)
+PER_PAGE_DEFECTO = 50
 
 
 def _eventos_disponibles(ficha: FichaQAQC) -> list[str]:
@@ -57,14 +63,42 @@ def _valores_enviados(form, evidencias: list[str]) -> dict:
 
 
 @router.get("", response_class=HTMLResponse)
-def listar(request: Request, estado: str | None = None, db: Session = Depends(get_db)):
+def listar(request: Request, estado: str | None = None,
+           page: int = Query(1), per_page: int = Query(PER_PAGE_DEFECTO),
+           db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
-    q = select(FichaQAQC).where(FichaQAQC.proyecto_id == proyecto.id)
+
+    if per_page not in PER_PAGE_OPCIONES:
+        per_page = PER_PAGE_DEFECTO
+
+    cond = [FichaQAQC.proyecto_id == proyecto.id]
     if estado:
-        q = q.where(FichaQAQC.estado == estado)
-    # Prioridad: primero las fichas que aún exigen trabajo, luego por antigüedad.
-    prioridad = case((FichaQAQC.estado.in_(ESTADOS_CERRADOS), 1), else_=0)
-    fichas = db.scalars(q.order_by(prioridad, FichaQAQC.creada_en.asc())).all()
+        cond.append(FichaQAQC.estado == estado)
+
+    # El total filtrado manda en el contador "X–Y de N" y en el número de
+    # páginas. Los conteos de los chips son globales (sin el filtro de estado)
+    # para que el usuario vea siempre la distribución completa del proyecto.
+    total_filtrado = db.scalar(
+        select(func.count()).select_from(FichaQAQC).where(*cond)
+    ) or 0
+    pages = max(1, ceil(total_filtrado / per_page))
+
+    # Decisión: una página fuera de rango se acota a la última disponible en
+    # lugar de devolver una tabla vacía. Así `?page=999` —o el salto que puede
+    # provocar cambiar el tamaño de página— sigue mostrando fichas y el
+    # contador "X–Y de N" es coherente con lo que se ve.
+    page = min(max(page, 1), pages)
+
+    rows = (
+        select(FichaQAQC)
+        .where(*cond)
+        # Prioridad: primero las fichas que aún exigen trabajo, luego por antigüedad.
+        .order_by(case((FichaQAQC.estado.in_(ESTADOS_CERRADOS), 1), else_=0),
+                  FichaQAQC.creada_en.asc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    fichas = db.scalars(rows).all()
 
     hoy = datetime.now()
     filas = [
@@ -78,13 +112,16 @@ def listar(request: Request, estado: str | None = None, db: Session = Depends(ge
         .where(FichaQAQC.proyecto_id == proyecto.id)
         .group_by(FichaQAQC.estado)
     ).all())
-    total = sum(conteos.values())
 
     return templates.TemplateResponse(request, "qaqc_list.html", {
         "proyecto": proyecto,
         "filas": filas,
         "conteos": conteos,
-        "total": total,
+        "total_filtrado": total_filtrado,
+        "page": page,
+        "pages": pages,
+        "per_page": per_page,
+        "per_page_opciones": PER_PAGE_OPCIONES,
         "f_estado": estado or "",
         "estados": [e.value for e in EstadoQAQC],
     })

@@ -27,16 +27,29 @@
 {% block contenido %}
 {{ ui.page_header("Fichas QA/QC", "Resolución de discrepancias absolutas") }}
 
+{#
+  URL de la vista con el filtro de estado indicado. Conserva el tamaño de página
+  y no arrastra `page`: cambiar de filtro debe volver a la primera página.
+#}
+{% macro url_estado(nuevo_estado=None) -%}
+{%- set partes = [] -%}
+{%- if nuevo_estado %}{% set _ = partes.append("estado=" ~ (nuevo_estado|urlencode)) %}{% endif -%}
+{%- if per_page != 50 %}{% set _ = partes.append("per_page=" ~ (per_page|string)) %}{% endif -%}
+{{- "/qaqc" ~ ("?" ~ partes|join("&")) if partes else "/qaqc" -}}
+{%- endmacro %}
+
+{% set total_proyecto = conteos.values()|sum %}
+
 <nav class="mb-4 flex flex-wrap gap-2" aria-label="Filtrar fichas por estado">
-  <a href="/qaqc"
+  <a href="{{ url_estado() }}"
      class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium {{ 'border-brand-700 bg-brand-700 text-white' if not f_estado else 'border-line bg-white text-ink-700 hover:bg-canvas' }}"
-     {% if not f_estado %}aria-current="true"{% endif %}>
-    Todas <span class="tabular {{ 'text-brand-100' if not f_estado else 'text-ink-600' }}">{{ total }}</span>
+     {% if not f_estado %}aria-current="page"{% endif %}>
+    Todas <span class="tabular {{ 'text-brand-100' if not f_estado else 'text-ink-600' }}">{{ total_proyecto }}</span>
   </a>
   {% for e in estados %}
-  <a href="/qaqc?estado={{ e|urlencode }}"
+  <a href="{{ url_estado(e) }}"
      class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium {{ 'border-brand-700 bg-brand-700 text-white' if f_estado == e else 'border-line bg-white text-ink-700 hover:bg-canvas' }}"
-     {% if f_estado == e %}aria-current="true"{% endif %}>
+     {% if f_estado == e %}aria-current="page"{% endif %}>
     {{ e }} <span class="tabular {{ 'text-brand-100' if f_estado == e else 'text-ink-600' }}">{{ conteos.get(e, 0) }}</span>
   </a>
   {% endfor %}
@@ -73,7 +86,7 @@
     {% set valores = f.valores_iniciales if f.valores_iniciales is mapping else {} %}
     <tr>
       <td class="whitespace-nowrap">
-        <a class="font-medium text-brand-700 underline-offset-2 hover:underline" href="/qaqc/{{ f.id }}">#{{ f.id }}</a>
+        <a class="font-medium text-brand-700 underline underline-offset-2 hover:text-brand-900" href="/qaqc/{{ f.id }}">#{{ f.id }}</a>
       </td>
       <td class="whitespace-nowrap">
         <span class="tabular">{{ f.punto_id }}</span>
@@ -115,8 +128,26 @@
   </tbody>
 </table>
 {% endcall %}
-<p class="mt-3 text-xs text-ink-600">
-  {{ filas|length }} de {{ total }} fichas{% if f_estado %} · filtro: {{ f_estado }}{% endif %}.
-</p>
+
+{% set desde = (page - 1) * per_page + 1 %}
+{% set hasta = desde + filas|length - 1 %}
+
+<div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+  <p class="tabular text-xs text-ink-600">
+    Mostrando {{ desde }}–{{ hasta }} de {{ total_filtrado }} {{ "ficha" if total_filtrado == 1 else "fichas" }}
+    {%- if f_estado %} · filtro: {{ f_estado }}{% endif %}.
+  </p>
+  <form method="get" action="/qaqc" class="flex items-center gap-2">
+    {% if f_estado %}<input type="hidden" name="estado" value="{{ f_estado }}">{% endif %}
+    <label class="text-xs text-ink-600" for="fichas-por-pagina">Filas por página</label>
+    <select class="select w-24" id="fichas-por-pagina" name="per_page">
+      {% for opcion in per_page_opciones %}
+      <option value="{{ opcion }}"{% if opcion == per_page %} selected{% endif %}>{{ opcion }}</option>
+      {% endfor %}
+    </select>
+    {{ ui.btn("Aplicar", variant="secondary", size="sm", type="submit") }}
+  </form>
+</div>
+{{ ui.pagination(page, pages, request) }}
 {% endif %}
 {% endblock %}

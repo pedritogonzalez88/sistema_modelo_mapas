@@ -91,3 +91,41 @@ def test_detalle_de_cruce_conserva_json_en_el_error(client):
     assert respuesta.status_code == 404
     assert "application/json" in respuesta.headers["content-type"]
     assert "detail" in respuesta.json()
+
+
+# --- Paginación de /qaqc --------------------------------------------------
+# La lista de fichas se pagina en servidor (25/50/100 por página) para no
+# enviar cientos de filas en un solo documento. Estas pruebas fijan el
+# contador "Mostrando X–Y de N" y que la segunda página y el tamaño reducido
+# respondan HTML sin errores.
+
+
+def test_qaqc_pagina_2_muestra_el_siguiente_bloque(client):
+    respuesta = client.get("/qaqc", params={"page": 2})
+    assert respuesta.status_code == 200
+    assert "text/html" in respuesta.headers["content-type"]
+    assert "Mostrando" in respuesta.text
+    assert "Página 2 de" in respuesta.text
+
+
+def test_qaqc_filtro_por_estado_conserva_la_paginacion(client):
+    respuesta = client.get("/qaqc", params={"estado": "Detectado", "page": 2})
+    assert respuesta.status_code == 200
+    assert "Mostrando" in respuesta.text
+    assert "filtro: Detectado" in respuesta.text
+
+
+def test_qaqc_per_page_25_reduce_el_bloque(client):
+    respuesta = client.get("/qaqc", params={"per_page": 25})
+    assert respuesta.status_code == 200
+    assert "Mostrando 1–25 de" in respuesta.text
+    # El selector sin JavaScript conserva el valor elegido en el HTML.
+    assert 'value="25" selected' in respuesta.text
+
+
+def test_qaqc_pagina_fuera_de_rango_se_acota(client):
+    """Una página inexistente no rompe: se acota a la última disponible."""
+    respuesta = client.get("/qaqc", params={"page": 999})
+    assert respuesta.status_code == 200
+    assert "Mostrando" in respuesta.text
+
