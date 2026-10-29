@@ -11,6 +11,12 @@
 @source "../../templates";
 @source "../js";
 
+/* Los informes generados (Lighthouse, axe, capturas) no son fuente de estilos:
+   sin esta exclusión, el escaneo automático del árbol de trabajo genera
+   utilidades sueltas a partir del HTML de los reportes y el tamaño del CSS
+   deja de ser reproducible. */
+@source not "../../../docs";
+
 /* --------------------------------------------------------------------------
    Tokens de diseño (fuente única de verdad)
    -------------------------------------------------------------------------- */
@@ -67,12 +73,17 @@
     @apply tracking-tight;
   }
 
-  /* Respeta la preferencia de movimiento reducido (WCAG 2.2) */
+  /* Respeta la preferencia de movimiento reducido (WCAG 2.2).
+     Se usa 0s (y no .001ms) para que `getComputedStyle` devuelva exactamente
+     0s y el navegador no llegue a crear la transición: así tampoco dispara
+     `transitionstart`. Nada en app.js depende de `transitionend`. */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
-      animation-duration: .001ms !important;
+      animation-duration: 0s !important;
+      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
-      transition-duration: .001ms !important;
+      transition-duration: 0s !important;
+      transition-delay: 0s !important;
       scroll-behavior: auto !important;
     }
   }
@@ -336,6 +347,10 @@
 
   @media (min-width: 1024px) {
     .shell-drawer { display: none !important; }
+    /* En escritorio la navegación es la barra lateral fija: la hamburguesa
+       quedaría como un control sin efecto (el drawer es display:none y solo
+       aparecería el velo). Se oculta también fuera del orden de tabulación. */
+    .shell-toggle { display: none !important; }
   }
 
   /* Elementos que solo tienen sentido con JavaScript activo */
