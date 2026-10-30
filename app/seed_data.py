@@ -1,8 +1,8 @@
 """Datos semilla de las cuentas nominales del sistema.
 
-Este módulo es la **única fuente de verdad** de las cinco personas que operan
-el Validador EET (terna de asistentes, responsable de carga y supervisión) y de
-la política de segundo factor que corresponde a cada rol.
+Este módulo es la **única fuente de verdad** de las seis personas que operan
+el Validador EET (terna de asistentes, responsable de carga, supervisión y
+administración) y de la política de segundo factor que corresponde a cada rol.
 
 Lo consumen:
 
@@ -28,7 +28,7 @@ ROLES_CON_TOTP = ("admin", "supervision")
 #: Política por defecto del resto de roles: TOTP o correo, a elección.
 MFA_POLICY_POR_DEFECTO = "any"
 
-#: Las cinco cuentas nominales, en el orden de las filas semilla históricas.
+#: Las seis cuentas nominales, en el orden de las filas semilla históricas.
 USUARIOS_SEMILLA: tuple[dict, ...] = (
     {
         "nombre": "Juan Pérez",
@@ -63,6 +63,13 @@ USUARIOS_SEMILLA: tuple[dict, ...] = (
         "username": "roberto.gimenez",
         "email": "roberto.gimenez@aep.gov.py",
         "rol": "supervision",
+        "letra_terna": None,
+    },
+    {
+        "nombre": "Daniel Meza",
+        "username": "daniel.meza",
+        "email": "viento100@gmail.com",
+        "rol": "admin",
         "letra_terna": None,
     },
 )

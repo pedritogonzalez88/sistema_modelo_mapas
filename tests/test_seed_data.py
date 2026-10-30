@@ -14,11 +14,11 @@ from app.seed_data import (
 )
 
 CAMPOS = {"nombre", "username", "email", "rol", "letra_terna"}
-ROLES_ESPERADOS = {"asistente": 3, "cargador": 1, "supervision": 1}
+ROLES_ESPERADOS = {"asistente": 3, "cargador": 1, "supervision": 1, "admin": 1}
 
 
-def test_hay_cinco_cuentas_nominales_con_todos_los_campos():
-    assert len(USUARIOS_SEMILLA) == 5
+def test_hay_seis_cuentas_nominales_con_todos_los_campos():
+    assert len(USUARIOS_SEMILLA) == 6
     for datos in USUARIOS_SEMILLA:
         assert set(datos) == CAMPOS, datos
         assert datos["nombre"].strip()
@@ -34,9 +34,13 @@ def test_los_usuarios_y_correos_son_unicos_sin_distinguir_mayusculas():
     assert len(set(correos)) == len(USUARIOS_SEMILLA)
 
 
-def test_el_correo_sigue_la_convencion_institucional():
+def test_el_correo_sigue_la_convencion_institucional_salvo_el_admin():
     for datos in USUARIOS_SEMILLA:
-        assert datos["email"] == f"{datos['username']}@aep.gov.py"
+        if datos["rol"] == "admin":
+            # El administrador puede usar un correo externo autorizado.
+            assert "@" in datos["email"] and "." in datos["email"].split("@")[-1]
+        else:
+            assert datos["email"] == f"{datos['username']}@aep.gov.py"
 
 
 def test_cada_persona_tiene_nombre_y_apellido():
@@ -57,6 +61,12 @@ def test_los_roles_coinciden_con_la_operacion_del_sistema():
     for datos in USUARIOS_SEMILLA:
         conteo[datos["rol"]] = conteo.get(datos["rol"], 0) + 1
     assert conteo == ROLES_ESPERADOS
+
+
+def test_hay_un_solo_admin_nominal():
+    admins = [datos for datos in USUARIOS_SEMILLA if datos["rol"] == "admin"]
+    assert len(admins) == 1
+    assert admins[0]["username"] == "daniel.meza"
 
 
 def test_solo_los_asistentes_llevan_letra_de_terna():

@@ -210,13 +210,21 @@ def _fila_a_adoptar(db: Session, datos: dict) -> Usuario | None:
     Las semillas históricas no tienen ``username``. Para no duplicar cuentas:
 
     - asistente: ``rol='asistente'`` con la misma letra de terna y sin usuario;
-    - cargador/supervision: la única fila de ese rol sin usuario.
+    - cargador/supervision: la única fila de ese rol sin usuario;
+    - admin: la fila con rol ``admin`` sin usuario o con el usuario genérico
+      ``admin`` (instalaciones previas); si hay más de una, no se adopta.
 
     Si hay más de una candidata no se adivina: se aborta con un mensaje claro.
     """
-    condiciones = [Usuario.username.is_(None), Usuario.rol == datos["rol"]]
+    condiciones = [Usuario.rol == datos["rol"]]
     if datos["rol"] == "asistente":
-        condiciones.append(Usuario.letra_terna == datos["letra_terna"])
+        condiciones.extend([Usuario.username.is_(None),
+                            Usuario.letra_terna == datos["letra_terna"]])
+    elif datos["rol"] == "admin":
+        condiciones.append(or_(Usuario.username.is_(None),
+                               func.lower(Usuario.username) == "admin"))
+    else:
+        condiciones.append(Usuario.username.is_(None))
     candidatas = db.scalars(
         select(Usuario).where(*condiciones).order_by(Usuario.id)).all()
     if len(candidatas) > 1:

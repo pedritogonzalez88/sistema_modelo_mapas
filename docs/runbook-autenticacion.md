@@ -167,7 +167,7 @@ producción.
 ### 4.2.1 Cuentas semilla nominales
 
 Una base nueva **no** crea cuentas genéricas: `app/services/persist.py` siembra
-las cinco personas nominales definidas en `app/seed_data.py`, que es la fuente
+las seis personas nominales definidas en `app/seed_data.py`, que es la fuente
 única de nombres, usuarios, correos, roles y letras de terna.
 
 | Nombre | Usuario | Correo | Rol | Letra |
@@ -177,18 +177,20 @@ las cinco personas nominales definidas en `app/seed_data.py`, que es la fuente
 | Carlos Benítez | `carlos.benitez` | `carlos.benitez@aep.gov.py` | asistente | C |
 | Lucía Fernández | `lucia.fernandez` | `lucia.fernandez@aep.gov.py` | cargador | — |
 | Roberto Giménez | `roberto.gimenez` | `roberto.gimenez@aep.gov.py` | supervision | — |
+| Daniel Meza | `daniel.meza` | `viento100@gmail.com` | admin | — |
 
 Las cuentas nacen sin contraseña (`must_change_password=false`) y con la
-política de 2FA del rol: `totp` para `supervision` (Roberto debe enrolar TOTP en
-su primer acceso) y `any` para el resto. Para aprovisionarlas sobre una base que
-todavía tiene las filas genéricas históricas (sin usuario ni correo):
+política de 2FA del rol: `totp` para `supervision` y `admin` (Roberto y Daniel
+deben enrolar TOTP en su primer acceso) y `any` para el resto. Para
+aprovisionarlas sobre una base que todavía tiene las filas genéricas históricas
+(sin usuario ni correo):
 
 ```bash
 uv run python -m app.cli seed-usuarios --con-password
 ```
 
 ```text
-Cuentas semilla procesadas: 5 (creadas 0 · actualizadas 5)
+Cuentas semilla procesadas: 6 (creadas 0 · actualizadas 6)
 
 NOMBRE           USUARIO          ROL          LETRA  CONTRASEÑA TEMPORAL
 ---------------  ---------------  -----------  -----  -------------------
@@ -200,9 +202,9 @@ Comportamiento:
 
 - **Idempotente**: busca por `username` sin distinguir mayúsculas; si no existe,
   **adopta** la fila genérica que corresponde (asistente por letra de terna;
-  cargador y supervisión por rol, siempre que haya exactamente una) y solo crea
-  una cuenta nueva si no hay fila que adoptar. Repetirlo no duplica filas ni
-  reescribe contraseñas cuando se omite el flag.
+  cargador, supervisión y el `admin` genérico por rol, siempre que haya
+  exactamente una) y solo crea una cuenta nueva si no hay fila que adoptar.
+  Repetirlo no duplica filas ni reescribe contraseñas cuando se omite el flag.
 - **No pisa datos ajenos**: conserva contraseña, TOTP, códigos de respaldo,
   bloqueos, último acceso y auditoría del titular. Si el correo ya pertenece a
   otra cuenta, falla con un mensaje claro y sale con código 1 sin modificar nada.
