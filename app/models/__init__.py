@@ -374,6 +374,10 @@ class AuthToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    # Intentos consumidos del token (Fase A3): el challenge de segundo factor
+    # admite 5 y luego se invalida. En el resto de los propósitos queda en 0.
+    mfa_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
