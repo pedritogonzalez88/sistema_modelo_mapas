@@ -42,7 +42,7 @@ sin tocar la capa de autorización. Ver §5.
 | Autenticación | Ninguna. Todas las rutas son públicas |
 | CSRF | Ninguno. ~20 formularios POST sin token |
 | `Usuario` | Definido en `app/models/__init__.py` con `nombre`, `rol`, `letra_terna`; **sin email, username, hash ni estado** |
-| Roles | `asistente`, `cargador`, `supervision`, `consulta` (comentados en el modelo) y 5 usuarios semilla en `persist.seed` |
+| Roles | `asistente`, `cargador`, `supervision`, `consulta` (comentados en el modelo) y 5 cuentas nominales en `persist.seed` (datos en `app/seed_data.py`) |
 | Autorización | Inexistente; no hay `Depends` de usuario ni chequeos por ruta |
 | Auditoría | Tabla `auditoria` con `actor` libre; las acciones se registran como `"supervision"` o `"cargador"` fijos |
 | TLS | No configurado; se asume reverse proxy en producción (no hay nada en el repo) |
@@ -482,7 +482,9 @@ Accesibilidad: reutilizar `field`, `banner`, `btn`, `badge`; un solo `h1`; error
 1. **Inventario de usuarios**: nombre, email, rol, letra de terna, ¿tiene AD?
 2. **Bootstrap**: comando `python -m app.cli crear-admin --email ...` que crea el primer `admin`
    con contraseña temporal y TOTP obligatorio. Nunca una contraseña por defecto.
-3. **Backfill**: las 5 filas semilla se completan con username/email; el resto se crea desde la UI.
+3. **Backfill**: las 5 cuentas semilla ya son nominales (nombre, usuario, correo, rol y letra
+   en `app/seed_data.py`); `python -m app.cli seed-usuarios` las adopta y actualiza sin duplicar,
+   y con `--con-password` entrega contraseñas temporales de un solo uso. El resto se crea desde la UI.
 4. **Feature flag** `EET_AUTH_ENABLED=false` durante el desarrollo; al activarlo, un middleware
    redirige a login toda ruta no pública. Rutas públicas: `/auth/*`, `/salud`, `/static/*`.
 5. **Rollout**: staging → supervisión (piloto) → cargadores → asistentes → consulta.

@@ -4,6 +4,7 @@ Comandos:
 
     uv run python -m app.cli crear-admin --email ... --username ... --nombre ...
     uv run python -m app.cli crear-usuario --email ... --username ... --nombre ... --rol ...
+    uv run python -m app.cli seed-usuarios [--con-password]
     uv run python -m app.cli limpiar-sesiones --dias 30
     uv run python -m app.cli ldap-check [--login usuario]
     uv run python -m app.cli ldap-mapeo
@@ -22,6 +23,10 @@ Reglas:
 - ``ldap-check`` **nunca** imprime ``EET_LDAP_BIND_PASSWORD`` ni contraseñas, y
   con ``EET_LDAP_ENABLED=false`` no abre ninguna conexión (sale con 0: no es un
   error, el directorio simplemente no está configurado).
+- ``seed-usuarios`` es idempotente: adopta las filas genéricas existentes en
+  lugar de duplicarlas y solo genera contraseñas con ``--con-password``.
+  Esas contraseñas son temporales, se imprimen una sola vez y no se guardan en
+  claro ni se registran en la auditoría.
 - Los comandos de operación (``reenviar-correo``, ``re-cifrar``,
   ``estado-auth``) son idempotentes, no escriben secretos en la salida y usan
   códigos de salida explícitos: 0 correcto, 1 con fallos parciales, 2 sin
@@ -40,7 +45,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import audit, mailer
 from app.auth.providers import ROLES_PRIORIDAD, LdapProvider
-from app.auth.service import limpiar_expiradas
+from app.auth.service import generar_password_temporal, limpiar_expiradas
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.security import SecretBox, hash_password, secret_box, utcnow, validar_password
@@ -52,6 +57,7 @@ from app.models import (
     Sesion,
     Usuario,
 )
+from app.seed_data import USUARIOS_SEMILLA, mfa_policy_para_rol
 
 ROLES = ("admin", "supervision", "cargador", "asistente", "consulta")
 LETRAS = ("A", "B", "C")
@@ -178,6 +184,204 @@ def _cmd_crear_usuario(args: argparse.Namespace) -> int:
         )
         print(f"Usuario creado: id={usuario.id} usuario={usuario.username} "
               f"rol={usuario.rol} mfa_policy={usuario.mfa_policy}")
+    return 0
+
+
+class _ConflictoSemilla(Exception):
+    """La base no permite aplicar la semilla sin pisar datos de otra cuenta.
+
+    Se lanza antes de modificar nada: el comando informa y sale con 1.
+    """
+
+
+def _usuario_por_username(db: Session, username: str) -> Usuario | None:
+    """Busca la cuenta por ``username`` sin distinguir mayúsculas."""
+    return db.scalar(
+        select(Usuario)
+        .where(func.lower(Usuario.username) == username.casefold())
+        .order_by(Usuario.id)
+        .limit(1)
+    )
+
+
+def _fila_a_adoptar(db: Session, datos: dict) -> Usuario | None:
+    """Fila genérica que corresponde a una cuenta nominal, si existe.
+
+    Las semillas históricas no tienen ``username``. Para no duplicar cuentas:
+
+    - asistente: ``rol='asistente'`` con la misma letra de terna y sin usuario;
+    - cargador/supervision: la única fila de ese rol sin usuario.
+
+    Si hay más de una candidata no se adivina: se aborta con un mensaje claro.
+    """
+    condiciones = [Usuario.username.is_(None), Usuario.rol == datos["rol"]]
+    if datos["rol"] == "asistente":
+        condiciones.append(Usuario.letra_terna == datos["letra_terna"])
+    candidatas = db.scalars(
+        select(Usuario).where(*condiciones).order_by(Usuario.id)).all()
+    if len(candidatas) > 1:
+        ids = ", ".join(str(fila.id) for fila in candidatas)
+        raise _ConflictoSemilla(
+            f"Hay {len(candidatas)} filas genéricas candidatas para "
+            f"'{datos['username']}' (ids {ids}); no se adopta ninguna "
+            "para no duplicar cuentas.")
+    return candidatas[0] if candidatas else None
+
+
+def _plan_semilla(db: Session) -> list[tuple[dict, Usuario | None]]:
+    """Resuelve, sin modificar nada, qué fila recibe cada cuenta nominal.
+
+    Devuelve pares ``(datos, fila)`` con ``fila=None`` cuando hay que crear la
+    cuenta. Valida duplicados internos, correos ya ocupados y adopciones
+    repetidas antes de aplicar el más mínimo cambio.
+    """
+    usuarios_vistos: set[str] = set()
+    emails_vistos: set[str] = set()
+    plan: list[tuple[dict, Usuario | None]] = []
+    adoptadas: dict[int, str] = {}
+
+    for datos in USUARIOS_SEMILLA:
+        username = datos["username"].casefold()
+        email = datos["email"].casefold()
+        if username in usuarios_vistos:
+            raise _ConflictoSemilla(f"Usuario repetido en la semilla: {username}.")
+        if email in emails_vistos:
+            raise _ConflictoSemilla(f"Correo repetido en la semilla: {email}.")
+        usuarios_vistos.add(username)
+        emails_vistos.add(email)
+
+        fila = _usuario_por_username(db, datos["username"])
+        if fila is None:
+            fila = _fila_a_adoptar(db, datos)
+        if fila is not None:
+            if fila.id in adoptadas:
+                raise _ConflictoSemilla(
+                    f"Las cuentas '{adoptadas[fila.id]}' y '{datos['username']}' "
+                    f"apuntan a la misma fila (id={fila.id}).")
+            adoptadas[fila.id] = datos["username"]
+
+        plan.append((datos, fila))
+
+    for datos, fila in plan:
+        otra = db.scalar(
+            select(Usuario)
+            .where(func.lower(Usuario.email) == datos["email"].casefold())
+            .order_by(Usuario.id)
+            .limit(1)
+        )
+        if otra is not None and (fila is None or otra.id != fila.id):
+            raise _ConflictoSemilla(
+                f"El correo {datos['email']} ya pertenece a la cuenta id={otra.id} "
+                f"({otra.username or 'sin usuario'}); no se sobrescribe.")
+    return plan
+
+
+def _password_temporal(username: str, email: str) -> str:
+    """Contraseña temporal válida para la política (sin ambigüedades)."""
+    for _ in range(5):
+        candidata = generar_password_temporal()
+        if not validar_password(candidata, username, email):
+            return candidata
+    raise _ConflictoSemilla(
+        f"No se pudo generar una contraseña temporal válida para {username}.")
+
+
+def _aplicar_semilla(db: Session, plan: list[tuple[dict, Usuario | None]],
+                     con_password: bool) -> list[dict]:
+    """Crea o actualiza las cuentas del plan y audita cada cambio.
+
+    Conserva lo que no administra esta semilla: contraseña y TOTP existentes
+    (salvo ``--con-password``), códigos de respaldo, bloqueos, último acceso y
+    cualquier otro dato de auditoría del titular.
+    """
+    resultados: list[dict] = []
+    for datos, fila in plan:
+        creado = fila is None
+        if fila is None:
+            fila = Usuario(auth_provider="local")
+            db.add(fila)
+
+        fila.nombre = datos["nombre"]
+        fila.username = datos["username"]
+        fila.email = datos["email"].casefold()
+        fila.rol = datos["rol"]
+        fila.letra_terna = datos["letra_terna"]
+        fila.is_active = True
+        fila.mfa_policy = mfa_policy_para_rol(datos["rol"])
+
+        password = None
+        if con_password:
+            password = _password_temporal(fila.username, fila.email)
+            fila.password_hash = hash_password(password)
+            fila.password_changed_at = utcnow()
+            fila.must_change_password = True
+
+        db.flush()  # id disponible para la auditoría y la tabla de salida
+        audit.registrar(
+            db, audit.ACTOR_CLI,
+            "user_created" if creado else "user_updated",
+            entidad="usuario", entidad_id=fila.id,
+            detalle={"rol": fila.rol, "username": fila.username,
+                     "mfa_policy": fila.mfa_policy,
+                     "temporal_generada": bool(con_password)},
+        )
+        resultados.append({"id": fila.id, "nombre": fila.nombre,
+                           "username": fila.username, "rol": fila.rol,
+                           "letra": fila.letra_terna, "creado": creado,
+                           "password": password})
+    db.commit()
+    return resultados
+
+
+def _tabla_semilla(resultados: list[dict], con_password: bool) -> None:
+    """Tabla de ancho fijo. La contraseña, si existe, solo vive en esta salida."""
+    encabezados = ["NOMBRE", "USUARIO", "ROL", "LETRA"]
+    if con_password:
+        encabezados.append("CONTRASEÑA TEMPORAL")
+    filas = [encabezados]
+    for resultado in resultados:
+        fila = [resultado["nombre"], resultado["username"], resultado["rol"],
+                resultado["letra"] or "-"]
+        if con_password:
+            fila.append(resultado["password"] or "-")
+        filas.append(fila)
+    anchos = [max(len(fila[columna]) for fila in filas)
+              for columna in range(len(encabezados))]
+    for indice, fila in enumerate(filas):
+        linea = "  ".join(celda.ljust(anchos[pos])
+                          for pos, celda in enumerate(fila)).rstrip()
+        print(linea)
+        if indice == 0:
+            print("  ".join("-" * ancho for ancho in anchos))
+
+
+def _cmd_seed_usuarios(args: argparse.Namespace) -> int:
+    """Aprovisiona las cinco cuentas nominales de forma idempotente."""
+    con_password = bool(args.con_password)
+    try:
+        with SessionLocal() as db:
+            plan = _plan_semilla(db)
+            resultados = _aplicar_semilla(db, plan, con_password)
+    except _ConflictoSemilla as exc:
+        print(f"Error: {exc}")
+        print("No se modificó ninguna cuenta.")
+        return 1
+
+    creadas = sum(1 for fila in resultados if fila["creado"])
+    print(f"Cuentas semilla procesadas: {len(resultados)} "
+          f"(creadas {creadas} · actualizadas {len(resultados) - creadas})")
+    print()
+    _tabla_semilla(resultados, con_password)
+    print()
+    if con_password:
+        print("Las contraseñas son temporales y se muestran solo en esta salida: "
+              "no se guardan en claro ni en la auditoría.")
+        print("Entréguelas por un canal seguro; el primer acceso exige cambiarlas "
+              "(must_change_password=true).")
+        print("Repetir el comando con --con-password genera contraseñas nuevas.")
+    else:
+        print("No se modificaron contraseñas: se asignan desde "
+              "/auth/usuarios → «Generar contraseña temporal».")
     return 0
 
 
@@ -464,6 +668,15 @@ def _parser() -> argparse.ArgumentParser:
                               "Por defecto «any», salvo los roles críticos "
                               "(admin, supervisión), que quedan en «totp».")
     usuario.set_defaults(func=_cmd_crear_usuario)
+
+    semilla = sub.add_parser(
+        "seed-usuarios",
+        help="Crea o completa las cuentas semilla nominales (idempotente).")
+    semilla.add_argument(
+        "--con-password", action="store_true", dest="con_password",
+        help="Genera una contraseña temporal nueva para cada cuenta (también "
+             "si ya tenía una) y la muestra una sola vez.")
+    semilla.set_defaults(func=_cmd_seed_usuarios)
 
     limpiar = sub.add_parser("limpiar-sesiones",
                              help="Borra sesiones muertas hace más de N días.")

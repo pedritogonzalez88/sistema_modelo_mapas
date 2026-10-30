@@ -164,6 +164,57 @@ La cuenta nace con `must_change_password=true`. La CLI permite
 `--mfa-policy disabled`; la interfaz también, pero **no se recomienda** en
 producción.
 
+### 4.2.1 Cuentas semilla nominales
+
+Una base nueva **no** crea cuentas genéricas: `app/services/persist.py` siembra
+las cinco personas nominales definidas en `app/seed_data.py`, que es la fuente
+única de nombres, usuarios, correos, roles y letras de terna.
+
+| Nombre | Usuario | Correo | Rol | Letra |
+|---|---|---|---|---|
+| Juan Pérez | `juan.perez` | `juan.perez@aep.gov.py` | asistente | A |
+| María González | `maria.gonzalez` | `maria.gonzalez@aep.gov.py` | asistente | B |
+| Carlos Benítez | `carlos.benitez` | `carlos.benitez@aep.gov.py` | asistente | C |
+| Lucía Fernández | `lucia.fernandez` | `lucia.fernandez@aep.gov.py` | cargador | — |
+| Roberto Giménez | `roberto.gimenez` | `roberto.gimenez@aep.gov.py` | supervision | — |
+
+Las cuentas nacen sin contraseña (`must_change_password=false`) y con la
+política de 2FA del rol: `totp` para `supervision` (Roberto debe enrolar TOTP en
+su primer acceso) y `any` para el resto. Para aprovisionarlas sobre una base que
+todavía tiene las filas genéricas históricas (sin usuario ni correo):
+
+```bash
+uv run python -m app.cli seed-usuarios --con-password
+```
+
+```text
+Cuentas semilla procesadas: 5 (creadas 0 · actualizadas 5)
+
+NOMBRE           USUARIO          ROL          LETRA  CONTRASEÑA TEMPORAL
+---------------  ---------------  -----------  -----  -------------------
+Juan Pérez       juan.perez       asistente    A      <temporal de 16 caracteres>
+...
+```
+
+Comportamiento:
+
+- **Idempotente**: busca por `username` sin distinguir mayúsculas; si no existe,
+  **adopta** la fila genérica que corresponde (asistente por letra de terna;
+  cargador y supervisión por rol, siempre que haya exactamente una) y solo crea
+  una cuenta nueva si no hay fila que adoptar. Repetirlo no duplica filas ni
+  reescribe contraseñas cuando se omite el flag.
+- **No pisa datos ajenos**: conserva contraseña, TOTP, códigos de respaldo,
+  bloqueos, último acceso y auditoría del titular. Si el correo ya pertenece a
+  otra cuenta, falla con un mensaje claro y sale con código 1 sin modificar nada.
+- `--con-password` genera una contraseña temporal de 16 caracteres con `secrets`
+  (sin caracteres ambiguos), aplica `hash_password`, marca
+  `must_change_password=true` y la imprime **una sola vez**. No se guarda en
+  claro ni se registra en la auditoría: si se pierde la salida, ejecutar de nuevo
+  con el flag (regenera todas) o usar el reset por UI.
+- Sin `--con-password` no toca contraseñas; se asignan desde `/auth/usuarios` →
+  «Generar contraseña temporal».
+- Audita `user_created` / `user_updated` con actor `cli`.
+
 ### 4.3 Cambio de rol
 
 `Usuarios → Acciones → Nuevo rol` + **motivo obligatorio**. Reglas:
@@ -576,7 +627,8 @@ sin completar la lista es un incidente esperando ocurrir.
 - [ ] `EET_ADMIN_INTERNAL_ONLY=true` con los CIDR correctos y
   `EET_TRUSTED_PROXY_IPS` si hay proxy.
 - [ ] Dos administradores creados y probados (TOTP enrolado).
-- [ ] Backfill de `username`/`email` de las cuentas semilla.
+- [ ] Backfill de `username`/`email` de las cuentas semilla
+  (`python -m app.cli seed-usuarios`, §4.2.1) y contraseñas temporales entregadas.
 - [ ] Backup reciente de la base y de los secretos.
 - [ ] Runbook y contactos de soporte comunicados.
 
