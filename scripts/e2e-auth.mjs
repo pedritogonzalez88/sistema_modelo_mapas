@@ -24,6 +24,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { launchBrowser, ROOT, arg } from "./a11y-helpers.mjs";
 import { crearGenerador } from "./totp.mjs";
 
@@ -31,17 +32,24 @@ const BASE = (process.env.E2E_BASE_URL || arg("base", "http://127.0.0.1:8033")).
 const OUT = path.resolve(ROOT, arg("out", "docs/qa-visual/e2e-auth"));
 const MAIL_DIR = process.env.EET_EMAIL_DIR || "C:\\Users\\pgonzalez\\AppData\\Local\\Temp\\opencode\\mail-e2e";
 
+const ADMIN_PASSWORD = process.env.EET_ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error("Falta EET_ADMIN_PASSWORD: definila en el entorno antes de ejecutar el E2E.");
+  process.exit(1);
+}
+
 const ADMIN = {
   login: "e2e-admin",
-  password: process.env.EET_ADMIN_PASSWORD || "ClaveE2EAdmin-2026!",
+  password: ADMIN_PASSWORD,
   email: "e2e-admin@ejemplo.org",
 };
 const USER = {
   nombre: "Usuario E2E",
   username: "e2e-user",
   email: "e2e-user@ejemplo.org",
-  password: "ClaveE2eUser-2026!",
-  passwordNueva: "ClaveE2eUser-2026b!",
+  // Credenciales efimeras: la cuenta se crea y se elimina en esta corrida.
+  password: `E2e-${randomUUID()}`,
+  passwordNueva: `E2e-${randomUUID()}`,
 };
 
 fs.mkdirSync(OUT, { recursive: true });

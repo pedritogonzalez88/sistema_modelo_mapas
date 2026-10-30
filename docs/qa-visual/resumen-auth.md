@@ -47,7 +47,7 @@ $env:EET_EMAIL_DIR="$env:TEMP\opencode\mail-e2e"
 $env:EET_ADMIN_INTERNAL_ONLY="false"
 $env:EET_PUBLIC_BASE_URL="http://127.0.0.1:8033"
 $env:EET_LOGIN_MAX_INTENTOS="10"
-$env:EET_ADMIN_PASSWORD="ClaveE2EAdmin-2026!"
+$env:EET_ADMIN_PASSWORD="<defina una clave temporal para e2e-admin>"
 uv run uvicorn app.main:app --port 8033
 
 # 2) Preparar el entorno (crea e2e-admin si falta y deja su 2FA sin enrolar)
@@ -64,9 +64,9 @@ node scripts/a11y-auth.mjs --base http://127.0.0.1:8033
 # 5) Limpieza de datos de prueba y del correo temporal (§8)
 ```
 
-> La contraseña `ClaveE2EAdmin-2026!` de los comandos anteriores es una
-> credencial **desechable y local** de la cuenta de prueba `e2e-admin`, que se
-> elimina al terminar (§8); no corresponde a ningún entorno real.
+> La contraseña definida en `EET_ADMIN_PASSWORD` es una credencial
+> **desechable y local** de la cuenta de prueba `e2e-admin`, que se elimina al
+> terminar (§8); no corresponde a ningún entorno real ni se versiona.
 
 Artefactos:
 

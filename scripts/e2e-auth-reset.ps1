@@ -44,7 +44,9 @@ if ($LASTEXITCODE -ne 0) { throw "psql falló (¿está arriba el contenedor $Con
 # La cuenta administradora de prueba se crea por CLI si no existe.
 $existe = docker exec $Contenedor psql -U eet -d eet -t -A -c "select count(*) from usuarios where username = '$AdminUsername';"
 if (($existe | Out-String).Trim() -eq "0") {
-  $env:EET_ADMIN_PASSWORD = "ClaveE2EAdmin-2026!"
+  if (-not $env:EET_ADMIN_PASSWORD) {
+    throw "Defina EET_ADMIN_PASSWORD antes de ejecutar el reset del E2E."
+  }
   uv run python -m app.cli crear-admin --email $AdminEmail --username $AdminUsername --nombre "Admin E2E" 2>&1 | Out-Host
   if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el administrador de prueba" }
 }

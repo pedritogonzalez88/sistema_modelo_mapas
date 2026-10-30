@@ -38,9 +38,15 @@ const SECRETO_FILE = path.join(
   "e2e-totp-secret.txt"
 );
 
+const ADMIN_PASSWORD = process.env.EET_ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error("Falta EET_ADMIN_PASSWORD: definila en el entorno antes de ejecutar la auditoria.");
+  process.exit(1);
+}
+
 const ADMIN = {
   login: "e2e-admin",
-  password: process.env.EET_ADMIN_PASSWORD || "ClaveE2EAdmin-2026!",
+  password: ADMIN_PASSWORD,
 };
 
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
@@ -290,7 +296,7 @@ async function probarTeclado(page, etiqueta) {
       if (!el.value) {
         el.value =
           type === "email" ? "prueba@ejemplo.org"
-          : type === "password" ? "PruebaE2e-2026!"
+          : type === "password" ? "Texto-De-Prueba-123"
           : type === "number" ? "1"
           : "prueba";
       }
