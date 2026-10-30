@@ -16,6 +16,10 @@ from pathlib import Path
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+#: Roles válidos del sistema. Se duplican aquí para no acoplar la configuración
+#: al módulo de permisos; deben coincidir con ``app.auth.permissions``.
+_ROLES_AUTH = ("admin", "supervision", "cargador", "consulta", "asistente")
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="EET_", env_file=".env", extra="ignore")
@@ -61,6 +65,17 @@ class Settings(BaseSettings):
     ldap_user_filter: str = "(sAMAccountName={login})"
     ldap_role_map: str = "{}"  # JSON grupo→rol
     ldap_timeout: int = 5
+    #: ``ldap://`` negocia StartTLS; ``ldaps://`` usa TLS directo (no se toca).
+    ldap_starttls: bool = True
+    #: Rol cuando ningún grupo mapea. Vacío = denegar el acceso (fail closed).
+    ldap_default_role: str = ""
+    #: Crea la cuenta local en el primer login LDAP válido (opt-in explícito).
+    ldap_auto_provision: bool = False
+    #: ``memberOf`` (atributo del usuario) o ``member`` (búsqueda inversa).
+    ldap_group_attr: str = "memberOf"
+    ldap_attr_nombre: str = "displayName"
+    ldap_attr_email: str = "mail"
+    ldap_attr_login: str = "sAMAccountName"
 
     # --- Endurecimiento ---
     admin_internal_only: bool = True
@@ -90,8 +105,10 @@ class Settings(BaseSettings):
         """Mapa ``grupo LDAP -> rol``; ``{}`` cuando no hay configuración.
 
         Se parsea como JSON en cada acceso (es barato y evita cachés
-        mutables). Un JSON inválido produce un error explícito en lugar de
-        degradar silenciosamente los permisos.
+        mutables). Las claves se normalizan a **minúsculas** para comparar sin
+        distinguir mayúsculas con los valores que devuelve el directorio. Un
+        JSON inválido produce un error explícito en lugar de degradar
+        silenciosamente los permisos.
         """
         texto = (self.ldap_role_map or "").strip()
         if not texto:
@@ -112,7 +129,10 @@ class Settings(BaseSettings):
                     "EET_LDAP_ROLE_MAP exige claves y valores de texto "
                     "(grupo LDAP -> rol)."
                 )
-            mapa[grupo] = rol
+            clave = grupo.strip().casefold()
+            if not clave:
+                raise ValueError("EET_LDAP_ROLE_MAP contiene un grupo vacío.")
+            mapa[clave] = rol.strip().casefold()
         return mapa
 
     @property
@@ -192,6 +212,25 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "LDAP activado (EET_LDAP_ENABLED=true) sin configuración "
                     f"obligatoria: falta {', '.join(faltantes)}."
+                )
+            url = (self.ldap_url or "").strip().casefold()
+            if not url.startswith(("ldap://", "ldaps://")):
+                raise ValueError(
+                    "EET_LDAP_URL debe comenzar con 'ldap://' o 'ldaps://'."
+                )
+            mapa = self.ldap_role_map_dict
+            invalidos = sorted({rol for rol in mapa.values()
+                                if rol not in _ROLES_AUTH})
+            if invalidos:
+                raise ValueError(
+                    "EET_LDAP_ROLE_MAP apunta a roles desconocidos: "
+                    f"{', '.join(invalidos)}. Válidos: {', '.join(_ROLES_AUTH)}."
+                )
+            defecto = (self.ldap_default_role or "").strip().casefold()
+            if defecto and defecto not in _ROLES_AUTH:
+                raise ValueError(
+                    "EET_LDAP_DEFAULT_ROLE debe ser un rol válido o quedar "
+                    f"vacío (denegar). Válidos: {', '.join(_ROLES_AUTH)}."
                 )
         # Valida el formato del mapa de roles y de las redes internas al inicio.
         self.ldap_role_map_dict

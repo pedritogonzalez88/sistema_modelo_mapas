@@ -40,12 +40,26 @@ Fase A4 (correo y recuperación):
   restablecen localmente y tampoco se delatan.
 - El cuerpo sensible de cada correo se cifra en ``email_outbox`` (ver
   :mod:`app.auth.mailer`).
+
+Fase A5 (LDAP/AD):
+
+- El proveedor se elige por ``usuarios.auth_provider``. Las cuentas ``ldap``
+  pasan por :class:`app.auth.providers.LdapProvider` solo si
+  ``EET_LDAP_ENABLED=true``; con la bandera apagada el intento falla de forma
+  genérica y queda auditado como ``ldap_disabled`` (no se abre red).
+- Un fallo de LDAP **no** cae a autenticación local (*fail closed*). El bloqueo
+  por cuenta sigue siendo local: AD administra sus propias políticas de
+  contraseña y permitir bloquear cuentas de dominio desde aquí sería un vector
+  de denegación de servicio. Todos los intentos quedan en ``login_attempts``.
+- Las cuentas LDAP no usan Argon2id; para no delatar por tiempo un fallo muy
+  rápido se aplica un retardo mínimo (:data:`RETARDO_MINIMO_LDAP`).
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
 import secrets
+import time
 from html import escape
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -57,7 +71,12 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import audit, mailer
-from app.auth.providers import AuthProvider, LocalProvider, buscar_usuario
+from app.auth.providers import (
+    AuthProvider,
+    LdapProvider,
+    LocalProvider,
+    buscar_usuario,
+)
 from app.core.config import settings
 from app.core.security import (
     constant_time_eq,
@@ -155,6 +174,11 @@ MAX_RESET_POR_USUARIO_HORA = 3
 #: Solicitudes de restablecimiento por IP en una hora.
 MAX_RESET_POR_IP_HORA = 10
 
+#: Retardo mínimo de un intento LDAP fallido. Argon2id tarda decenas de ms;
+#: un bind que falla en 1 ms delataría que la cuenta no existe o que el DC no
+#: respondió. En pruebas se pone en 0 con ``monkeypatch``.
+RETARDO_MINIMO_LDAP = 0.25
+
 #: Texto neutro de la recuperación: idéntico exista o no la cuenta.
 RESPUESTA_RECUPERACION = (
     "Si la cuenta existe, enviamos instrucciones al correo registrado."
@@ -223,9 +247,30 @@ class ResultadoMfa:
         return self.motivo == "ok" and self.usuario is not None
 
 
-def proveedor() -> AuthProvider:
-    """Proveedor activo. En A1 solo existe el local; LDAP llega en A5."""
+def proveedor(usuario: Usuario | None = None) -> AuthProvider:
+    """Proveedor que corresponde al intento de login (Fase A5).
+
+    - ``usuario.auth_provider == "ldap"`` y LDAP activo → ``LdapProvider``.
+    - Login inexistente con ``ldap_auto_provision`` y LDAP activo → ``LdapProvider``.
+    - Cualquier otro caso → ``LocalProvider`` (incluye las cuentas LDAP cuando
+      la bandera está apagada: se falla genérico **sin** instanciar LDAP).
+    """
+    if not settings.ldap_enabled:
+        return LocalProvider()
+    if usuario is not None:
+        return LdapProvider() if usuario.auth_provider == "ldap" else LocalProvider()
+    if settings.ldap_auto_provision:
+        return LdapProvider()
     return LocalProvider()
+
+
+def _esperar_retardo_ldap(inicio: float) -> None:
+    """Completa el tiempo mínimo de un fallo LDAP (si fue demasiado rápido)."""
+    if RETARDO_MINIMO_LDAP <= 0:
+        return
+    restante = RETARDO_MINIMO_LDAP - (time.monotonic() - inicio)
+    if restante > 0:
+        time.sleep(restante)
 
 
 def _ip_corta(ip: str | None) -> str | None:
@@ -415,12 +460,29 @@ def autenticar(db: Session, login: str, password: str, ip: str | None = None,
         usuario.failed_attempts = 0
         db.flush()
 
-    # 2) Verificación de credenciales (con el hash de relleno si no existe).
-    comprobado = proveedor().authenticate(db, identificador, password or "")
+    # 2) Verificación con el proveedor que corresponde a la cuenta (A5).
+    inicio = time.monotonic()
+    activo = proveedor(usuario)
+    motivo_ldap: str | None = None
+    if isinstance(activo, LdapProvider):
+        resultado_ldap = activo.autenticar_detallado(
+            db, identificador, password or "")
+        motivo_ldap = resultado_ldap.motivo
+        comprobado = ((resultado_ldap.usuario, False)
+                      if resultado_ldap.usuario is not None else None)
+        if comprobado is None:
+            _esperar_retardo_ldap(inicio)
+    else:
+        comprobado = activo.authenticate(db, identificador, password or "")
+        # Algunos proveedores devuelven ``(None, False)`` en lugar de ``None``.
+        if comprobado is not None and comprobado[0] is None:
+            comprobado = None
 
     if comprobado is None:
         accion = "login_fail"
         espera = 0
+        # El bloqueo por cuenta es local: AD administra su propia política y
+        # bloquear cuentas de dominio desde aquí sería un DoS trivial.
         if usuario is not None and usuario.auth_provider == "local":
             usuario.failed_attempts = (usuario.failed_attempts or 0) + 1
             if usuario.failed_attempts >= int(settings.login_max_intentos):
@@ -429,13 +491,28 @@ def autenticar(db: Session, login: str, password: str, ip: str | None = None,
                 usuario.failed_attempts = 0
                 espera = int(settings.login_bloqueo_min)
                 accion = "login_locked"
+        # Cuenta de dominio con el directorio apagado: queda rastro explícito.
+        if (usuario is not None and usuario.auth_provider == "ldap"
+                and not settings.ldap_enabled):
+            audit.registrar(
+                db, audit.actor_de(usuario), "ldap_disabled",
+                entidad="usuario", entidad_id=usuario.id,
+                detalle={"motivo": "directorio_apagado"},
+                ip=ip, user_agent=user_agent,
+            )
         _registrar_intento(db, identificador, ip, exito=False)
+        detalle_fallo = {
+            "identificador": identificador,
+            "motivo": "bloqueado" if espera else "credenciales_invalidas",
+            "espera_min": espera,
+        }
+        if motivo_ldap is not None:
+            detalle_fallo["proveedor"] = "ldap"
+            detalle_fallo["motivo_ldap"] = motivo_ldap
         audit.registrar(
             db, audit.actor_de(usuario), accion, entidad="usuario",
             entidad_id=usuario.id if usuario is not None else None,
-            detalle={"identificador": identificador,
-                     "motivo": "bloqueado" if espera else "credenciales_invalidas",
-                     "espera_min": espera},
+            detalle=detalle_fallo,
             ip=ip, user_agent=user_agent,
         )
         db.commit()
@@ -448,9 +525,12 @@ def autenticar(db: Session, login: str, password: str, ip: str | None = None,
     usuario_db.locked_until = None
     usuario_db.last_login_at = ahora
     _registrar_intento(db, identificador, ip, exito=True)
+    detalle_ok = {"parametros_actualizados": bool(rehash)}
+    if motivo_ldap is not None:
+        detalle_ok["proveedor"] = "ldap"
     audit.registrar(
         db, audit.actor_de(usuario_db), "login_ok", entidad="usuario",
-        entidad_id=usuario_db.id, detalle={"parametros_actualizados": bool(rehash)},
+        entidad_id=usuario_db.id, detalle=detalle_ok,
         ip=ip, user_agent=user_agent,
     )
     db.commit()

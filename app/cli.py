@@ -1,10 +1,12 @@
-"""Administración por línea de comandos (Fase A1).
+"""Administración por línea de comandos (Fases A1 y A5).
 
 Comandos:
 
     uv run python -m app.cli crear-admin --email ... --username ... --nombre ...
     uv run python -m app.cli crear-usuario --email ... --username ... --nombre ... --rol ...
     uv run python -m app.cli limpiar-sesiones --dias 30
+    uv run python -m app.cli ldap-check [--login usuario]
+    uv run python -m app.cli ldap-mapeo
 
 Reglas:
 
@@ -14,6 +16,9 @@ Reglas:
 - El comando no crea el esquema: en producción corresponde a ``alembic upgrade
   head`` (el contenedor lo hace al arrancar) y en desarrollo a ``init_db()``.
 - Toda alta queda auditada con actor ``cli``.
+- ``ldap-check`` **nunca** imprime ``EET_LDAP_BIND_PASSWORD`` ni contraseñas, y
+  con ``EET_LDAP_ENABLED=false`` no abre ninguna conexión (sale con 0: no es un
+  error, el directorio simplemente no está configurado).
 """
 from __future__ import annotations
 
@@ -27,7 +32,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import audit
+from app.auth.providers import ROLES_PRIORIDAD, LdapProvider
 from app.auth.service import limpiar_expiradas
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.security import hash_password, validar_password
 from app.models import Usuario
@@ -167,10 +174,88 @@ def _cmd_limpiar_sesiones(args: argparse.Namespace) -> int:
     return 0
 
 
+def _modo_tls() -> str:
+    url = (settings.ldap_url or "").casefold()
+    if url.startswith("ldaps://"):
+        return "LDAPS (TLS directo)"
+    if settings.ldap_starttls:
+        return "StartTLS sobre ldap://"
+    return "sin TLS (no recomendado)"
+
+
+def _cmd_ldap_check(args: argparse.Namespace) -> int:
+    """Diagnóstico del directorio; nunca imprime la contraseña de servicio."""
+    if not settings.ldap_enabled:
+        print("Directorio deshabilitado (EET_LDAP_ENABLED=false): "
+              "no se abrió ninguna conexión.")
+        print("Para habilitarlo, complete las variables EET_LDAP_* y ponga "
+              "EET_LDAP_ENABLED=true; luego reinicie el servicio.")
+        return 0
+
+    print("Diagnóstico del directorio LDAP/Active Directory")
+    print(f"  URL:              {settings.ldap_url or '(sin definir)'}")
+    print(f"  Base DN:          {settings.ldap_base_dn or '(sin definir)'}")
+    print(f"  Cuenta servicio:  {settings.ldap_bind_dn or '(sin definir)'}")
+    print(f"  Filtro usuario:   {settings.ldap_user_filter}")
+    print(f"  Transporte:       {_modo_tls()}")
+    print(f"  Atributos:        login={settings.ldap_attr_login} "
+          f"nombre={settings.ldap_attr_nombre} email={settings.ldap_attr_email} "
+          f"grupos={settings.ldap_group_attr}")
+    print()
+
+    diagnostico = LdapProvider().diagnostico(args.login)
+    for paso in diagnostico.pasos:
+        marca = "OK   " if paso.ok else "ERROR"
+        detalle = f": {paso.detalle}" if paso.detalle else ""
+        print(f"  [{marca}] {paso.nombre}{detalle}")
+
+    if diagnostico.grupos:
+        print("  Grupos de ejemplo: " + ", ".join(diagnostico.grupos))
+    if diagnostico.usuario:
+        print()
+        print("  Usuario consultado:")
+        print(f"    Grupos: {len(diagnostico.usuario['grupos'])}")
+        print(f"    Rol resultante: "
+              f"{diagnostico.usuario['rol'] or 'sin rol (acceso denegado)'}")
+
+    print()
+    if diagnostico.ok:
+        print("Resultado: configuración operativa. Puede activar el acceso "
+              "LDAP con EET_LDAP_ENABLED=true.")
+        return 0
+    print("Resultado: revise los errores anteriores. El acceso LDAP queda "
+          "denegado mientras falle el diagnóstico.")
+    return 1
+
+
+def _cmd_ldap_mapeo(args: argparse.Namespace) -> int:
+    """Muestra el mapa grupo→rol configurado (sin secretos)."""
+    try:
+        mapa = settings.ldap_role_map_dict
+    except ValueError as exc:
+        print(f"Error en EET_LDAP_ROLE_MAP: {exc}")
+        return 1
+
+    print("Mapa de grupos LDAP -> rol (EET_LDAP_ROLE_MAP):")
+    if not mapa:
+        print("  (sin grupos configurados: todo acceso LDAP queda denegado)")
+    for grupo in sorted(mapa):
+        print(f"  {grupo}  ->  {mapa[grupo]}")
+    print()
+    print("Prioridad con varios grupos: " + " > ".join(ROLES_PRIORIDAD))
+    print("Rol por defecto sin coincidencia: "
+          + (settings.ldap_default_role or "(denegar)"))
+    print("Aprovisionamiento automático: "
+          + ("activado" if settings.ldap_auto_provision else "desactivado"))
+    print("Estado del directorio: "
+          + ("habilitado" if settings.ldap_enabled else "deshabilitado"))
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m app.cli",
-        description="Administración del Validador EET (Fase A1).",
+        description="Administración del Validador EET (Fases A1-A5).",
     )
     sub = parser.add_subparsers(dest="comando", required=True)
 
@@ -200,6 +285,19 @@ def _parser() -> argparse.ArgumentParser:
                              help="Borra sesiones muertas hace más de N días.")
     limpiar.add_argument("--dias", type=int, default=30)
     limpiar.set_defaults(func=_cmd_limpiar_sesiones)
+
+    ldap = sub.add_parser(
+        "ldap-check",
+        help="Diagnostica conexión, bind, base y mapeo de grupos LDAP.")
+    ldap.add_argument("--login", default=None,
+                      help="Usuario a consultar (opcional): muestra sus grupos "
+                           "y el rol resultante.")
+    ldap.set_defaults(func=_cmd_ldap_check)
+
+    mapeo = sub.add_parser(
+        "ldap-mapeo",
+        help="Muestra el mapa grupo LDAP -> rol configurado (sin secretos).")
+    mapeo.set_defaults(func=_cmd_ldap_mapeo)
 
     return parser
 
