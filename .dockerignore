@@ -9,3 +9,7 @@ node_modules/
 app/static/css/app.css
 .env
 *.pyc
+
+# Staging: el contexto de build es la raíz del repo, así que se excluye el
+# entorno y, sobre todo, la clave privada de la CA local (deploy/certs/).
+deploy/
