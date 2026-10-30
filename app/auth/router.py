@@ -21,7 +21,7 @@ Reglas de seguridad que esta capa garantiza:
 """
 from __future__ import annotations
 
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import segno
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -81,6 +81,20 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 _MENSAJE_GENERICO = "Usuario o contraseña incorrectos."
 _MENSAJE_CODIGO = "Código incorrecto o expirado."
 _MENSAJE_ENLACE = "El enlace no es válido o expiró."
+
+
+def _cambio_password_url(siguiente: str | None) -> str:
+    """Destino de cambio obligatorio, conservando el destino original."""
+    destino = middleware.ruta_segura(siguiente, "/")
+    if destino.startswith("/auth/cambiar-password"):
+        destino = "/"
+    return f"/auth/cambiar-password?next={quote(destino, safe='')}"
+
+
+def _con_ok(destino: str) -> str:
+    """Agrega el flash de contraseña cambiada sin pisar la query existente."""
+    separador = "&" if "?" in destino else "?"
+    return f"{destino}{separador}ok=password_changed"
 
 
 def _ip(request: Request) -> str | None:
@@ -173,10 +187,15 @@ def login(request: Request, db: Session = Depends(get_db),
     revocar_por_token(db, request.cookies.get(middleware.nombre_cookie_sesion()))
     token, _ = crear_sesion(db, resultado.usuario, _ip(request), _agente(request))
 
-    # Si su política exige TOTP y no está enrolado, el único destino posible
-    # es la pantalla de seguridad (el gate no dejaría pasar a ningún otro lado).
-    destino = ("/auth/seguridad" if estado.requiere_enrolamiento
-               else middleware.ruta_segura(siguiente))
+    # Orden de prioridad: primero el cambio obligatorio, luego el enrolamiento
+    # TOTP y finalmente el destino original. Así se evita el salto doble
+    # ``/auth/seguridad`` -> ``/auth/cambiar-password``.
+    if resultado.usuario.must_change_password:
+        destino = _cambio_password_url(siguiente)
+    elif estado.requiere_enrolamiento:
+        destino = "/auth/seguridad"
+    else:
+        destino = middleware.ruta_segura(siguiente)
     respuesta = RedirectResponse(destino, status_code=303)
     middleware.aplicar_cookie_sesion(respuesta, token)
     return respuesta
@@ -319,8 +338,11 @@ def mfa_verificar(request: Request, db: Session = Depends(get_db),
         db, resultado.usuario, _ip(request), _agente(request),
         mfa_at=utcnow(),
     )
-    respuesta = RedirectResponse(
-        middleware.ruta_segura(siguiente), status_code=303)
+    if resultado.usuario.must_change_password:
+        destino = _cambio_password_url(siguiente)
+    else:
+        destino = middleware.ruta_segura(siguiente)
+    respuesta = RedirectResponse(destino, status_code=303)
     middleware.aplicar_cookie_sesion(respuesta, token_sesion)
     middleware.borrar_cookie_mfa(respuesta)
     return respuesta
@@ -614,14 +636,15 @@ def restablecer(request: Request, db: Session = Depends(get_db),
 
 # --- Cambio de contraseña ------------------------------------------------------
 @router.get("/cambiar-password", response_class=HTMLResponse)
-def cambiar_password_form(request: Request):
+def cambiar_password_form(request: Request, next: str | None = None):
     """Formulario de cambio de contraseña (exige sesión por el gate)."""
     usuario = getattr(request.state, "usuario", None)
     if usuario is None:
         return _redirigir_sin_sesion()
     return templates.TemplateResponse(
         request, "auth/cambiar_password.html",
-        {"errores": [], "must_change": bool(usuario.must_change_password)},
+        {"errores": [], "must_change": bool(usuario.must_change_password),
+         "siguiente": middleware.ruta_segura(next, "")},
     )
 
 
@@ -629,7 +652,8 @@ def cambiar_password_form(request: Request):
              dependencies=[Depends(csrf.csrf_protect)])
 def cambiar_password_post(request: Request, db: Session = Depends(get_db),
                           actual: str = Form(""), nueva: str = Form(""),
-                          confirmacion: str = Form("")):
+                          confirmacion: str = Form(""),
+                          siguiente: str = Form("", alias="next")):
     """Aplica el cambio o vuelve a pintar el formulario con los errores."""
     usuario_sesion = getattr(request.state, "usuario", None)
     if usuario_sesion is None:
@@ -650,11 +674,21 @@ def cambiar_password_post(request: Request, db: Session = Depends(get_db),
     if errores:
         return templates.TemplateResponse(
             request, "auth/cambiar_password.html",
-            {"errores": errores, "must_change": bool(usuario.must_change_password)},
+            {"errores": errores,
+             "must_change": bool(usuario.must_change_password),
+             "siguiente": middleware.ruta_segura(siguiente, "")},
             status_code=200,
         )
-    return RedirectResponse("/auth/cambiar-password?ok=password_changed",
-                            status_code=303)
+
+    # Después del cambio: si el rol aún exige enrolar TOTP, ir a seguridad;
+    # si no, volver al destino original (o al inicio) con el aviso de éxito.
+    if estado_mfa(db, usuario).requiere_enrolamiento:
+        destino = "/auth/seguridad"
+    else:
+        destino = middleware.ruta_segura(siguiente, "/")
+        if destino.startswith("/auth/cambiar-password"):
+            destino = "/"
+    return RedirectResponse(_con_ok(destino), status_code=303)
 
 
 # --- Administración de usuarios y auditoría (Fase A6b) -------------------------

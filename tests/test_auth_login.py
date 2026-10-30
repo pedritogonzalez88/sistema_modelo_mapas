@@ -186,13 +186,59 @@ def test_must_change_password_obliga_a_cambiarla(cliente, fabrica_usuarios):
 
     portada = cliente.get("/", follow_redirects=False)
     assert portada.status_code == 303
-    assert portada.headers["location"] == "/auth/cambiar-password"
+    assert portada.headers["location"] == "/auth/cambiar-password?next=%2F"
 
     formulario = cliente.get("/auth/cambiar-password")
     assert formulario.status_code == 200
     assert "Cambiar contraseña" in formulario.text
     # Las páginas públicas y el logout siguen disponibles.
     assert cliente.get("/salud").status_code == 200
+
+
+def test_must_change_prioriza_cambio_sobre_enrolamiento(cliente,
+                                                        fabrica_usuarios):
+    """El cambio obligatorio va antes que el enrolamiento TOTP (sin salto doble)."""
+    usuario = fabrica_usuarios(must_change=True, mfa_policy="totp")
+    respuesta = _login(cliente, usuario)
+    assert respuesta.status_code == 303
+    assert respuesta.headers["location"] == "/auth/cambiar-password?next=%2F"
+
+    portada = cliente.get("/", follow_redirects=False)
+    assert portada.headers["location"] == "/auth/cambiar-password?next=%2F"
+
+    formulario = cliente.get("/auth/cambiar-password")
+    token = PATRON_CSRF.search(formulario.text).group(1)
+    cambio = cliente.post(
+        "/auth/cambiar-password",
+        data={"csrf_token": token, "actual": usuario.password,
+              "nueva": "Nueva-Clave-2026", "confirmacion": "Nueva-Clave-2026",
+              "next": "/"},
+        follow_redirects=False,
+    )
+    assert cambio.status_code == 303
+    assert cambio.headers["location"] == "/auth/seguridad?ok=password_changed"
+
+    # Sin TOTP confirmado, cualquier vista sigue exigiendo el enrolamiento.
+    assert cliente.get("/", follow_redirects=False).headers["location"] == "/auth/seguridad"
+
+
+def test_cambio_conserva_el_destino_solicitado(cliente, fabrica_usuarios):
+    usuario = fabrica_usuarios(must_change=True)
+    respuesta = _login(cliente, usuario, siguiente="/entregas")
+    assert respuesta.headers["location"] == "/auth/cambiar-password?next=%2Fentregas"
+
+    formulario = cliente.get("/auth/cambiar-password?next=%2Fentregas")
+    token = PATRON_CSRF.search(formulario.text).group(1)
+    cambio = cliente.post(
+        "/auth/cambiar-password",
+        data={"csrf_token": token, "actual": usuario.password,
+              "nueva": "Nueva-Clave-2026", "confirmacion": "Nueva-Clave-2026",
+              "next": "/entregas"},
+        follow_redirects=False,
+    )
+    assert cambio.status_code == 303
+    assert cambio.headers["location"] == "/entregas?ok=password_changed"
+    assert cliente.get("/entregas", follow_redirects=False).status_code == 200
 
 
 def test_accept_json_devuelve_401(cliente):
@@ -243,7 +289,7 @@ def test_cambiar_password_valida_y_aplica(cliente, fabrica_usuarios):
                             "confirmacion": "Nueva-Clave-2026"},
                       follow_redirects=False)
     assert ok.status_code == 303
-    assert ok.headers["location"] == "/auth/cambiar-password?ok=password_changed"
+    assert ok.headers["location"] == "/?ok=password_changed"
 
     # La sesión en curso se conserva; con la contraseña vieja ya no se entra.
     assert cliente.get("/", follow_redirects=False).status_code == 200

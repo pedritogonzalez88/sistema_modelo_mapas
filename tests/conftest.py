@@ -80,6 +80,7 @@ def fabrica_usuarios():
     def _crear(*, username: str | None = None, email: str | None = None,
                password: str = "Clave-Segura-2026", rol: str = "consulta",
                activo: bool = True, must_change: bool = False,
+               mfa_policy: str = "disabled",
                ) -> SimpleNamespace:
         sufijo = uuid.uuid4().hex[:10]
         username = username or f"prueba-{sufijo}"
@@ -95,8 +96,9 @@ def fabrica_usuarios():
                 is_active=activo,
                 must_change_password=must_change,
                 # La fixture es genérica de login: sin segundo factor para no
-                # desviar al challenge por correo (Fase A4).
-                mfa_policy="disabled",
+                # desviar al challenge por correo (Fase A4). Los tests que
+                # necesitan TOTP pasan ``mfa_policy="totp"`` explícitamente.
+                mfa_policy=mfa_policy,
             )
             db.add(usuario)
             db.flush()

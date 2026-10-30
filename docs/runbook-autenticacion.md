@@ -662,6 +662,31 @@ sesión), pero **deja la aplicación sin autenticación**: úsese solo como
 contención inmediata, desde la red interna, y con un plazo definido. Las
 cuentas, roles y auditoría permanecen en la base.
 
+### 12.4 Flujo de redirección tras el inicio de sesión
+
+El orden es determinista y no produce rebotes entre pantallas:
+
+1. **Segundo factor**: si el usuario tiene TOTP activo (o la política exige
+   correo), el login termina en `/auth/mfa` y **no crea sesión** hasta validar
+   el código.
+2. **Cambio obligatorio**: con `must_change_password=true`, el destino es
+   `/auth/cambiar-password?next=<destino>`. Se evalúa **antes** que el
+   enrolamiento TOTP: si ambos están pendientes, primero se cambia la clave.
+3. **Enrolamiento TOTP**: si el rol lo exige y aún no está activo, el destino
+   es `/auth/seguridad`. Al confirmar el autenticador se muestran los códigos
+   de respaldo una sola vez.
+4. **Destino original**: si el usuario llegó con `next=/entregas` (o similar),
+   después de cambiar la contraseña vuelve allí con `?ok=password_changed`. El
+   `next` solo acepta rutas internas (`/...`, nunca `//host` ni absolutas).
+
+Ejemplos verificados:
+
+- `daniel.meza` (admin, sin TOTP): login → `/auth/cambiar-password?next=%2F`
+  → al guardar → `/auth/seguridad?ok=password_changed`.
+- `juan.perez` (asistente): login → `/auth/mfa?metodo=email` → al validar el
+  código → `/auth/cambiar-password?next=%2F` → al guardar → `/`.
+- Usuario sin cambio pendiente: login (y MFA si corresponde) → `next` o `/`.
+
 ---
 
 ## 13. Checklists

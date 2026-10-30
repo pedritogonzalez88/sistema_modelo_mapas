@@ -212,14 +212,22 @@ class AuthGateMiddleware(BaseHTTPMiddleware):
             request.state.usuario = usuario
             request.state.sesion = sesion
 
-            if usuario.must_change_password and not _permite_cambio_password(
-                    request.url.path):
-                return csrf.poner_cookie_csrf(
-                    request, RedirectResponse("/auth/cambiar-password",
-                                              status_code=303))
-
+            if usuario.must_change_password:
+                if not _permite_cambio_password(request.url.path):
+                    destino = request.url.path
+                    if request.url.query:
+                        destino = f"{destino}?{request.url.query}"
+                    if destino.startswith("/auth/cambiar-password"):
+                        destino = "/"
+                    return csrf.poner_cookie_csrf(
+                        request, RedirectResponse(
+                            "/auth/cambiar-password?next="
+                            f"{quote(ruta_segura(destino), safe='')}",
+                            status_code=303))
             # Fase A3: la política TOTP obliga a enrolarse antes de operar.
-            if exige_enrolamiento(usuario) and not _permite_enrolamiento(
+            # Se evalúa después del cambio obligatorio (nunca en paralelo: con
+            # ambos pendientes, el gate rebotaría entre las dos pantallas).
+            elif exige_enrolamiento(usuario) and not _permite_enrolamiento(
                     request.url.path):
                 return csrf.poner_cookie_csrf(
                     request, RedirectResponse("/auth/seguridad",

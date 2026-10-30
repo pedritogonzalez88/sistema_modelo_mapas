@@ -198,7 +198,7 @@ def test_token_valido_permite_el_post(cliente, fabrica_usuarios):
     token = _autenticado(cliente, usuario)
     respuesta = _cambio(cliente, token, actual=usuario.password)
     assert respuesta.status_code == 303
-    assert respuesta.headers["location"] == "/auth/cambiar-password?ok=password_changed"
+    assert respuesta.headers["location"] == "/?ok=password_changed"
 
 
 def test_logout_exige_csrf(cliente, fabrica_usuarios):
