@@ -30,6 +30,8 @@ PASSWORD = "Clave-Segura-2026"
 NUEVA = "Clave-Nueva-Segura-2026"
 
 PATRON_TOKEN = re.compile(r"token=([A-Za-z0-9_\-]+)")
+#: Nonce de la CSP (Fase A6a): cambia en cada respuesta por diseño.
+PATRON_NONCE = re.compile(r'nonce="[^"]*"')
 GENERICO = "Si la cuenta existe, enviamos instrucciones"
 
 
@@ -133,6 +135,17 @@ def _solicitar(cliente: TestClient, identificador: str, token: str | None = None
     )
 
 
+def _sin_nonce(html: str) -> str:
+    """Quita el nonce de la CSP (Fase A6a) para comparar el cuerpo visible.
+
+    Desde A6a cada respuesta lleva un nonce aleatorio distinto en el header y
+    en los ``<script>`` inline, de modo que dos respuestas equivalentes ya no
+    son idénticas byte a byte. La garantía que importa sigue intacta: el
+    contenido depende solo del flujo, nunca del identificador probado.
+    """
+    return PATRON_NONCE.sub('nonce=""', html)
+
+
 def _archivos(carpeta) -> list:
     return sorted(carpeta.glob("*.eml"),
                   key=lambda p: (p.stat().st_mtime_ns, p.name))
@@ -228,7 +241,7 @@ def test_respuesta_identica_para_local_inexistente_inactivo_y_ldap(
         assert respuesta.status_code == 200
         assert GENERICO in respuesta.text
     # Mismo texto exacto en los cuatro casos: nada delata la existencia.
-    assert len({respuesta.text for respuesta in respuestas}) == 1
+    assert len({_sin_nonce(respuesta.text) for respuesta in respuestas}) == 1
 
     # Solo la cuenta local activa recibió correo y generó token.
     assert len(_archivos(carpeta_correo)) == 1
@@ -381,7 +394,7 @@ def test_limite_de_tres_solicitudes_por_hora(cliente, fabrica, carpeta_correo):
     for respuesta in respuestas:
         assert respuesta.status_code == 200
         assert GENERICO in respuesta.text
-    assert len({respuesta.text for respuesta in respuestas}) == 1
+    assert len({_sin_nonce(respuesta.text) for respuesta in respuestas}) == 1
 
     # Solo se emitieron tres enlaces y tres correos; el cuarto no envía.
     assert len(_tokens(usuario.id)) == 3
