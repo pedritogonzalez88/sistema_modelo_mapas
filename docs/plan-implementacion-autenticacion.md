@@ -180,6 +180,9 @@ CSRF en plantillas:
 
 ### Fase A2 — Autorización por roles (3 días)
 
+> Entregada: ver `docs/fase-a2-permisos-por-rol.md` (matriz aplicada, alcance del
+> asistente, navegación condicionada y `tests/test_auth_roles.py`).
+
 | ID | Tarea |
 |---|---|
 | A2.1 | Definir matriz de permisos en `app/auth/permissions.py` (única fuente de verdad) |
@@ -484,8 +487,8 @@ Cada commit deja la suite en verde y la app funcionando con la bandera apagada.
 - [ ] TOTP rechaza reutilización y acepta ±1 paso; los códigos de respaldo son de un solo uso.
 - [ ] Código por correo expira en 10 min y admite 5 intentos.
 - [ ] Reset por correo funciona una vez, expira en 30 min y revoca todas las sesiones.
-- [ ] Un `asistente` no puede ver entregas de otro ni acceder a Cruces/QA/QC/Exportar (403).
-- [ ] `admin` no puede dictaminar fichas ni autorizar reemplazos.
+- [x] Un `asistente` no puede ver entregas de otro ni acceder a Cruces/QA/QC/Exportar (403).
+- [x] `admin` no puede dictaminar fichas ni autorizar reemplazos.
 - [ ] LDAP deshabilitado no abre conexiones; con mock funciona el mapeo de grupos y el DC caído falla cerrado.
 - [ ] Cookies `HttpOnly`+`Secure`+`SameSite=Lax`; HSTS y CSP activos en producción.
 - [ ] Auditoría registra actor real, IP, resultado y motivo en acciones sensibles.
