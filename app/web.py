@@ -24,6 +24,10 @@ FLASH_OK = {
     # Autenticación (Fase A1)
     "sesion_cerrada":     ("Sesión cerrada correctamente.", "ok"),
     "password_changed":   ("Contraseña actualizada. Las demás sesiones se cerraron.", "ok"),
+    # Autenticación (Fase A3). Los códigos de respaldo y su confirmación se
+    # muestran en la misma respuesta (una sola vez), por eso no hay flash para
+    # ``mfa_activado`` ni ``mfa_recovery_regenerated``: redirigir los perdería.
+    "session_revoked":    ("Sesión revocada. Ese dispositivo ya no tiene acceso.", "ok"),
 }
 
 FLASH_ERROR = {
@@ -31,6 +35,11 @@ FLASH_ERROR = {
     "duplicado":        "El archivo ya fue cargado (misma huella SHA-256).",
     "clase_requerida":  "Para cerrar por consenso se exige una clase definitiva 1–9.",
     "transicion_invalida": "El cambio de estado solicitado no está permitido desde el estado actual.",
+    # Autenticación (Fase A3)
+    "desafio_expirado": "El paso de verificación expiró. Ingrese de nuevo con su contraseña.",
+    "mfa_bloqueado":    "Demasiados códigos incorrectos. Ingrese de nuevo con su contraseña.",
+    "sesion_actual":    "Para cerrar esta sesión use la opción «Salir» del menú de la cuenta.",
+    "sesion_no_encontrada": "La sesión indicada ya no existe o no pertenece a su cuenta.",
 }
 
 

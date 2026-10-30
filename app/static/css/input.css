@@ -410,4 +410,36 @@
     @apply self-start text-xs text-brand-700 underline underline-offset-2
            hover:text-brand-900;
   }
+
+  /* --- Segundo factor (Fase A3) ---------------------------------------- */
+  /* Detalle plegable del código de respaldo en la pantalla de verificación. */
+  .auth-detalle {
+    @apply rounded-lg border border-line bg-canvas/40 px-3 py-2;
+  }
+  .auth-detalle__resumen {
+    @apply cursor-pointer text-sm font-medium text-brand-700
+           hover:text-brand-900;
+  }
+  .auth-detalle__cuerpo { @apply mt-3 flex flex-col gap-3; }
+
+  /* QR del enrolamiento: la alternativa accesible es la clave manual. */
+  .qr-envoltorio {
+    @apply w-fit rounded-lg border border-line bg-white p-2;
+  }
+  .clave-manual { @apply mt-1; }
+  .clave-manual__valor {
+    @apply inline-block rounded-lg bg-canvas px-3 py-2 text-sm tracking-wider
+           text-ink-900 select-all break-all;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Códigos de respaldo mostrados una única vez. */
+  .codigos-lista {
+    @apply grid grid-cols-1 gap-2 rounded-lg border border-line bg-canvas/50 p-4
+           sm:grid-cols-2;
+  }
+  .codigos-lista__codigo {
+    @apply text-sm tracking-wider text-ink-900 select-all;
+    font-variant-numeric: tabular-nums;
+  }
 }

@@ -34,6 +34,8 @@ from app.models import Usuario
 
 ROLES = ("admin", "supervision", "cargador", "asistente", "consulta")
 LETRAS = ("A", "B", "C")
+MFA_POLITICAS = ("disabled", "email", "totp", "any")
+# Roles críticos: TOTP obligatorio por política (análisis §2 y §6.4).
 MFA_POR_ROL = {"admin": "totp", "supervision": "totp"}
 
 
@@ -74,7 +76,8 @@ def _existe(db: Session, username: str, email: str) -> str | None:
 
 def _crear_usuario(db: Session, *, nombre: str, username: str, email: str,
                    rol: str, letra: str | None, password: str,
-                   must_change: bool) -> Usuario:
+                   must_change: bool,
+                   mfa_policy: str | None = None) -> Usuario:
     if rol not in ROLES:
         raise SystemExit(f"Rol inválido: {rol}. Use uno de: {', '.join(ROLES)}.")
     if letra and letra not in LETRAS:
@@ -83,6 +86,10 @@ def _crear_usuario(db: Session, *, nombre: str, username: str, email: str,
         raise SystemExit("El rol asistente exige --letra (A, B o C).")
     if rol != "asistente" and letra:
         raise SystemExit("Solo el rol asistente admite --letra.")
+    if mfa_policy is not None and mfa_policy not in MFA_POLITICAS:
+        raise SystemExit(
+            f"Política 2FA inválida: {mfa_policy}. Use una de: "
+            f"{', '.join(MFA_POLITICAS)}.")
 
     username = username.strip()
     email = email.strip()
@@ -108,7 +115,7 @@ def _crear_usuario(db: Session, *, nombre: str, username: str, email: str,
         password_changed_at=datetime.utcnow(),
         must_change_password=must_change,
         is_active=True,
-        mfa_policy=MFA_POR_ROL.get(rol, "any"),
+        mfa_policy=mfa_policy or MFA_POR_ROL.get(rol, "any"),
         role_source="manual",
     )
     db.add(usuario)
@@ -117,7 +124,8 @@ def _crear_usuario(db: Session, *, nombre: str, username: str, email: str,
         db, audit.ACTOR_CLI, "user_created", entidad="usuario",
         entidad_id=usuario.id,
         detalle={"rol": rol, "username": username,
-                 "must_change_password": must_change},
+                 "must_change_password": must_change,
+                 "mfa_policy": usuario.mfa_policy},
     )
     db.commit()
     return usuario
@@ -145,9 +153,10 @@ def _cmd_crear_usuario(args: argparse.Namespace) -> int:
             rol=args.rol, letra=args.letra, password=password,
             # Las cuentas creadas por administración deben estrenar contraseña.
             must_change=True,
+            mfa_policy=args.mfa_policy,
         )
         print(f"Usuario creado: id={usuario.id} usuario={usuario.username} "
-              f"rol={usuario.rol}")
+              f"rol={usuario.rol} mfa_policy={usuario.mfa_policy}")
     return 0
 
 
@@ -180,6 +189,11 @@ def _parser() -> argparse.ArgumentParser:
     usuario.add_argument("--rol", required=True, choices=ROLES)
     usuario.add_argument("--letra", choices=LETRAS,
                          help="Letra de terna; obligatoria para el rol asistente.")
+    usuario.add_argument("--mfa-policy", choices=MFA_POLITICAS, default=None,
+                         dest="mfa_policy",
+                         help="Segundo factor exigido: disabled | email | totp | any. "
+                              "Por defecto «any», salvo los roles críticos "
+                              "(admin, supervisión), que quedan en «totp».")
     usuario.set_defaults(func=_cmd_crear_usuario)
 
     limpiar = sub.add_parser("limpiar-sesiones",

@@ -78,6 +78,7 @@
     </summary>
     <div class="user-menu__panel">
       <p class="user-menu__rol">{{ ui.badge(rol_etiqueta(usuario.rol)) }}</p>
+      <a class="user-menu__link" href="/auth/seguridad">Seguridad</a>
       <a class="user-menu__link" href="/auth/cambiar-password">Cambiar contraseña</a>
       <form method="post" action="/auth/logout" class="user-menu__form">
         {{ ui.csrf_input() }}

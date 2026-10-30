@@ -1,0 +1,62 @@
+{% extends "auth/base_auth.html" %}
+{% import "components/ui.html" as ui with context %}
+
+{% block title %}Verificación en dos pasos · Validador EET{% endblock %}
+{% block description %}Segundo factor de autenticación para ingresar al Validador EET.{% endblock %}
+
+{% block avisos %}
+{%- if error %}
+<div class="mb-4">{{ ui.banner("danger", error) }}</div>
+{%- endif %}
+{% endblock %}
+
+{% block contenido %}
+<h1 class="text-xl font-semibold text-ink-900">Verificación en dos pasos</h1>
+<p class="auth-intro">
+  Abra su aplicación autenticadora e ingrese el código de 6 dígitos.
+  El código cambia cada 30 segundos y el paso de verificación vence a los 5 minutos.
+</p>
+
+<form method="post" action="/auth/mfa" class="mt-6 flex flex-col gap-5">
+  {{ ui.csrf_input() }}
+  <input type="hidden" name="next" value="{{ next or '' }}">
+
+  {{ ui.field(
+    "Código de verificación",
+    "codigo",
+    value=codigo or "",
+    hint="Seis dígitos del autenticador. Puede pegar el código completo.",
+    inputmode="numeric",
+    autocomplete="one-time-code",
+    pattern="[0-9]{6}",
+    maxlength="6",
+    autofocus=True,
+  ) }}
+
+  <details class="auth-detalle">
+    <summary class="auth-detalle__resumen">Usar un código de respaldo</summary>
+    <div class="auth-detalle__cuerpo">
+      <p class="auth-links">
+        Los códigos de respaldo se entregaron una sola vez al activar el
+        autenticador. Cada uno sirve una única vez.
+      </p>
+      {{ ui.field(
+        "Código de respaldo",
+        "respaldo",
+        value=respaldo or "",
+        hint="Formato XXXX-XXXX. Complete este campo en lugar del código de 6 dígitos.",
+        autocomplete="off",
+        maxlength="9",
+      ) }}
+    </div>
+  </details>
+
+  <button class="btn btn--primary w-full" type="submit">Verificar e ingresar</button>
+</form>
+
+<p class="auth-links">
+  ¿No reconoce este acceso? Vuelva al
+  <a class="underline" href="/auth/login">inicio de sesión</a> y cambie su contraseña.
+  Si perdió el teléfono, use un código de respaldo o solicite un reset asistido a la coordinación.
+</p>
+{% endblock %}

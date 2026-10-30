@@ -26,11 +26,16 @@ from app.models import Usuario
 
 __all__ = [
     "AuthGateMiddleware",
+    "COOKIE_MFA_DESARROLLO",
     "COOKIE_SESION_DESARROLLO",
     "SecurityHeadersMiddleware",
+    "aplicar_cookie_mfa",
     "aplicar_cookie_sesion",
+    "borrar_cookie_mfa",
     "borrar_cookie_sesion",
     "es_ruta_publica",
+    "exige_enrolamiento",
+    "nombre_cookie_mfa",
     "nombre_cookie_sesion",
     "ruta_segura",
 ]
@@ -38,12 +43,18 @@ __all__ = [
 # Prefijo ``__Host-`` obliga a Secure; en desarrollo local (http) se usa un
 # nombre plano o el navegador descartaría la cookie.
 COOKIE_SESION_DESARROLLO = "eet_session"
+COOKIE_MFA_DESARROLLO = "eet_mfa"
+
+# Vida del challenge de segundo factor (Fase A3): 5 minutos.
+MFA_MAX_AGE = 300
 
 # Rutas que no exigen sesión. ``/auth/logout`` es público a propósito: el
 # cierre de sesión debe ser idempotente aunque la cookie ya no sea válida.
+# ``/auth/mfa`` también: entre la contraseña y el segundo factor el usuario
+# todavía **no** tiene sesión (la sesión nace al superar el desafío).
 RUTAS_PUBLICAS = frozenset({
-    "/auth/login", "/auth/logout", "/auth/recuperar", "/auth/restablecer",
-    "/salud", "/favicon.ico",
+    "/auth/login", "/auth/logout", "/auth/mfa", "/auth/recuperar",
+    "/auth/restablecer", "/salud", "/favicon.ico",
 })
 PREFIJOS_PUBLICOS = ("/static/",)
 
@@ -52,6 +63,11 @@ _RUTAS_SIN_SESION = frozenset({"/salud", "/favicon.ico"})
 
 # Con ``must_change_password`` la única navegación permitida es el cambio.
 RUTAS_CAMBIO_PASSWORD = frozenset({"/auth/cambiar-password", "/auth/logout"})
+
+# Con la política TOTP y sin enrolar, solo se permite completar el enrolamiento
+# (Fase A3). El resto redirige a ``/auth/seguridad``.
+RUTAS_ENROLAMIENTO = frozenset({"/auth/seguridad", "/auth/logout"})
+PREFIJOS_ENROLAMIENTO = ("/auth/seguridad/",)
 
 
 def nombre_cookie_sesion() -> str:
@@ -70,6 +86,24 @@ def aplicar_cookie_sesion(respuesta: Response, token: str) -> None:
 
 def borrar_cookie_sesion(respuesta: Response) -> None:
     respuesta.delete_cookie(nombre_cookie_sesion(), path="/")
+
+
+def nombre_cookie_mfa() -> str:
+    """Nombre de la cookie del challenge de segundo factor."""
+    return "__Host-eet_mfa" if settings.cookie_secure else COOKIE_MFA_DESARROLLO
+
+
+def aplicar_cookie_mfa(respuesta: Response, token: str) -> None:
+    """Cookie del challenge: HttpOnly, SameSite=Lax y 5 minutos de vida."""
+    respuesta.set_cookie(
+        nombre_cookie_mfa(), token,
+        max_age=MFA_MAX_AGE,
+        path="/", httponly=True, samesite="lax", secure=settings.cookie_secure,
+    )
+
+
+def borrar_cookie_mfa(respuesta: Response) -> None:
+    respuesta.delete_cookie(nombre_cookie_mfa(), path="/")
 
 
 def es_ruta_publica(ruta: str) -> bool:
@@ -105,6 +139,22 @@ def _respuesta_sin_sesion(request: Request) -> Response:
 
 def _permite_cambio_password(ruta: str) -> bool:
     return ruta in RUTAS_CAMBIO_PASSWORD or ruta.startswith(PREFIJOS_PUBLICOS)
+
+
+def _permite_enrolamiento(ruta: str) -> bool:
+    return (ruta in RUTAS_ENROLAMIENTO
+            or ruta.startswith(PREFIJOS_ENROLAMIENTO)
+            or ruta.startswith(PREFIJOS_PUBLICOS))
+
+
+def exige_enrolamiento(usuario: Usuario) -> bool:
+    """``True`` si su política exige TOTP y todavía no lo activó (Fase A3).
+
+    Se lee ``mfa_enrolled_at`` (marcado junto con ``mfa_totp.confirmed_at``):
+    el gate no necesita descifrar secretos para decidir.
+    """
+    return ((usuario.mfa_policy or "").strip().lower() == "totp"
+            and usuario.mfa_enrolled_at is None)
 
 
 class AuthGateMiddleware(BaseHTTPMiddleware):
@@ -160,6 +210,13 @@ class AuthGateMiddleware(BaseHTTPMiddleware):
                     request.url.path):
                 return csrf.poner_cookie_csrf(
                     request, RedirectResponse("/auth/cambiar-password",
+                                              status_code=303))
+
+            # Fase A3: la política TOTP obliga a enrolarse antes de operar.
+            if exige_enrolamiento(usuario) and not _permite_enrolamiento(
+                    request.url.path):
+                return csrf.poner_cookie_csrf(
+                    request, RedirectResponse("/auth/seguridad",
                                               status_code=303))
 
             return csrf.poner_cookie_csrf(request, await call_next(request))

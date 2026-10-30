@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% import "components/ui.html" as ui with context %}
+
+{% block title %}Seguridad · Validador EET{% endblock %}
+{% block description %}Segundo factor, códigos de respaldo y sesiones activas de la cuenta.{% endblock %}
+
+{% block contenido %}
+{{ ui.page_header(
+  "Seguridad",
+  "Segundo factor con aplicación autenticadora, códigos de respaldo y sesiones activas."
+) }}
+
+{% if error %}
+<div class="mb-4">{{ ui.banner("danger", error) }}</div>
+{% endif %}
+
+{% if codigos_nuevos %}
+<div class="mb-4">
+  {{ ui.banner(
+    "ok",
+    "Guarde estos códigos ahora: no se vuelven a mostrar. Cada uno sirve una sola vez si pierde el teléfono.",
+    dismissible=False
+  ) }}
+</div>
+{% endif %}
+
+<div class="flex flex-col gap-6">
+
+  {# --- Autenticador (TOTP) ---------------------------------------------- #}
+  {% call ui.card(
+    "Aplicación autenticadora",
+    "El código de 6 dígitos se genera en su teléfono y cambia cada 30 segundos."
+  ) %}
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <span class="text-sm text-ink-600">Estado:</span>
+      {% if estado.enrolado %}
+        {{ ui.badge("Activado", "ok", icon="check") }}
+      {% elif pendiente %}
+        {{ ui.badge("Activación pendiente", "warn", icon="alert") }}
+      {% else %}
+        {{ ui.badge("Sin activar", "warn", icon="alert") }}
+      {% endif %}
+      <span class="text-sm text-ink-600">Método: TOTP (aplicación autenticadora)</span>
+    </div>
+
+    {% if estado.requiere_enrolamiento %}
+      <div class="mb-4">
+        {{ ui.banner(
+          "warn",
+          "Su rol exige el segundo factor: hasta completar la activación solo puede usar esta pantalla y cerrar sesión.",
+          dismissible=False
+        ) }}
+      </div>
+    {% endif %}
+
+    {% if pendiente %}
+      <div class="grid gap-6 lg:grid-cols-[auto_1fr]">
+        <div class="flex flex-col items-start gap-2">
+          <div class="qr-envoltorio" aria-hidden="true">{{ pendiente.qr | safe }}</div>
+          <p class="text-xs text-ink-400">Escanee el código con su aplicación autenticadora.</p>
+        </div>
+        <div class="flex flex-col gap-4">
+          <div>
+            <p class="text-sm font-medium text-ink-900">¿No puede escanear? Ingrese la clave manual</p>
+            <p class="clave-manual" aria-label="Clave manual del autenticador">
+              <code class="clave-manual__valor">{{ pendiente.manual }}</code>
+            </p>
+            <p class="text-xs text-ink-600">
+              Elija «clave de configuración» o «ingresar clave manualmente» en la aplicación
+              y escriba la clave en bloques de cuatro caracteres.
+            </p>
+          </div>
+
+          <form method="post" action="/auth/seguridad/totp/confirmar"
+                class="flex flex-col gap-4 border-t border-line pt-4">
+            {{ ui.csrf_input() }}
+            {{ ui.field(
+              "Código de 6 dígitos del autenticador",
+              "codigo",
+              hint="Confirma que la aplicación quedó bien configurada antes de activar.",
+              required=True,
+              inputmode="numeric",
+              autocomplete="one-time-code",
+              pattern="[0-9]{6}",
+              maxlength="6",
+              autofocus=True,
+            ) }}
+            <div class="flex flex-wrap gap-2">
+              {{ ui.btn("Activar autenticador", type="submit") }}
+            </div>
+          </form>
+        </div>
+      </div>
+    {% elif estado.enrolado %}
+      <p class="text-sm text-ink-600 max-w-prose">
+        El autenticador está activo desde
+        <span class="tabular">{{ estado.enrolado_desde }}</span>.
+        Si cambió de teléfono, use sus códigos de respaldo para ingresar y luego
+        solicite a la administración el reinicio del segundo factor.
+      </p>
+    {% else %}
+      <p class="text-sm text-ink-600 max-w-prose">
+        Al activar el autenticador se mostrarán 10 códigos de respaldo.
+        Guárdelos en un lugar seguro: son la única forma de ingresar si pierde el teléfono.
+      </p>
+      <form method="post" action="/auth/seguridad/totp/iniciar" class="mt-4">
+        {{ ui.csrf_input() }}
+        <div class="flex flex-wrap gap-2">
+          {{ ui.btn("Activar autenticador", type="submit") }}
+        </div>
+      </form>
+    {% endif %}
+  {% endcall %}
+
+  {# --- Códigos de respaldo ---------------------------------------------- #}
+  {% call ui.card(
+    "Códigos de respaldo",
+    "Alternativa de un solo uso si no tiene el teléfono a mano."
+  ) %}
+    {% if codigos_nuevos %}
+      <p class="mb-3 text-sm text-ink-600">
+        Se generaron {{ codigos_nuevos | length }} códigos. Anótelos o descárguelos
+        antes de salir de esta pantalla; el sistema no puede volver a mostrarlos.
+      </p>
+      <ol class="codigos-lista" aria-label="Códigos de respaldo recién generados">
+        {%- for codigo in codigos_nuevos %}
+        <li><code class="codigos-lista__codigo">{{ codigo }}</code></li>
+        {%- endfor %}
+      </ol>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <a class="btn btn--secondary btn--sm" download="codigos-respaldo-eet.txt"
+           href="data:text/plain;charset=utf-8,{{ (codigos_nuevos | join('\n')) | urlencode }}">Descargar .txt</a>
+        <a class="btn btn--ghost btn--sm" href="/auth/seguridad">Ya los guardé</a>
+      </div>
+    {% else %}
+      <p class="mb-4 text-sm text-ink-600">
+        Códigos sin usar:
+        <span class="font-semibold tabular">{{ codigos_restantes }}</span>.
+        {% if codigos_restantes == 0 %}
+        No le quedan códigos: regenere un lote nuevo ahora.
+        {% endif %}
+      </p>
+      {% if estado.enrolado %}
+        <form method="post" action="/auth/seguridad/respaldo/regenerar"
+              class="flex flex-col gap-4 border-t border-line pt-4">
+          {{ ui.csrf_input() }}
+          {{ ui.field(
+            "Código actual del autenticador",
+            "codigo",
+            hint="Regenerar invalida de inmediato los códigos que ya no usó.",
+            required=True,
+            inputmode="numeric",
+            autocomplete="one-time-code",
+            pattern="[0-9]{6}",
+            maxlength="6",
+          ) }}
+          <div class="flex flex-wrap gap-2">
+            {{ ui.btn("Regenerar códigos", type="submit", variant="secondary") }}
+          </div>
+        </form>
+      {% else %}
+        <p class="text-sm text-ink-600">
+          Active primero el autenticador para recibir sus códigos de respaldo.
+        </p>
+      {% endif %}
+    {% endif %}
+  {% endcall %}
+
+  {# --- Sesiones activas -------------------------------------------------- #}
+  {% call ui.card(
+    "Sesiones activas",
+    "Dispositivos con acceso vigente a su cuenta. Revocar cierra esa sesión en el acto."
+  ) %}
+    {% if sesiones %}
+      {% call ui.table_wrap("Sesiones activas de la cuenta") %}
+      <table class="table">
+        <caption class="sr-only">Sesiones activas de su cuenta</caption>
+        <thead>
+          <tr>
+            <th scope="col">Origen</th>
+            <th scope="col">Agente</th>
+            <th scope="col">Última actividad</th>
+            <th scope="col">Estado</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for sesion in sesiones %}
+          {%- set es_actual = sesion_actual is not none and sesion.id == sesion_actual %}
+          <tr>
+            <td class="tabular">{{ sesion.ip or "—" }}</td>
+            <td class="max-w-[22rem] truncate" title="{{ sesion.user_agent or '' }}">
+              {{ sesion.user_agent or "Sin identificar" }}
+            </td>
+            <td class="tabular">
+              {{ sesion.last_seen_at.strftime("%Y-%m-%d %H:%M") if sesion.last_seen_at else "—" }} UTC
+            </td>
+            <td>
+              {% if es_actual %}
+                {{ ui.badge("Esta sesión", "info") }}
+              {% else %}
+                {{ ui.badge("Activa", "neutral") }}
+              {% endif %}
+            </td>
+            <td class="text-right">
+              {% if es_actual %}
+                <span class="text-xs text-ink-400">Ciérrela con «Salir»</span>
+              {% else %}
+                <form method="post" action="/auth/sesiones/{{ sesion.id }}/revocar">
+                  {{ ui.csrf_input() }}
+                  <button class="btn btn--danger btn--sm" type="submit">Revocar</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {%- endfor %}
+        </tbody>
+      </table>
+      {% endcall %}
+    {% else %}
+      {{ ui.empty(
+        "No hay otras sesiones activas",
+        "Solo esta sesión figura abierta. Si ve un dispositivo que no reconoce, cambie la contraseña."
+      ) }}
+    {% endif %}
+  {% endcall %}
+
+  <p class="auth-links">
+    <a class="underline" href="/">Volver al inicio</a> ·
+    <a class="underline" href="/auth/cambiar-password">Cambiar contraseña</a>
+  </p>
+</div>
+{% endblock %}
