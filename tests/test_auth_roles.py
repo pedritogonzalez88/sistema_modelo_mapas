@@ -80,7 +80,8 @@ def roles_db():
                 password_hash=hash_password(PASSWORD),
                 is_active=True,
                 must_change_password=False,
-                mfa_policy="any",
+                # Sin segundo factor: estas pruebas miden autorización por rol.
+                mfa_policy="disabled",
             )
             db.add(fila)
             db.flush()

@@ -94,7 +94,9 @@ def fabrica_usuarios():
                 password_hash=hash_password(password),
                 is_active=activo,
                 must_change_password=must_change,
-                mfa_policy="any",
+                # La fixture es genérica de login: sin segundo factor para no
+                # desviar al challenge por correo (Fase A4).
+                mfa_policy="disabled",
             )
             db.add(usuario)
             db.flush()

@@ -1,0 +1,51 @@
+{% extends "auth/base_auth.html" %}
+{% import "components/ui.html" as ui with context %}
+
+{% block title %}Recuperar acceso · Validador EET{% endblock %}
+{% block description %}Solicitud de restablecimiento de contraseña del Validador EET.{% endblock %}
+
+{% block avisos %}
+{%- if enviado %}
+<div class="mb-4" aria-live="polite">
+  {{ ui.banner("info", mensaje, dismissible=False) }}
+</div>
+{%- endif %}
+{% endblock %}
+
+{% block contenido %}
+<h1 class="text-xl font-semibold text-ink-900">Recuperar acceso</h1>
+<p class="auth-intro">
+  Ingrese su correo institucional o su nombre de usuario. Si la cuenta está
+  habilitada para recuperación, le enviaremos un enlace para elegir una
+  contraseña nueva. El enlace vence a los 30 minutos y sirve una sola vez.
+</p>
+
+<form method="post" action="/auth/recuperar" class="mt-6 flex flex-col gap-5">
+  {{ ui.csrf_input() }}
+
+  {{ ui.field(
+    "Correo institucional o usuario",
+    "identificador",
+    hint="Por ejemplo, nombre.apellido@aep.gov.py o su usuario del sistema.",
+    required=True,
+    autocomplete="email",
+    autofocus=True,
+  ) }}
+
+  <button class="btn btn--primary w-full" type="submit">Enviar instrucciones</button>
+</form>
+
+{% if enviado %}
+<p class="auth-links" aria-live="polite">
+  Revise la bandeja de entrada y la carpeta de correo no deseado. Por seguridad,
+  la respuesta es la misma exista o no la cuenta y no confirmamos si el correo
+  fue entregado.
+</p>
+{% endif %}
+
+<p class="auth-links">
+  <a class="underline" href="/auth/login">Volver a iniciar sesión</a>.
+  Si no recibe el mensaje en unos minutos, comuníquese con la coordinación del
+  proyecto para un restablecimiento asistido.
+</p>
+{% endblock %}

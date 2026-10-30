@@ -53,8 +53,8 @@ MFA_MAX_AGE = 300
 # ``/auth/mfa`` también: entre la contraseña y el segundo factor el usuario
 # todavía **no** tiene sesión (la sesión nace al superar el desafío).
 RUTAS_PUBLICAS = frozenset({
-    "/auth/login", "/auth/logout", "/auth/mfa", "/auth/recuperar",
-    "/auth/restablecer", "/salud", "/favicon.ico",
+    "/auth/login", "/auth/logout", "/auth/mfa", "/auth/mfa/enviar",
+    "/auth/recuperar", "/auth/restablecer", "/salud", "/favicon.ico",
 })
 PREFIJOS_PUBLICOS = ("/static/",)
 

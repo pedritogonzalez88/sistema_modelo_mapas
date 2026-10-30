@@ -42,6 +42,8 @@ class Settings(BaseSettings):
 
     # --- Correo institucional ---
     email_backend: str = "console"  # console | file | smtp
+    # Carpeta de los .eml del backend ``file`` (desarrollo y pruebas).
+    email_dir: str = "uploads/mail"
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_starttls: bool = True
@@ -73,6 +75,13 @@ class Settings(BaseSettings):
     @property
     def upload_path(self) -> Path:
         p = Path(self.upload_dir)
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def email_path(self) -> Path:
+        """Carpeta del backend ``file`` del mailer (se crea si no existe)."""
+        p = Path(self.email_dir)
         p.mkdir(parents=True, exist_ok=True)
         return p
 

@@ -112,7 +112,43 @@
     {% endif %}
   {% endcall %}
 
-  {# --- Códigos de respaldo ---------------------------------------------- #}
+  {# --- Código por correo (Fase A4) -------------------------------------- #}
+  {% call ui.card(
+    "Código por correo",
+    "Segundo factor alternativo: un código de 6 dígitos enviado a su correo institucional."
+  ) %}
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+      <span class="text-sm text-ink-600">Estado:</span>
+      {% if puede_email %}
+        {{ ui.badge("Disponible", "ok", icon="check") }}
+      {% elif correo_mascarado %}
+        {{ ui.badge("No habilitado por su política", "neutral") }}
+      {% else %}
+        {{ ui.badge("Sin correo registrado", "warn", icon="alert") }}
+      {% endif %}
+    </div>
+
+    {% if correo_mascarado %}
+    <p class="mb-2 text-sm text-ink-600">
+      Correo registrado:
+      <span class="font-medium tabular">{{ correo_mascarado }}</span>.
+      La administración actualiza el correo; aquí solo se muestra parcialmente.
+    </p>
+    {% else %}
+    <p class="mb-2 text-sm text-ink-600">
+      Su cuenta no tiene un correo registrado. Solicite a la administración que
+      lo complete para habilitar este método.
+    </p>
+    {% endif %}
+
+    <p class="text-sm text-ink-600 max-w-prose">
+      Si su política lo permite, en el paso de verificación puede pedir un
+      código de 6 dígitos por correo en lugar del autenticador. El código vence
+      a los 10 minutos, admite 5 intentos y solo se envía a la dirección
+      registrada. No se muestra nunca en pantalla.
+    </p>
+  {% endcall %}
+
   {% call ui.card(
     "Códigos de respaldo",
     "Alternativa de un solo uso si no tiene el teléfono a mano."

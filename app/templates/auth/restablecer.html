@@ -1,0 +1,88 @@
+{% extends "auth/base_auth.html" %}
+{% import "components/ui.html" as ui with context %}
+
+{% block title %}Nueva contraseña · Validador EET{% endblock %}
+{% block description %}Restablecimiento de contraseña con el enlace enviado por correo.{% endblock %}
+
+{% block avisos %}
+{%- if not valido %}
+<div class="mb-4" aria-live="polite">
+  {{ ui.banner("danger", mensaje, dismissible=False) }}
+</div>
+{%- elif errores %}
+<div class="mb-4">
+  {{ ui.banner("danger", "No se pudo restablecer la contraseña. Revise los puntos indicados.") }}
+  <ul class="auth-errores" role="alert">
+    {%- for error in errores %}
+    <li>{{ error }}</li>
+    {%- endfor %}
+  </ul>
+</div>
+{%- endif %}
+{% endblock %}
+
+{% block contenido %}
+{% if not valido %}
+<h1 class="text-xl font-semibold text-ink-900">El enlace no es válido</h1>
+<p class="auth-intro">
+  El enlace de restablecimiento no es válido o expiró. Los enlaces vencen a los
+  30 minutos y solo pueden usarse una vez.
+</p>
+<p class="mt-6">
+  <a class="btn btn--primary w-full" href="/auth/recuperar">Solicitar un enlace nuevo</a>
+</p>
+<p class="auth-links">
+  <a class="underline" href="/auth/login">Volver a iniciar sesión</a>.
+</p>
+{% else %}
+<h1 class="text-xl font-semibold text-ink-900">Nueva contraseña</h1>
+<p class="auth-intro">
+  Elija una contraseña de entre 12 y 128 caracteres. No use su usuario, su
+  correo ni contraseñas frecuentes. Al guardar se cerrarán todas las sesiones
+  abiertas de su cuenta.
+</p>
+
+<form method="post" action="/auth/restablecer" class="mt-6 flex flex-col gap-5">
+  {{ ui.csrf_input() }}
+  <input type="hidden" name="token" value="{{ token }}">
+
+  <div class="auth-secret">
+    {{ ui.field(
+      "Nueva contraseña",
+      "nueva",
+      type="password",
+      hint="Entre 12 y 128 caracteres.",
+      required=True,
+      autocomplete="new-password",
+      autofocus=True,
+    ) }}
+    <button type="button" class="auth-secret__toggle js-only" data-password-toggle="campo-nueva"
+            aria-controls="campo-nueva" aria-pressed="false">Mostrar contraseña</button>
+  </div>
+
+  <div class="auth-secret">
+    {{ ui.field(
+      "Confirmar contraseña",
+      "confirmacion",
+      type="password",
+      hint="Repita la contraseña exactamente.",
+      required=True,
+      autocomplete="new-password",
+    ) }}
+    <button type="button" class="auth-secret__toggle js-only" data-password-toggle="campo-confirmacion"
+            aria-controls="campo-confirmacion" aria-pressed="false">Mostrar contraseña</button>
+  </div>
+
+  <p class="auth-links">
+    Requisitos: 12 caracteres como mínimo, sin espacios al inicio ni al final,
+    distinta de su usuario y de su correo institucional.
+  </p>
+
+  <button class="btn btn--primary w-full" type="submit">Guardar nueva contraseña</button>
+</form>
+
+<p class="auth-links">
+  <a class="underline" href="/auth/login">Cancelar y volver al inicio de sesión</a>.
+</p>
+{% endif %}
+{% endblock %}

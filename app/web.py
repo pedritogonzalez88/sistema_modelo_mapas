@@ -28,6 +28,8 @@ FLASH_OK = {
     # muestran en la misma respuesta (una sola vez), por eso no hay flash para
     # ``mfa_activado`` ni ``mfa_recovery_regenerated``: redirigir los perdería.
     "session_revoked":    ("Sesión revocada. Ese dispositivo ya no tiene acceso.", "ok"),
+    # Autenticación (Fase A4)
+    "password_reset":     ("Contraseña restablecida. Ingrese con su nueva clave.", "ok"),
 }
 
 FLASH_ERROR = {

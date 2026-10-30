@@ -8,9 +8,80 @@
 {%- if error %}
 <div class="mb-4">{{ ui.banner("danger", error) }}</div>
 {%- endif %}
+{%- if aviso == "correo_enviado" %}
+<div class="mb-4" aria-live="polite">
+  {{ ui.banner(
+    "info",
+    "Le enviamos un código de 6 dígitos a " ~ (email_mascarado or "su correo") ~ ". Vence en 10 minutos.",
+    dismissible=False
+  ) }}
+</div>
+{%- elif aviso == "correo_fallido" %}
+<div class="mb-4" aria-live="polite">
+  {{ ui.banner(
+    "danger",
+    "No pudimos enviar el correo. Intente reenviarlo, use el autenticador o un código de respaldo.",
+    dismissible=False
+  ) }}
+</div>
+{%- endif %}
 {% endblock %}
 
 {% block contenido %}
+{% if metodo == "email" %}
+<h1 class="text-xl font-semibold text-ink-900">Verificación por correo</h1>
+<p class="auth-intro">
+  {%- if codigo_vigente %}
+  Te enviamos un código de 6 dígitos a <strong>{{ email_mascarado or "su correo" }}</strong>.
+  Ingrésalo aquí para completar el acceso. El código vence a los 10 minutos y sirve una sola vez.
+  {%- else %}
+  Todavía no hay un código vigente para esta cuenta. Pedí uno nuevo con el botón de abajo;
+  el código llega al correo registrado y vence a los 10 minutos.
+  {%- endif %}
+</p>
+
+<form method="post" action="/auth/mfa" class="mt-6 flex flex-col gap-5">
+  {{ ui.csrf_input() }}
+  <input type="hidden" name="metodo" value="email">
+  <input type="hidden" name="next" value="{{ next or '' }}">
+
+  {{ ui.field(
+    "Código recibido por correo",
+    "codigo",
+    value=codigo or "",
+    hint="Seis dígitos del mensaje. Puede pegarlos directamente.",
+    inputmode="numeric",
+    autocomplete="one-time-code",
+    pattern="[0-9]{6}",
+    maxlength="6",
+    autofocus=True,
+  ) }}
+
+  <button class="btn btn--primary w-full" type="submit">Verificar e ingresar</button>
+</form>
+
+<div class="mt-6 flex flex-col gap-2 border-t border-line pt-4">
+  <form method="post" action="/auth/mfa/enviar" class="flex flex-col gap-2">
+    {{ ui.csrf_input() }}
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    <button class="btn btn--secondary w-full" type="submit" data-reenvio-boton>
+      Reenviar código por correo
+    </button>
+  </form>
+  <p class="auth-links" data-reenvio="{{ espera or 60 }}" aria-live="polite">
+    Por seguridad, los envíos se limitan a uno por minuto y cinco por hora.
+    <span data-reenvio-texto>Podés pedir otro código en <span data-reenvio-valor>{{ espera or 60 }}</span> segundos.</span>
+  </p>
+</div>
+
+{% if tiene_totp %}
+<p class="auth-links">
+  ¿Prefiere usar el teléfono?
+  <a class="underline" href="/auth/mfa?metodo=totp{% if next %}&amp;next={{ next | urlencode }}{% endif %}">Usar aplicación autenticadora</a>.
+</p>
+{% endif %}
+
+{% else %}
 <h1 class="text-xl font-semibold text-ink-900">Verificación en dos pasos</h1>
 <p class="auth-intro">
   Abra su aplicación autenticadora e ingrese el código de 6 dígitos.
@@ -19,6 +90,7 @@
 
 <form method="post" action="/auth/mfa" class="mt-6 flex flex-col gap-5">
   {{ ui.csrf_input() }}
+  <input type="hidden" name="metodo" value="totp">
   <input type="hidden" name="next" value="{{ next or '' }}">
 
   {{ ui.field(
@@ -54,9 +126,45 @@
   <button class="btn btn--primary w-full" type="submit">Verificar e ingresar</button>
 </form>
 
+{% if puede_email %}
+<div class="mt-6 border-t border-line pt-4">
+  <form method="post" action="/auth/mfa/enviar">
+    {{ ui.csrf_input() }}
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    <button class="btn btn--ghost w-full" type="submit">Recibir un código por correo</button>
+  </form>
+</div>
+{% endif %}
+
 <p class="auth-links">
   ¿No reconoce este acceso? Vuelva al
   <a class="underline" href="/auth/login">inicio de sesión</a> y cambie su contraseña.
   Si perdió el teléfono, use un código de respaldo o solicite un reset asistido a la coordinación.
 </p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if metodo == "email" %}
+<script>
+  (function () {
+    var caja = document.querySelector("[data-reenvio]");
+    if (!caja) return;
+    var valor = caja.querySelector("[data-reenvio-valor]");
+    var texto = caja.querySelector("[data-reenvio-texto]");
+    var boton = document.querySelector("[data-reenvio-boton]");
+    var restante = parseInt(caja.getAttribute("data-reenvio"), 10) || 60;
+    if (boton) boton.disabled = true;
+    var temporizador = setInterval(function () {
+      restante -= 1;
+      if (valor) valor.textContent = String(Math.max(0, restante));
+      if (restante <= 0) {
+        clearInterval(temporizador);
+        if (texto) texto.textContent = "Ya puede pedir otro código.";
+        if (boton) boton.disabled = false;
+      }
+    }, 1000);
+  })();
+</script>
+{% endif %}
 {% endblock %}

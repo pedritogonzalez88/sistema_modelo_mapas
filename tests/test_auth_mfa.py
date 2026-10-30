@@ -487,7 +487,9 @@ def test_politica_totp_sin_enrolar_obliga_a_seguridad(cliente, fabrica):
 
 
 def test_politica_any_sin_enrolar_no_bloquea(cliente, fabrica):
-    usuario = fabrica(mfa_policy="any")
+    # ``disabled`` es la política "sin segundo factor": el login no se desvía.
+    # Con ``any`` y correo registrado el flujo pasa a /auth/mfa (Fase A4).
+    usuario = fabrica(mfa_policy="disabled")
     respuesta = _login(cliente, usuario)
     assert respuesta.status_code == 303
     assert respuesta.headers["location"] == "/"
@@ -679,9 +681,9 @@ def test_seguridad_exige_sesion(cliente):
 
 # --- 9. CSRF -------------------------------------------------------------------
 def test_los_post_nuevos_exigen_csrf(cliente, fabrica):
-    # Política «any» ya enrolada: el gate deja pasar todas las rutas y lo único
-    # que puede rechazar el POST es el CSRF.
-    usuario = fabrica(mfa_policy="any")
+    # Política «totp» ya enrolada: el gate deja pasar todas las rutas y lo
+    # único que puede rechazar el POST es el CSRF.
+    usuario = fabrica(mfa_policy="totp")
     _enrolar(cliente, usuario)
 
     for ruta in ("/auth/seguridad/totp/iniciar",
