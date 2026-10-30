@@ -220,6 +220,9 @@ PERMISOS = {
 
 ### Fase A3 — TOTP y códigos de respaldo (3 días)
 
+> Entregada: ver `docs/fase-a3-totp.md` (esquema 0003, enrolamiento, challenge,
+> política por rol, decisiones y pruebas). No incluye código por correo (A4).
+
 | ID | Tarea |
 |---|---|
 | A3.1 | Modelos `mfa_totp` y `recovery_codes` (ya en migración) |
