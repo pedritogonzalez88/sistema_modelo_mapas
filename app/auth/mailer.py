@@ -40,7 +40,7 @@ import json
 import logging
 import smtplib
 import ssl
-from datetime import datetime
+from datetime import datetime, timezone
 from email import policy
 from email.message import EmailMessage
 from secrets import token_hex
@@ -67,6 +67,16 @@ MAX_INTENTOS = 5
 PREFIJO_CIFRADO = "enc:"
 #: Tope de caracteres del error persistido (no hay secretos en él).
 _MAX_ERROR = 400
+
+
+def _utcnow() -> datetime:
+    """UTC *naive* actual, compatible con las columnas ``DateTime`` del esquema.
+
+    Mismo criterio que :func:`app.core.security.utcnow`: se pide el instante con
+    zona y se le quita ``tzinfo``. ``datetime.utcnow()`` está deprecado desde
+    Python 3.12 y emitía un ``DeprecationWarning`` por cada correo emitido.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 # --- Saneado de cabeceras ------------------------------------------------------
@@ -159,7 +169,7 @@ def _mensaje(destinatario: str, asunto: str, texto: str,
 def _escribir_eml(mensaje: EmailMessage) -> None:
     """Escribe el correo como ``.eml`` único en ``settings.email_dir``."""
     carpeta = settings.email_path
-    nombre = f"{datetime.utcnow():%Y%m%d-%H%M%S}-{token_hex(6)}.eml"
+    nombre = f"{_utcnow():%Y%m%d-%H%M%S}-{token_hex(6)}.eml"
     (carpeta / nombre).write_bytes(mensaje.as_bytes(policy=policy.SMTP))
 
 
@@ -231,7 +241,7 @@ def _marcar(fila_id: int | None, *, error: BaseException | None = None) -> None:
             if fila is None:
                 return
             if error is None:
-                fila.enviado_en = datetime.utcnow()
+                fila.enviado_en = _utcnow()
                 fila.ultimo_error = None
                 # ``intentos`` cuenta los despachos: el primero también cuenta.
                 fila.intentos = max(1, int(fila.intentos or 0))
@@ -303,7 +313,7 @@ def reintentar_pendientes(db: Session, limit: int = 20) -> dict[str, int]:
             db.commit()
             fallidos += 1
         else:
-            fila.enviado_en = datetime.utcnow()
+            fila.enviado_en = _utcnow()
             fila.ultimo_error = None
             db.commit()
             enviados += 1

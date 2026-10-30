@@ -1,4 +1,4 @@
-"""Administración por línea de comandos (Fases A1 y A5).
+"""Administración por línea de comandos (Fases A1, A5 y A6.12).
 
 Comandos:
 
@@ -7,6 +7,9 @@ Comandos:
     uv run python -m app.cli limpiar-sesiones --dias 30
     uv run python -m app.cli ldap-check [--login usuario]
     uv run python -m app.cli ldap-mapeo
+    uv run python -m app.cli reenviar-correo [--limit 20]
+    uv run python -m app.cli re-cifrar
+    uv run python -m app.cli estado-auth
 
 Reglas:
 
@@ -19,6 +22,10 @@ Reglas:
 - ``ldap-check`` **nunca** imprime ``EET_LDAP_BIND_PASSWORD`` ni contraseñas, y
   con ``EET_LDAP_ENABLED=false`` no abre ninguna conexión (sale con 0: no es un
   error, el directorio simplemente no está configurado).
+- Los comandos de operación (``reenviar-correo``, ``re-cifrar``,
+  ``estado-auth``) son idempotentes, no escriben secretos en la salida y usan
+  códigos de salida explícitos: 0 correcto, 1 con fallos parciales, 2 sin
+  configuración de cifrado.
 """
 from __future__ import annotations
 
@@ -31,13 +38,20 @@ from datetime import datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.auth import audit
+from app.auth import audit, mailer
 from app.auth.providers import ROLES_PRIORIDAD, LdapProvider
 from app.auth.service import limpiar_expiradas
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.core.security import hash_password, validar_password
-from app.models import Usuario
+from app.core.security import SecretBox, hash_password, secret_box, utcnow, validar_password
+from app.models import (
+    AuthToken,
+    EmailOutbox,
+    MfaTotp,
+    RecoveryCode,
+    Sesion,
+    Usuario,
+)
 
 ROLES = ("admin", "supervision", "cargador", "asistente", "consulta")
 LETRAS = ("A", "B", "C")
@@ -254,10 +268,178 @@ def _cmd_ldap_mapeo(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- Operación (A6.12) ----------------------------------------------------------
+#: Marca de los cuerpos cifrados en ``email_outbox`` (misma que el mailer).
+PREFIJO_CIFRADO = mailer.PREFIJO_CIFRADO
+
+
+def _recifrar_blob(caja: SecretBox, blob: bytes,
+                   key_id: str) -> tuple[str, bytes | None, str | None]:
+    """Re-cifra un blob con la clave vigente.
+
+    Devuelve ``(estado, nuevo_blob, nuevo_key_id)`` donde ``estado`` es:
+
+    - ``"actual"``: ya usa la clave vigente (no se toca).
+    - ``"migrado"``: se descifró con la clave antigua y se volvió a cifrar.
+    - ``"fallo"``: la clave no está disponible o el blob está corrupto
+      (no se pierde la fila: se informa el conteo).
+    """
+    if key_id == caja.key_id:
+        return "actual", None, None
+    try:
+        claro = caja.decrypt(blob, key_id)
+    except (RuntimeError, ValueError):
+        return "fallo", None, None
+    nuevo_blob, nuevo_key_id = caja.encrypt(claro)
+    return "migrado", nuevo_blob, nuevo_key_id
+
+
+def _recifrar_cuerpo(caja: SecretBox, cuerpo: str) -> tuple[str, str | None]:
+    """Re-cifra un cuerpo ``enc:<key_id>:<token>`` de la cola de correo.
+
+    Los cuerpos que no están cifrados (``"ajeno"``) se dejan intactos: son
+    correos sin datos sensibles y su formato es el sobre JSON en claro.
+    """
+    if not cuerpo or not cuerpo.startswith(PREFIJO_CIFRADO):
+        return "ajeno", None
+    resto = cuerpo[len(PREFIJO_CIFRADO):]
+    identificador, separador, token = resto.partition(":")
+    if not separador or not identificador or not token:
+        return "fallo", None
+    if identificador == caja.key_id:
+        return "actual", None
+    try:
+        claro = caja.decrypt(token.encode("ascii"), identificador)
+    except (RuntimeError, ValueError, UnicodeEncodeError):
+        return "fallo", None
+    nuevo_blob, nuevo_key_id = caja.encrypt(claro)
+    return "migrado", f"{PREFIJO_CIFRADO}{nuevo_key_id}:{nuevo_blob.decode('ascii')}"
+
+
+def _cmd_reenviar_correo(args: argparse.Namespace) -> int:
+    """Reintenta los correos pendientes de la cola (job manual o por cron)."""
+    with SessionLocal() as db:
+        resumen = mailer.reintentar_pendientes(db, limit=args.limit)
+    print(f"Correos revisados: {resumen['revisados']} · "
+          f"enviados: {resumen['enviados']} · fallidos: {resumen['fallidos']}")
+    if resumen["revisados"] == 0:
+        print("No hay correos pendientes en la cola.")
+    elif resumen["fallidos"]:
+        print("Quedan correos fallidos: revise el relay en "
+              "docs/runbook-autenticacion.md §10.1.")
+    return 0 if resumen["fallidos"] == 0 else 1
+
+
+def _cmd_re_cifrar(args: argparse.Namespace) -> int:
+    """Re-cifra secretos TOTP y cuerpos de la cola con la clave vigente."""
+    try:
+        caja = secret_box()
+    except (RuntimeError, ValueError) as exc:
+        print(f"No hay claves de cifrado utilizables: {exc}")
+        return 2
+
+    migrados = actuales = fallos = 0
+    with SessionLocal() as db:
+        for fila in db.scalars(select(MfaTotp)):
+            estado, blob, key_id = _recifrar_blob(caja, fila.secret_enc,
+                                                  fila.key_id)
+            if estado == "migrado":
+                fila.secret_enc = blob
+                fila.key_id = key_id
+                migrados += 1
+            elif estado == "actual":
+                actuales += 1
+            else:
+                fallos += 1
+        for fila in db.scalars(select(EmailOutbox).where(
+                EmailOutbox.cuerpo.startswith(PREFIJO_CIFRADO))):
+            estado, nuevo = _recifrar_cuerpo(caja, fila.cuerpo)
+            if estado == "migrado":
+                fila.cuerpo = nuevo
+                migrados += 1
+            elif estado == "actual":
+                actuales += 1
+            else:
+                fallos += 1
+        db.commit()
+
+    print(f"Clave vigente: {caja.key_id} · disponibles: "
+          f"{', '.join(caja.key_ids)}")
+    print(f"Re-cifrados: {migrados} · ya en la clave vigente: {actuales} · "
+          f"fallos: {fallos}")
+    if fallos:
+        print("Los fallos conservan su cifrado original: no se perdió ningún "
+              "dato. Verifique que la clave anterior siga en EET_FERNET_KEYS.")
+    return 0 if fallos == 0 else 1
+
+
+def _cmd_estado_auth(args: argparse.Namespace) -> int:
+    """Resumen operativo de identidad, sesiones y correo (sin secretos)."""
+    ahora = utcnow()
+    with SessionLocal() as db:
+        por_rol = db.execute(
+            select(Usuario.rol, func.count())
+            .group_by(Usuario.rol).order_by(Usuario.rol)).all()
+        por_proveedor = db.execute(
+            select(Usuario.auth_provider, func.count())
+            .group_by(Usuario.auth_provider)
+            .order_by(Usuario.auth_provider)).all()
+        total = db.scalar(select(func.count()).select_from(Usuario)) or 0
+        activos = db.scalar(
+            select(func.count()).select_from(Usuario)
+            .where(Usuario.is_active.is_(True))) or 0
+
+        sesiones = db.scalar(
+            select(func.count()).select_from(Sesion).where(
+                Sesion.revoked_at.is_(None),
+                Sesion.expires_at > ahora)) or 0
+
+        desafios = db.scalar(
+            select(func.count()).select_from(AuthToken).where(
+                AuthToken.purpose == "mfa",
+                AuthToken.used_at.is_(None),
+                AuthToken.expires_at > ahora)) or 0
+
+        respaldo = db.scalar(
+            select(func.count()).select_from(RecoveryCode).where(
+                RecoveryCode.used_at.is_(None))) or 0
+
+        pendientes = db.scalar(
+            select(func.count()).select_from(EmailOutbox).where(
+                EmailOutbox.enviado_en.is_(None),
+                EmailOutbox.intentos < mailer.MAX_INTENTOS)) or 0
+        agotados = db.scalar(
+            select(func.count()).select_from(EmailOutbox).where(
+                EmailOutbox.enviado_en.is_(None),
+                EmailOutbox.intentos >= mailer.MAX_INTENTOS)) or 0
+
+        ultimo = db.scalar(select(func.max(Usuario.last_login_at)))
+
+    orden = {rol: posicion for posicion, rol in enumerate(ROLES)}
+    roles = sorted(por_rol, key=lambda fila: (orden.get(fila[0], len(orden)),
+                                              fila[0] or ""))
+
+    marca = ahora.strftime("%Y-%m-%d %H:%M")
+    print(f"Estado de autenticación (UTC · {marca})")
+    print(f"  Usuarios: {total} (activos {activos} · inactivos {total - activos})")
+    print("    por rol:       " + (" · ".join(f"{rol} {n}" for rol, n in roles)
+                                   or "(sin usuarios)"))
+    print("    por proveedor: " + (" · ".join(f"{prov} {n}"
+                                              for prov, n in por_proveedor)
+                                   or "(sin usuarios)"))
+    print(f"  Sesiones activas: {sesiones}")
+    print(f"  Desafíos 2FA pendientes: {desafios}")
+    print(f"  Códigos de respaldo sin usar: {respaldo}")
+    print(f"  Correo: {pendientes} pendiente(s) · {agotados} agotado(s)")
+    print("  Último acceso: "
+          + (ultimo.strftime("%Y-%m-%d %H:%M") if ultimo else "(sin accesos)"))
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m app.cli",
-        description="Administración del Validador EET (Fases A1-A5).",
+        description="Administración del Validador EET (Fases A1-A6).",
     )
     sub = parser.add_subparsers(dest="comando", required=True)
 
@@ -301,6 +483,23 @@ def _parser() -> argparse.ArgumentParser:
         help="Muestra el mapa grupo LDAP -> rol configurado (sin secretos).")
     mapeo.set_defaults(func=_cmd_ldap_mapeo)
 
+    reenvio = sub.add_parser(
+        "reenviar-correo",
+        help="Reintenta los correos pendientes de la cola de salida.")
+    reenvio.add_argument("--limit", type=int, default=20,
+                         help="Máximo de correos a reintentar (por defecto 20).")
+    reenvio.set_defaults(func=_cmd_reenviar_correo)
+
+    recifrar = sub.add_parser(
+        "re-cifrar",
+        help="Re-cifra secretos TOTP y cuerpos de la cola con la clave vigente.")
+    recifrar.set_defaults(func=_cmd_re_cifrar)
+
+    estado = sub.add_parser(
+        "estado-auth",
+        help="Resumen de cuentas, sesiones y correo (sin secretos).")
+    estado.set_defaults(func=_cmd_estado_auth)
+
     return parser
 
 
@@ -308,6 +507,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.comando == "limpiar-sesiones" and args.dias < 0:
         raise SystemExit("--dias no puede ser negativo.")
+    if args.comando == "reenviar-correo" and args.limit < 1:
+        raise SystemExit("--limit debe ser positivo.")
     return int(args.func(args))
 
 
