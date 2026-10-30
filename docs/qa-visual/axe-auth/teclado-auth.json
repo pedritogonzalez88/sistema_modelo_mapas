@@ -1,0 +1,212 @@
+{
+  "base": "http://127.0.0.1:8033",
+  "navegador": "156.0.8078.76",
+  "comprobaciones": [
+    {
+      "pantalla": "login-1440",
+      "url": "/auth/login",
+      "focoInicial": {
+        "tag": "input",
+        "id": "campo-login",
+        "href": null,
+        "texto": "",
+        "visible": true,
+        "anillo": true
+      },
+      "primerTab": {
+        "tag": "input",
+        "id": "campo-password",
+        "href": null,
+        "texto": "",
+        "visible": true,
+        "anillo": true
+      },
+      "skipLink": {
+        "alcanzado": true,
+        "visible": true
+      },
+      "paradas": 7,
+      "trampa": false,
+      "ocultos": [],
+      "envio": {
+        "boton": "Entrar",
+        "disparado": true,
+        "detalle": {
+          "accion": "/auth/login",
+          "metodo": "post",
+          "disparador": "Entrar"
+        }
+      }
+    },
+    {
+      "pantalla": "usuarios-1440",
+      "url": "/auth/usuarios",
+      "focoInicial": {
+        "tag": "body"
+      },
+      "primerTab": {
+        "tag": "a",
+        "id": null,
+        "href": "#contenido",
+        "texto": "Saltar al contenido",
+        "visible": true,
+        "anillo": true
+      },
+      "skipLink": {
+        "alcanzado": true,
+        "visible": true
+      },
+      "paradas": 21,
+      "trampa": false,
+      "ocultos": [],
+      "envio": {
+        "boton": "Aplicar filtros",
+        "disparado": true,
+        "detalle": {
+          "accion": "/auth/usuarios",
+          "metodo": "get",
+          "disparador": "Aplicar filtros"
+        }
+      }
+    },
+    {
+      "pantalla": "mfa-1440",
+      "url": "/auth/mfa",
+      "focoInicial": {
+        "tag": "input",
+        "id": "campo-codigo",
+        "href": null,
+        "texto": "",
+        "visible": true,
+        "anillo": true
+      },
+      "primerTab": {
+        "tag": "summary",
+        "id": null,
+        "href": null,
+        "texto": "Usar un código de respaldo",
+        "visible": true,
+        "anillo": true
+      },
+      "skipLink": {
+        "alcanzado": true,
+        "visible": true
+      },
+      "paradas": 6,
+      "trampa": false,
+      "ocultos": [],
+      "envio": {
+        "boton": "Verificar e ingresar",
+        "disparado": true,
+        "detalle": {
+          "accion": "/auth/mfa",
+          "metodo": "post",
+          "disparador": "Verificar e ingresar"
+        }
+      }
+    },
+    {
+      "pantalla": "login-390",
+      "url": "/auth/login",
+      "focoInicial": {
+        "tag": "input",
+        "id": "campo-login",
+        "href": null,
+        "texto": "",
+        "visible": true,
+        "anillo": true
+      },
+      "primerTab": {
+        "tag": "input",
+        "id": "campo-password",
+        "href": null,
+        "texto": "",
+        "visible": true,
+        "anillo": true
+      },
+      "skipLink": {
+        "alcanzado": true,
+        "visible": true
+      },
+      "paradas": 7,
+      "trampa": false,
+      "ocultos": [],
+      "envio": {
+        "boton": "Entrar",
+        "disparado": true,
+        "detalle": {
+          "accion": "/auth/login",
+          "metodo": "post",
+          "disparador": "Entrar"
+        }
+      }
+    },
+    {
+      "pantalla": "usuarios-390",
+      "url": "/auth/usuarios",
+      "focoInicial": {
+        "tag": "body"
+      },
+      "primerTab": {
+        "tag": "a",
+        "id": null,
+        "href": "#contenido",
+        "texto": "Saltar al contenido",
+        "visible": true,
+        "anillo": true
+      },
+      "skipLink": {
+        "alcanzado": true,
+        "visible": true
+      },
+      "paradas": 18,
+      "trampa": false,
+      "ocultos": [],
+      "envio": {
+        "boton": "Aplicar filtros",
+        "disparado": true,
+        "detalle": {
+          "accion": "/auth/usuarios",
+          "metodo": "get",
+          "disparador": "Aplicar filtros"
+        }
+      }
+    },
+    {
+      "pantalla": "mfa-390",
+      "url": "/auth/mfa",
+      "focoInicial": {
+        "tag": "input",
+        "id": "campo-codigo",
+        "href": null,
+        "texto": "",
+        "visible": true,
+        "anillo": true
+      },
+      "primerTab": {
+        "tag": "summary",
+        "id": null,
+        "href": null,
+        "texto": "Usar un código de respaldo",
+        "visible": true,
+        "anillo": true
+      },
+      "skipLink": {
+        "alcanzado": true,
+        "visible": true
+      },
+      "paradas": 6,
+      "trampa": false,
+      "ocultos": [],
+      "envio": {
+        "boton": "Verificar e ingresar",
+        "disparado": true,
+        "detalle": {
+          "accion": "/auth/mfa",
+          "metodo": "post",
+          "disparador": "Verificar e ingresar"
+        }
+      }
+    }
+  ]
+}
