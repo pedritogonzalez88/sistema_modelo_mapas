@@ -80,8 +80,7 @@
 {% block contenido %}
 {{ ui.page_header(
   "Usuarios",
-  "Alta de cuentas, roles, estado y resets asistidos. Las acciones quedan registradas en la auditoría.",
-  breadcrumb=[{"label": "Inicio", "href": "/"}, {"label": "Usuarios"}]
+  "Alta de cuentas, roles, estado y resets asistidos. Las acciones quedan registradas en la auditoría."
 ) }}
 
 {% if errores %}
@@ -289,7 +288,7 @@
   </header>
   <div class="card__body">
     {% if filas %}
-      {% call ui.table_wrap("Cuentas registradas") %}
+      {% call ui.table_wrap("Listado de cuentas registradas") %}
       <table class="table">
         <caption class="sr-only">Cuentas registradas con su rol, estado y acciones</caption>
         <thead>

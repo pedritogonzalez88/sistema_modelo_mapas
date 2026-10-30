@@ -7,8 +7,7 @@
 {% block contenido %}
 {% call ui.page_header(
   "Auditoría",
-  "Registro de accesos, cambios de rol y resets asistidos. Solo lectura: no se puede modificar ni borrar desde aquí.",
-  breadcrumb=[{"label": "Inicio", "href": "/"}, {"label": "Auditoría"}]
+  "Registro de accesos, cambios de rol y resets asistidos. Solo lectura: no se puede modificar ni borrar desde aquí."
 ) %}
   {{ ui.btn("Descargar CSV", href=csv_url, variant="secondary", icon="download") }}
 {% endcall %}

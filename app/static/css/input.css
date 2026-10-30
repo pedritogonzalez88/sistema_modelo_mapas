@@ -403,7 +403,7 @@
   .auth-card { @apply rounded-card border border-line bg-white p-6 shadow-card; }
   .auth-intro { @apply mt-1 text-sm text-ink-600; }
   .auth-links { @apply mt-4 text-xs leading-relaxed text-ink-600; }
-  .auth-footer { @apply text-[11px] leading-snug text-ink-400; }
+  .auth-footer { @apply text-[11px] leading-snug text-ink-600; }
   .auth-errores { @apply mt-2 list-disc pl-5 text-xs text-red-800; }
   .auth-secret { @apply flex flex-col gap-1; }
   .auth-secret__toggle {
