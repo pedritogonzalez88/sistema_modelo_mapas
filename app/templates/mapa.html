@@ -52,6 +52,7 @@
 </div>
 
 {# --- Carga del mapa ------------------------------------------------------ #}
+{% if puede(request, "mapa.cargar") %}
 <section id="cargar-mapa" class="card" aria-labelledby="titulo-carga-mapa">
   <header class="card__header">
     <h2 class="card__title" id="titulo-carga-mapa">Cargar clases del mapa</h2>
@@ -104,4 +105,5 @@
     </p>
   </div>
 </section>
+{% endif %}
 {% endblock %}

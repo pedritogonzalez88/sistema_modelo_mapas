@@ -121,6 +121,7 @@
 </section>
 
 {# --- Acciones ----------------------------------------------------------- #}
+{% if puede(request, "entregas.gestionar") %}
 <div class="sticky bottom-0 z-20 -mx-4 border-t border-line bg-white/95 px-4 py-3 backdrop-blur lg:-mx-6 lg:px-6">
   <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
     <form action="/entregas/{{ entrega.id }}/confirm" method="post" class="flex flex-wrap items-center gap-3">
@@ -143,6 +144,15 @@
   </div>
   <p class="mt-2 text-xs text-ink-600">Una entrega rechazada conserva su archivo y su huella SHA-256 como evidencia; no se elimina del proyecto.</p>
 </div>
+{% else %}
+<div class="mb-6">
+  {{ ui.banner(
+    "info",
+    "Vista de solo lectura: confirmar o rechazar una entrega corresponde a supervisión y carga. El archivo y su huella se conservan como evidencia.",
+    dismissible=False
+  ) }}
+</div>
+{% endif %}
 
 <script>
 (function () {

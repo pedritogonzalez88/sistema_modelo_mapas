@@ -8,24 +8,40 @@
 {% import "components/ui.html" as ui with context %}
 
 {% set NAV = [
-  ("Inicio", [("/", "Resumen", "home")]),
-  ("Captura", [("/entregas", "Entregas", "upload"), ("/malla", "Malla oficial", "map"), ("/mapa", "Mapa MADES", "layers")]),
-  ("Análisis", [("/cruces", "Cruces de terna", "table"), ("/qaqc", "Fichas QA/QC", "clipboard-check")]),
-  ("Cierre", [("/reemplazos", "Reemplazos", "refresh"), ("/exportar", "Exportar", "download")]),
+  ("Inicio", [("/", "Resumen", "home")] if puede(request, "dashboard.ver") else []),
+  ("Captura", (
+    [("/entregas", "Entregas", "upload")]
+    if (puede(request, "entregas.ver") or puede(request, "entregas.propias")) else []
+  ) + (
+    [("/malla", "Malla oficial", "map")]
+    if puede(request, "malla.ver") else []
+  ) + (
+    [("/mapa", "Mapa MADES", "layers")]
+    if puede(request, "mapa.ver") else []
+  )),
+  ("Análisis", (
+    [("/cruces", "Cruces de terna", "table")]
+    if puede(request, "cruces.ver") else []
+  ) + (
+    [("/qaqc", "Fichas QA/QC", "clipboard-check")]
+    if puede(request, "qaqc.ver") else []
+  )),
+  ("Cierre", (
+    [("/reemplazos", "Reemplazos", "refresh")]
+    if puede(request, "reemplazos.ver") else []
+  ) + (
+    [("/exportar", "Exportar", "download")]
+    if puede(request, "exportar") else []
+  )),
 ] %}
 {% set path = request.url.path %}
 {%- set usuario_actual = request.state.usuario | default(none, true) -%}
-{%- set ETIQUETA_ROL = {
-  "admin": "Administración",
-  "supervision": "Supervisión",
-  "cargador": "Carga",
-  "asistente": "Asistente",
-  "consulta": "Consulta",
-} -%}
 
-{# Navegación compartida entre sidebar y drawer #}
+{# Navegación compartida entre sidebar y drawer: un grupo sin ítems permitidos
+   no imprime su encabezado. #}
 {% macro nav_items(nav, ruta) %}
   {%- for grupo, items in nav %}
+  {%- if items %}
   {%- if grupo %}
   <p class="shell-group">{{ grupo }}</p>
   {%- endif %}
@@ -39,6 +55,7 @@
     </li>
     {%- endfor %}
   </ul>
+  {%- endif %}
   {%- endfor %}
 {% endmacro %}
 
@@ -60,7 +77,7 @@
       <span class="sr-only">Menú de la cuenta</span>
     </summary>
     <div class="user-menu__panel">
-      <p class="user-menu__rol">{{ ui.badge(ETIQUETA_ROL.get(usuario.rol, usuario.rol)) }}</p>
+      <p class="user-menu__rol">{{ ui.badge(rol_etiqueta(usuario.rol)) }}</p>
       <a class="user-menu__link" href="/auth/cambiar-password">Cambiar contraseña</a>
       <form method="post" action="/auth/logout" class="user-menu__form">
         {{ ui.csrf_input() }}

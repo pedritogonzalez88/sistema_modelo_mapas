@@ -57,6 +57,13 @@
 <div class="mb-4">{{ ui.banner("warn", "La ficha está cerrada: el dictamen se conserva como evidencia y ya no admite cambios.", dismissible=False) }}</div>
 {% endif %}
 
+{# Dictaminar exige `qaqc.decidir` (solo supervisión). El resto de los roles
+   con `qaqc.ver` —carga y consulta— leen la ficha sin formularios POST. #}
+{% set puede_dictaminar = puede(request, "qaqc.decidir") %}
+{% if not puede_dictaminar %}
+<div class="mb-4">{{ ui.banner("info", "Su rol consulta la ficha en modo lectura: el dictamen y las transiciones corresponden a supervisión.", dismissible=False) }}</div>
+{% endif %}
+
 <div class="grid gap-6 lg:grid-cols-3">
 
   {# ---------------------------------------------------------------- RAIL #}
@@ -163,6 +170,7 @@
   </aside>
 
   {# ----------------------------------------------------------- FORMULARIO #}
+  {% if puede_dictaminar %}
   <form action="/qaqc/{{ ficha.id }}" method="post"
         class="order-last card divide-y divide-line lg:order-first lg:col-span-2">
     {{ ui.csrf_input() }}
@@ -321,9 +329,72 @@
       <p class="text-xs text-ink-600">El dictamen queda auditado con actor <span class="font-medium">supervision</span>.</p>
     </div>
   </form>
+  {% else %}
+  {# Modo lectura: mismos datos, sin formularios POST (el único POST de la
+     página queda en el logout del shell). #}
+  <section class="order-last card divide-y divide-line lg:order-first lg:col-span-2"
+           aria-labelledby="dictamen-lectura">
+    <header class="card__header">
+      <h2 class="card__title" id="dictamen-lectura">Dictamen registrado (solo lectura)</h2>
+      <p class="card__subtitle">Contenido guardado de la ficha. No se edita desde este rol.</p>
+    </header>
+    <div class="card__body flex flex-col gap-5 text-sm">
+      <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Dictamen</dt>
+          <dd class="mt-0.5">
+            {%- if d_dictamen == "consenso" %}Consenso técnico
+            {%- elif d_dictamen == "sin_consenso" %}Sin consenso
+            {%- else %}Sin registrar{% endif -%}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Clase definitiva</dt>
+          <dd class="mt-1">{% if d_clase %}{{ ui.chip_clase(d_clase|int) }}{% else %}<span class="text-ink-400">—</span>{% endif %}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Fecha de sesión</dt>
+          <dd class="mt-0.5 tabular">{{ d_fecha or "—" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Sensores evaluados</dt>
+          <dd class="mt-0.5">{{ d_sensores|join(", ") if d_sensores else "—" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Causa de descarte</dt>
+          <dd class="mt-0.5">{{ d_causa or "—" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-ink-600">Firmas A · B · C</dt>
+          <dd class="mt-0.5 break-words">
+            {%- for clave in ("firma_a", "firma_b", "firma_c") -%}
+              {%- if d_firmas.get(clave) -%}{{ d_firmas.get(clave) }}{% else %}<span class="text-ink-400">—</span>{% endif -%}
+              {%- if not loop.last %} · {% endif -%}
+            {%- endfor -%}
+          </dd>
+        </div>
+      </dl>
+      <div>
+        <p class="text-xs font-medium uppercase tracking-wide text-ink-600">Debate técnico / fundamento</p>
+        <p class="mt-1 whitespace-pre-line">{{ d_debate or "Sin fundamento registrado." }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-medium uppercase tracking-wide text-ink-600">Evidencias</p>
+        {% if d_evidencias %}
+        <ul class="mt-1 list-disc pl-5">
+          {% for evidencia in d_evidencias %}<li>{{ evidencia }}</li>{% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-1 text-ink-600">Sin evidencias registradas.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
 </div>
 
 {# ---------------------------------------------------------- TRANSICIONES #}
+{% if puede_dictaminar %}
 <section class="card mt-6">
   <header class="card__header">
     <h2 class="card__title">Cerrar ficha / transiciones</h2>
@@ -348,6 +419,7 @@
     {% endfor %}
   </div>
 </section>
+{% endif %}
 
 <script>
   /* Mejoras progresivas locales a esta vista: filas de evidencia y confirmación

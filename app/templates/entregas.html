@@ -11,8 +11,11 @@
 ) }}
 
 {% set hay_filtros = f_asistente or f_estado or f_semana %}
+{% set puede_gestionar = puede(request, "entregas.gestionar") %}
+{% set puede_revisar = puede(request, "entregas.ver") or puede(request, "entregas.propias") %}
 
 {# --- Nueva entrega ------------------------------------------------------ #}
+{% if puede_gestionar %}
 <section id="nueva-entrega" class="card mb-6">
   <header class="card__header">
     <h2 class="card__title">Nueva entrega</h2>
@@ -94,6 +97,15 @@
     </div>
   </div>
 </section>
+{% else %}
+<div class="mb-6">
+  {{ ui.banner(
+    "info",
+    "Su rol consulta las entregas registradas, pero no las carga ni las confirma: eso corresponde a supervisión y carga.",
+    dismissible=False
+  ) }}
+</div>
+{% endif %}
 
 {# --- Filtros ------------------------------------------------------------ #}
 <form method="get" action="/entregas" class="card mb-4" aria-label="Filtros de entregas">
@@ -136,7 +148,9 @@
 <section class="card" aria-labelledby="listado-entregas">
   <header class="card__header">
     <h2 class="card__title" id="listado-entregas">Entregas registradas</h2>
-    {% if hay_filtros %}
+    {% if letra_propia %}
+    <p class="card__subtitle">Alcance de su rol: solo las entregas de la Evaluadora {{ letra_propia }}. Los contadores y semanas corresponden a ese alcance.</p>
+    {% elif hay_filtros %}
     <p class="card__subtitle">Filtros aplicados: {% if f_asistente %}asistente {{ f_asistente }}{% endif %}{% if f_semana %}{% if f_asistente %} · {% endif %}semana {{ f_semana }}{% endif %}{% if f_estado %}{% if f_asistente or f_semana %} · {% endif %}estado {{ f_estado }}{% endif %}.</p>
     {% endif %}
   </header>
@@ -171,7 +185,7 @@
                 {{ e.recibida_en.strftime("%d/%m/%Y %H:%M") if e.recibida_en else "—" }}
               </td>
               <td class="text-right">
-                {% if e.estado == "pendiente" %}
+                {% if e.estado == "pendiente" and puede_revisar %}
                   {{ ui.btn("Revisar", href="/entregas/" ~ e.id ~ "/preview", variant="secondary", size="sm") }}
                 {% endif %}
               </td>

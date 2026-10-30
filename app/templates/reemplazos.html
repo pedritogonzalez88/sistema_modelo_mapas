@@ -5,11 +5,15 @@
 {% block title %}Reemplazos · {{ proyecto.nombre }}{% endblock %}
 
 {% block contenido %}
+{% set puede_proponer = puede(request, "reemplazos.proponer") %}
+{% set puede_autorizar = puede(request, "reemplazos.autorizar") %}
 {% call ui.page_header(
   "Reemplazos",
   "Puntos de reserva (4.5–4.9)"
 ) %}
+  {% if puede_proponer %}
   {{ ui.btn("Reportar píxel inválido", href="#reportar", variant="secondary", icon="alert") }}
+  {% endif %}
 {% endcall %}
 
 <div class="mb-6">
@@ -21,6 +25,7 @@
 </div>
 
 {# --- Alta de propuesto --------------------------------------------------- #}
+{% if puede_proponer %}
 <section id="reportar" class="card mb-6" aria-labelledby="titulo-reportar">
   <header class="card__header">
     <h2 class="card__title" id="titulo-reportar">Reportar píxel inválido (propuesto)</h2>
@@ -77,6 +82,15 @@
     </form>
   </div>
 </section>
+{% else %}
+<div class="mb-6">
+  {{ ui.banner(
+    "info",
+    "Su rol consulta los expedientes de reemplazo, pero no reporta píxeles ni autoriza sustituciones: eso corresponde a supervisión y carga.",
+    dismissible=False
+  ) }}
+</div>
+{% endif %}
 
 {# --- Expedientes --------------------------------------------------------- #}
 <section class="card" aria-labelledby="titulo-expedientes">
@@ -135,13 +149,13 @@
               </td>
               <td>
                 <div class="flex flex-wrap items-center justify-end gap-2">
-                  {% if r.estado == "propuesto" and not r.punto_reserva %}
+                  {% if puede_proponer and r.estado == "propuesto" and not r.punto_reserva %}
                     <form action="/reemplazos/{{ r.id }}/proponer" method="post">
                       {{ ui.csrf_input() }}
                       {{ ui.btn("Proponer reserva", variant="secondary", size="sm", type="submit") }}
                     </form>
                   {% endif %}
-                  {% if r.estado == "propuesto" %}
+                  {% if puede_autorizar and r.estado == "propuesto" %}
                     <form action="/reemplazos/{{ r.id }}/estado" method="post">
                       {{ ui.csrf_input() }}
                       <input type="hidden" name="nuevo_estado" value="autorizado">
@@ -153,7 +167,7 @@
                         title=("Asigne una reserva antes de autorizar" if not r.punto_reserva else none)
                       ) }}
                     </form>
-                  {% elif r.estado == "autorizado" %}
+                  {% elif puede_autorizar and r.estado == "autorizado" %}
                     <form action="/reemplazos/{{ r.id }}/estado" method="post">
                       {{ ui.csrf_input() }}
                       <input type="hidden" name="nuevo_estado" value="completado">

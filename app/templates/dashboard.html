@@ -5,13 +5,30 @@
 {% block title %}Resumen · {{ proyecto.nombre }}{% endblock %}
 
 {% block contenido %}
+{#
+  Alcance por rol (Fase A2). El asistente es quien produce las
+  interpretaciones: no ve la concordancia de la terna, ni los KPIs de cruces,
+  ni el estado del flujo, ni las entregas globales. El panel consolidado se
+  gobierna con `cruces.ver`; `admin` lo conserva porque la matriz §6.4 le
+  asigna "Dashboard: leer" aunque no opere cruces ni QA/QC.
+#}
+{% set usuario_actual = request.state.usuario | default(none, true) %}
+{% set ver_consolidado = puede(request, "cruces.ver")
+     or (usuario_actual and usuario_actual.rol == "admin") %}
+{% set puede_gestionar = puede(request, "entregas.gestionar") %}
+
 {% call ui.page_header(
   proyecto.nombre,
   "Protocolo " ~ (proyecto.protocolo_version or "sin versión") ~ " · Período " ~ (proyecto.periodo or "sin período")
 ) %}
+  {% if puede_gestionar %}
   {{ ui.btn("Nueva entrega", href="/entregas", icon="upload") }}
+  {% else %}
+  {{ ui.btn("Mis entregas", href="/entregas", variant="secondary", icon="upload") }}
+  {% endif %}
 {% endcall %}
 
+{% if ver_consolidado %}
 {# --- KPIs: mismos cálculos que la versión anterior ---------------------- #}
 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
   {{ ui.stat("Puntos con cruce", total_puntos,
@@ -201,4 +218,72 @@
                 "Subir la primera", "/entregas") }}
   {% endif %}
 {% endcall %}
+
+{% else %}
+{# --- Panel del asistente: solo sus entregas ------------------------------ #}
+{% set mis_entregas = entregas if entregas else [] %}
+{% set pendientes_propias = mis_entregas|selectattr("estado", "equalto", "pendiente")|list|length %}
+{% set aceptadas_propias = mis_entregas|selectattr("estado", "equalto", "aceptada")|list|length %}
+
+<div class="mb-6">
+  {{ ui.banner(
+    "info",
+    "Los resultados consolidados (concordancia de la terna, cruces y fichas QA/QC) no están disponibles para su rol. Esta portada muestra únicamente sus propias entregas.",
+    dismissible=False
+  ) }}
+</div>
+
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  {{ ui.stat("Mis entregas", mis_entregas|length,
+             hint="Recepciones registradas con su letra de terna") }}
+  {{ ui.stat("Pendientes de revisión", pendientes_propias,
+             hint="Esperando confirmación de supervisión",
+             tone="warn" if pendientes_propias else "neutral") }}
+  {{ ui.stat("Aceptadas", aceptadas_propias,
+             hint="Interpretaciones ya consolidadas en el cruce") }}
+</div>
+
+{% call ui.card("Mis entregas", "Recepciones de su letra de terna, de la más reciente a la más antigua.") %}
+  {% if mis_entregas %}
+    {% call ui.table_wrap("Mis entregas") %}
+      <table class="table">
+        <caption class="sr-only">Entregas propias ordenadas de la más reciente a la más antigua.</caption>
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Asistente</th>
+            <th scope="col">Semana</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Ver.</th>
+            <th scope="col">Estado</th>
+            <th scope="col"><span class="sr-only">Acción</span></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for e in mis_entregas %}
+          {% set tono = "ok" if e.estado == "aceptada" else ("danger" if e.estado == "rechazada" else "warn") %}
+          <tr>
+            <td class="tabular">{{ e.id }}</td>
+            <td>Evaluadora {{ e.letra }}</td>
+            <td class="tabular">{{ e.semana }}</td>
+            <td>{{ e.tipo }}</td>
+            <td class="tabular">v{{ e.version }}</td>
+            <td>{{ ui.badge(e.estado|capitalize, tono) }}</td>
+            <td class="text-right">
+              {% if e.estado == "pendiente" %}
+                {{ ui.btn("Revisar", href="/entregas/" ~ e.id ~ "/preview", variant="secondary", size="sm") }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endcall %}
+  {% else %}
+    {{ ui.empty("Todavía no hay entregas suyas",
+                "Cuando cargue su archivo semanal aparecerá aquí con su estado y su versión.",
+                "Ir a entregas", "/entregas") }}
+  {% endif %}
+{% endcall %}
+{% endif %}
 {% endblock %}
