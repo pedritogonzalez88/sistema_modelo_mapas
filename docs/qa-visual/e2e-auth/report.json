@@ -1,0 +1,532 @@
+{
+  "base": "http://127.0.0.1:8033",
+  "navegador": "playwright channel=chrome 156.0.8078.76",
+  "inicio": "2026-10-30T12:17:42.652Z",
+  "pasos": [
+    {
+      "id": "1",
+      "titulo": "Login: skip link, etiquetas y error genérico sin sesión",
+      "ok": true,
+      "detalle": "200 login; skip link = primer tabulable y visible al enfocar; primer Tab con anillo visible; etiquetas y autocomplete correctos; mensaje genérico idéntico (\"Usuario o contraseña incorrectos.\") y sin cookies de sesión/MFA",
+      "http": [
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "POST"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/01-login.png",
+        "docs/qa-visual/e2e-auth/02-login-error-generico.png"
+      ],
+      "ms": 2821
+    },
+    {
+      "id": "2",
+      "titulo": "Login del admin redirige a /auth/seguridad (enrolamiento obligatorio)",
+      "ok": true,
+      "detalle": "303 → /auth/seguridad 200; aviso de enrolamiento y formulario «Activar autenticador» presentes",
+      "http": [
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/seguridad",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/seguridad",
+          "status": 200,
+          "metodo": "GET"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/03-seguridad-enrolamiento.png"
+      ],
+      "ms": 1208
+    },
+    {
+      "id": "3",
+      "titulo": "Enrolamiento TOTP con clave manual y captura de los 10 códigos",
+      "ok": true,
+      "detalle": "clave manual de 32 caracteres; TOTP aceptado; 10 códigos XXXX-XXXX capturados; estado «Activado»",
+      "http": [
+        {
+          "url": "/auth/seguridad/totp/iniciar",
+          "status": 200,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/seguridad/totp/confirmar",
+          "status": 200,
+          "metodo": "POST"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/04-seguridad-qr-clave-manual.png",
+        "docs/qa-visual/e2e-auth/05-codigos-respaldo.png"
+      ],
+      "ms": 1095
+    },
+    {
+      "id": "4",
+      "titulo": "Logout, login y /auth/mfa con TOTP llega a /",
+      "ok": true,
+      "detalle": "303 → /auth/mfa 200 (metodo=totp) → 303 → / 200 (h1 «BTR2 Paraguay»)",
+      "http": [
+        {
+          "url": "/auth/logout",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/login?ok=sesion_cerrada",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/mfa?metodo=totp",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/mfa",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/mfa",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/06-mfa-totp.png",
+        "docs/qa-visual/e2e-auth/07-inicio-con-sesion.png"
+      ],
+      "ms": 2173
+    },
+    {
+      "id": "5",
+      "titulo": "Código de respaldo válido una vez y rechazo al repetirlo",
+      "ok": true,
+      "detalle": "SEJA-**** aceptado una vez (303 → / 200); repetido → 200 /auth/mfa con «Código incorrecto o expirado» y sin cookie de sesión",
+      "http": [
+        {
+          "url": "/auth/logout",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/login?ok=sesion_cerrada",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/mfa?metodo=totp",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/mfa",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/logout",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/login?ok=sesion_cerrada",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/mfa?metodo=totp",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/mfa",
+          "status": 200,
+          "metodo": "POST"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/08-respaldo-usado-ok.png",
+        "docs/qa-visual/e2e-auth/09-respaldo-reutilizado-falla.png"
+      ],
+      "ms": 3975
+    },
+    {
+      "id": "6",
+      "titulo": "Alta, cambio de rol, baja/alta, reset de contraseña y de 2FA de e2e-user",
+      "ok": true,
+      "detalle": "alta consulta → cargador → inactiva → activa; contraseña temporal de 16 caracteres mostrada una vez; reset de 2FA con 303 (ok=mfa_reseteado)",
+      "http": [
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/mfa?metodo=totp",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/mfa",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/usuarios",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/usuarios",
+          "status": 200,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/usuarios/1775/rol",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/usuarios?ok=usuario_actualizado",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/usuarios/1775/estado",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/usuarios?ok=usuario_actualizado",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/usuarios/1775/estado",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/usuarios?ok=usuario_actualizado",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/usuarios/1775/reset-password",
+          "status": 200,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/usuarios",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/usuarios/1775/reset-mfa",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/usuarios?ok=mfa_reseteado",
+          "status": 200,
+          "metodo": "GET"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/10-usuarios-alta.png",
+        "docs/qa-visual/e2e-auth/11-usuarios-password-temporal.png"
+      ],
+      "ms": 11047
+    },
+    {
+      "id": "7",
+      "titulo": "Auditoría: eventos del E2E y CSV con BOM y text/csv",
+      "ok": true,
+      "detalle": "50 eventos en pantalla con las 6 acciones del flujo; CSV 200 text/csv; charset=utf-8 con BOM (115958 bytes)",
+      "http": [
+        {
+          "url": "/auth/auditoria",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/auditoria.csv",
+          "status": 200,
+          "metodo": "GET"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/12-auditoria-eventos.png",
+        "docs/qa-visual/e2e-auth/auditoria-e2e.csv"
+      ],
+      "ms": 829
+    },
+    {
+      "id": "8",
+      "titulo": "Recuperación por correo: enlace del .eml, contraseña nueva y acceso",
+      "ok": true,
+      "detalle": "solicitud neutra → 20261030-121806-9830262ac3a9.eml → formulario válido → 303 /auth/login?ok=password_reset → login de e2e-user con la contraseña nueva → / 200; segundo factor por correo (20261030-121809-6ab990667261.eml) aceptado",
+      "http": [
+        {
+          "url": "/auth/logout",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/login?ok=sesion_cerrada",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/recuperar",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/recuperar",
+          "status": 200,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/restablecer?token=eHm309VgWF3dDNLWE27z1NO_szwftHRnDIINki2WZYs",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/restablecer",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/login?ok=password_reset",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/mfa?metodo=email",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/mfa",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/13-recuperar-solicitud.png",
+        "docs/qa-visual/e2e-auth/14-restablecer-aplicado.png",
+        "docs/qa-visual/e2e-auth/15-acceso-password-nueva.png"
+      ],
+      "ms": 4085
+    },
+    {
+      "id": "9",
+      "titulo": "Permisos: el admin recibe 403 en /cruces y el menú no muestra Cruces",
+      "ok": true,
+      "detalle": "menú sin enlaces visibles a /cruces; GET /cruces → 403 «No tiene permiso para esta acción.»",
+      "http": [
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/login",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/mfa?metodo=totp",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/auth/mfa",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/cruces",
+          "status": 403,
+          "metodo": "GET"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/16-inicio-menu-admin.png",
+        "docs/qa-visual/e2e-auth/17-cruces-403-admin.png"
+      ],
+      "ms": 22094
+    },
+    {
+      "id": "10",
+      "titulo": "Cierre de sesión: / redirige al login",
+      "ok": true,
+      "detalle": "/ 303 → /auth/login 200; sin cookie de sesión",
+      "http": [
+        {
+          "url": "/auth/logout",
+          "status": 303,
+          "metodo": "POST"
+        },
+        {
+          "url": "/auth/login?ok=sesion_cerrada",
+          "status": 200,
+          "metodo": "GET"
+        },
+        {
+          "url": "/",
+          "status": 200,
+          "metodo": "GET"
+        }
+      ],
+      "evidencia": [
+        "docs/qa-visual/e2e-auth/18-logout-redirige-login.png"
+      ],
+      "ms": 1008
+    }
+  ],
+  "hallazgos": [],
+  "erroresConsola": [],
+  "codigosRespaldo": [
+    "SEJA-****",
+    "YEVF-****",
+    "Q34K-****",
+    "QA4V-****",
+    "R8QE-****",
+    "PNFX-****",
+    "LRWE-****",
+    "6BMM-****",
+    "E4PH-****",
+    "9F7Y-****"
+  ],
+  "fin": "2026-10-30T12:18:32.988Z",
+  "ok": true
+}
