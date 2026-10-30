@@ -214,7 +214,9 @@ def _cmd_ldap_check(args: argparse.Namespace) -> int:
     if diagnostico.usuario:
         print()
         print("  Usuario consultado:")
-        print(f"    Grupos: {len(diagnostico.usuario['grupos'])}")
+        grupos = diagnostico.usuario["grupos"]
+        print("    Grupos: "
+              + (", ".join(grupos[:10]) if grupos else "(sin grupos)"))
         print(f"    Rol resultante: "
               f"{diagnostico.usuario['rol'] or 'sin rol (acceso denegado)'}")
 
