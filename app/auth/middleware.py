@@ -1,16 +1,22 @@
-"""Middlewares de autenticación y cabeceras (Fase A1).
+"""Middlewares de autenticación y cabeceras (Fases A1 y A6).
 
 ``AuthGateMiddleware`` es el único punto que convierte una cookie en identidad
 para el resto de la petición. Con ``EET_AUTH_ENABLED=false`` no interviene en
 absoluto: no consulta la base, no crea cookies y no altera la respuesta, de
 modo que la aplicación se comporta igual que antes de la Fase A1.
 
-Orden de la pila (``create_app``): ``SecurityHeaders`` por fuera de
-``AuthGate``, y ``AuthGate`` por fuera de los routers, para que las cabeceras
-también viajen en las redirecciones al login.
+``SecurityHeadersMiddleware`` (Fase A6a) genera un **nonce por petición** para
+la CSP, lo publica en ``request.state.csp_nonce`` (las plantillas lo usan en
+cada ``<script>`` inline) y fija el resto de cabeceras de endurecimiento.
+
+Orden de la pila (``create_app``): ``ProxyHeaders`` (si hay proxy de confianza)
+por fuera de ``SecurityHeaders``, este por fuera de ``AuthGate`` y ``AuthGate``
+por fuera de los routers, para que las cabeceras también viajen en las
+redirecciones al login.
 """
 from __future__ import annotations
 
+import secrets
 from urllib.parse import quote
 
 from starlette.concurrency import run_in_threadpool
@@ -225,21 +231,63 @@ class AuthGateMiddleware(BaseHTTPMiddleware):
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Cabeceras mínimas de endurecimiento del navegador.
+    """Cabeceras de endurecimiento del navegador y CSP con nonce por petición.
 
-    La CSP con nonce y HSTS son parte de la Fase A6: aquí solo se fijan las
-    tres cabeceras que no pueden romper la interfaz actual.
+    La CSP permite ``'unsafe-inline'`` **solo** en ``style-src``: el código usa
+    atributos ``style="width:NN%"`` en las barras de progreso y en la dona del
+    panel, y convertirlos a clases obligaría a generar CSS dinámico en el
+    servidor. ``script-src`` nunca acepta ``'unsafe-inline'``: cada ``<script>``
+    inline lleva el ``nonce`` de la petición (ver ``request.state.csp_nonce``).
+
+    HSTS se emite solo cuando la petición llegó por HTTPS: mandarlo por HTTP no
+    surte efecto y, en desarrollo local, impediría volver a entrar por http.
     """
 
     CABECERAS = {
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
         "X-Frame-Options": "DENY",
+        "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "same-origin",
     }
+
+    HSTS = "max-age=31536000; includeSubDomains"
+
+    @staticmethod
+    def plantilla_csp(nonce: str) -> str:
+        """Política completa con el nonce de esta petición."""
+        return (
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'; "
+            "object-src 'none'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            f"script-src 'self' 'nonce-{nonce}'; "
+            "connect-src 'self'"
+        )
 
     async def dispatch(self, request: Request,
                        call_next: RequestResponseEndpoint) -> Response:
+        # El nonce se genera antes de renderizar: las plantillas lo consumen.
+        nonce = secrets.token_urlsafe(16)
+        request.state.csp_nonce = nonce
+
         respuesta = await call_next(request)
+
         for nombre, valor in self.CABECERAS.items():
             respuesta.headers.setdefault(nombre, valor)
+        respuesta.headers.setdefault(
+            "Content-Security-Policy", self.plantilla_csp(nonce))
+        if request.url.scheme == "https":
+            respuesta.headers.setdefault("Strict-Transport-Security", self.HSTS)
+
+        # Pantallas de autenticación: contienen códigos, tokens y datos de
+        # sesión. No se pisa un ``Cache-Control`` más específico del handler.
+        ruta = request.url.path
+        if ruta.startswith("/auth/") and not ruta.startswith("/auth/static/"):
+            respuesta.headers.setdefault("Cache-Control", "no-store")
         return respuesta

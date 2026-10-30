@@ -146,7 +146,7 @@
 
 {% block scripts %}
 {% if metodo == "email" %}
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
   (function () {
     var caja = document.querySelector("[data-reenvio]");
     if (!caja) return;

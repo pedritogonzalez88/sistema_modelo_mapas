@@ -421,7 +421,7 @@
 </section>
 {% endif %}
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
   /* Mejoras progresivas locales a esta vista: filas de evidencia y confirmación
      de las transiciones que cierran la ficha. Sin JS todo sigue enviándose. */
   (function () {

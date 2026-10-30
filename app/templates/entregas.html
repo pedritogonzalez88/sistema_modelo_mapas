@@ -206,7 +206,7 @@
   </div>
 </section>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 /* Validación progresiva de la zona de carga (sin dependencias).
    El servidor sigue validando el archivo; esto solo evita viajes inútiles. */
 (function () {

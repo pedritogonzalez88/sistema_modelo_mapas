@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0B3B2E">
   <link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
   {# Marca de "JS disponible": el CSS degrada drawer y controles sin JS #}
-  <script>document.documentElement.classList.add("js");</script>
+  <script nonce="{{ request.state.csp_nonce }}">document.documentElement.classList.add("js");</script>
   <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
   {% block head %}{% endblock %}
 </head>

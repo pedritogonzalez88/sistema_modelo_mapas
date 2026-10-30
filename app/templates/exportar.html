@@ -82,7 +82,7 @@
   {% endcall %}
 {% endif %}
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 /* Estado de espera del botón de descarga (mejora progresiva, sin dependencias). */
 (function () {
   "use strict";
