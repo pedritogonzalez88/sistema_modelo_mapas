@@ -13,6 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.auth.middleware import AuthGateMiddleware, SecurityHeadersMiddleware
 from app.auth.router import router as auth_router
@@ -95,9 +96,17 @@ def create_app() -> FastAPI:
     def inicio():
         return RedirectResponse("/", status_code=302)
 
-    # Orden de la pila: el último `add_middleware` queda más afuera.
+    # Orden de la pila: el último `add_middleware` queda más afuera. El proxy
+    # de confianza va delante de todo para que `request.url.scheme` y
+    # `request.client.host` reflejen lo que informó el reverse proxy.
     app.add_middleware(AuthGateMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    proxies = settings.trusted_proxy_hosts
+    if proxies:
+        # Solo se aceptan X-Forwarded-Proto/For de estas IPs/CIDR. Sin la
+        # variable, `request.client.host` es la IP real de la conexión y el
+        # rate limiting nunca se puede falsear con una cabecera.
+        app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=proxies)
     return app
 
 

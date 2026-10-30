@@ -11,6 +11,7 @@ autenticación o LDAP sin los datos obligatorios, la aplicación no arranca.
 """
 import ipaddress
 import json
+import logging
 from pathlib import Path
 
 from pydantic import model_validator
@@ -19,6 +20,33 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 #: Roles válidos del sistema. Se duplican aquí para no acoplar la configuración
 #: al módulo de permisos; deben coincidir con ``app.auth.permissions``.
 _ROLES_AUTH = ("admin", "supervision", "cargador", "consulta", "asistente")
+
+#: Entornos admitidos. ``prod`` exige el paquete completo de endurecimiento;
+#: ``staging`` solo advierte; ``dev`` relaja las exigencias para trabajar en
+#: local sobre HTTP.
+_ENTORNOS = ("dev", "staging", "prod")
+
+#: Longitudes mínimas de los secretos en producción.
+_SECRETO_MIN_PROD = 32
+_PEPPER_MIN_PROD = 16
+
+_log = logging.getLogger(__name__)
+
+
+def _redes(valor: str, variable: str) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    """Parsea una lista de CIDR separados por coma; error explícito si es inválida."""
+    redes: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    for crudo in (valor or "").split(","):
+        item = crudo.strip()
+        if not item:
+            continue
+        try:
+            redes.append(ipaddress.ip_network(item, strict=False))
+        except ValueError as exc:
+            raise ValueError(
+                f"{variable} contiene una red inválida: '{item}'."
+            ) from exc
+    return redes
 
 
 class Settings(BaseSettings):
@@ -76,6 +104,14 @@ class Settings(BaseSettings):
     ldap_attr_nombre: str = "displayName"
     ldap_attr_email: str = "mail"
     ldap_attr_login: str = "sAMAccountName"
+
+    # --- Entorno y despliegue ---
+    #: ``dev`` | ``staging`` | ``prod``. En ``prod`` el validador de abajo exige
+    #: HTTPS, cookies ``Secure``, SMTP real, docs ocultos y secretos largos.
+    environment: str = "dev"
+    #: CIDR del reverse proxy de confianza, separados por coma. Vacío = no se
+    #: confía en ``X-Forwarded-*`` y se usa ``request.client.host``.
+    trusted_proxy_ips: str = ""
 
     # --- Endurecimiento ---
     admin_internal_only: bool = True
@@ -138,18 +174,24 @@ class Settings(BaseSettings):
     @property
     def internal_networks(self) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
         """Lista de redes internas permitidas para administración y auditoría."""
-        redes = []
-        for crudo in (self.internal_cidrs or "").split(","):
-            valor = crudo.strip()
-            if not valor:
-                continue
-            try:
-                redes.append(ipaddress.ip_network(valor, strict=False))
-            except ValueError as exc:
-                raise ValueError(
-                    f"EET_INTERNAL_CIDRS contiene una red inválida: '{valor}'."
-                ) from exc
-        return redes
+        return _redes(self.internal_cidrs, "EET_INTERNAL_CIDRS")
+
+    @property
+    def trusted_proxy_networks(self) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+        """Redes del reverse proxy en las que se confía para ``X-Forwarded-*``.
+
+        Vacío significa **no** confiar en ninguna cabecera de proxy: la IP real
+        es siempre ``request.client.host``. Esa es la opción correcta cuando la
+        aplicación se publica directamente o detrás de un proxy que ya reescribe
+        la conexión (p. ej. el balanceador de la plataforma).
+        """
+        return _redes(self.trusted_proxy_ips, "EET_TRUSTED_PROXY_IPS")
+
+    @property
+    def trusted_proxy_hosts(self) -> list[str]:
+        """Valores para ``trusted_hosts`` de ``ProxyHeadersMiddleware``."""
+        return [crudo.strip() for crudo in (self.trusted_proxy_ips or "").split(",")
+                if crudo.strip()]
 
     @property
     def fernet_key_list(self) -> list[tuple[str, str]]:
@@ -183,6 +225,13 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validar_seguridad(self) -> "Settings":
         """Falla al arrancar si falta configuración crítica, nunca en caliente."""
+        entorno = (self.environment or "dev").strip().casefold()
+        if entorno not in _ENTORNOS:
+            raise ValueError(
+                "EET_ENVIRONMENT debe ser uno de: " + ", ".join(_ENTORNOS) + "."
+            )
+        self.environment = entorno
+
         if self.auth_enabled:
             faltantes = [
                 nombre
@@ -197,6 +246,8 @@ class Settings(BaseSettings):
                     "Autenticación activada (EET_AUTH_ENABLED=true) sin configuración "
                     f"obligatoria: falta {', '.join(faltantes)}."
                 )
+        self._validar_entorno(entorno)
+
         if self.ldap_enabled:
             faltantes = [
                 nombre
@@ -235,8 +286,65 @@ class Settings(BaseSettings):
         # Valida el formato del mapa de roles y de las redes internas al inicio.
         self.ldap_role_map_dict
         self.internal_networks
+        self.trusted_proxy_networks
         self.fernet_key_list
         return self
+
+    def _problemas_produccion(self) -> list[str]:
+        """Incumplimientos de endurecimiento para ``prod`` (texto sin secretos).
+
+        Nunca incluye el valor de un secreto: solo el nombre de la variable y la
+        condición que no se cumple. Se reutiliza para ``staging`` (advertencia).
+        """
+        problemas: list[str] = []
+        if not self.cookie_secure:
+            problemas.append(
+                "EET_COOKIE_SECURE debe ser true (cookies Secure sobre HTTPS).")
+        if not (self.public_base_url or "").strip().casefold().startswith("https://"):
+            problemas.append(
+                "EET_PUBLIC_BASE_URL debe comenzar con https:// (enlaces de correo).")
+        backend = (self.email_backend or "").strip().casefold()
+        if backend != "smtp":
+            problemas.append(
+                "EET_EMAIL_BACKEND debe ser 'smtp' (el backend de consola no "
+                "entrega códigos ni enlaces).")
+        elif not (self.smtp_host or "").strip():
+            problemas.append("EET_SMTP_HOST es obligatorio con EET_EMAIL_BACKEND=smtp.")
+        if self.expose_docs:
+            problemas.append(
+                "EET_EXPOSE_DOCS debe ser false (no se publica /docs ni "
+                "/openapi.json en producción).")
+        if len((self.secret_key or "").strip()) < _SECRETO_MIN_PROD:
+            problemas.append(
+                f"EET_SECRET_KEY debe tener al menos {_SECRETO_MIN_PROD} caracteres.")
+        if len((self.auth_pepper or "").strip()) < _PEPPER_MIN_PROD:
+            problemas.append(
+                f"EET_AUTH_PEPPER debe tener al menos {_PEPPER_MIN_PROD} caracteres.")
+        if not (self.session_cookie or "").startswith("__Host-"):
+            problemas.append(
+                "EET_SESSION_COOKIE debe comenzar con '__Host-' (cookie atada al "
+                "host y solo por HTTPS).")
+        return problemas
+
+    def _validar_entorno(self, entorno: str) -> None:
+        """``prod`` falla cerrado; ``staging`` advierte; ``dev`` no exige nada.
+
+        La comprobación solo se aplica con la autenticación activa: mientras la
+        bandera esté apagada la aplicación no expone identidad y el despliegue
+        gradual (Fase A0) debe seguir siendo posible.
+        """
+        if not self.auth_enabled or entorno == "dev":
+            return
+        problemas = self._problemas_produccion()
+        if not problemas:
+            return
+        if entorno == "prod":
+            raise ValueError(
+                "Configuración insegura para EET_ENVIRONMENT=prod: "
+                + " ".join(problemas)
+            )
+        for problema in problemas:
+            _log.warning("Entorno staging incompleto: %s", problema)
 
 
 settings = Settings()
