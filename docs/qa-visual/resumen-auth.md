@@ -64,6 +64,10 @@ node scripts/a11y-auth.mjs --base http://127.0.0.1:8033
 # 5) Limpieza de datos de prueba y del correo temporal (§8)
 ```
 
+> La contraseña `ClaveE2EAdmin-2026!` de los comandos anteriores es una
+> credencial **desechable y local** de la cuenta de prueba `e2e-admin`, que se
+> elimina al terminar (§8); no corresponde a ningún entorno real.
+
 Artefactos:
 
 | Ruta | Contenido |
