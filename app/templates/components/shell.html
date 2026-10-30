@@ -80,6 +80,12 @@
       <p class="user-menu__rol">{{ ui.badge(rol_etiqueta(usuario.rol)) }}</p>
       <a class="user-menu__link" href="/auth/seguridad">Seguridad</a>
       <a class="user-menu__link" href="/auth/cambiar-password">Cambiar contraseña</a>
+      {%- if puede(request, "usuarios.gestionar") %}
+      <a class="user-menu__link" href="/auth/usuarios">Usuarios</a>
+      {%- endif %}
+      {%- if puede(request, "auditoria.ver") %}
+      <a class="user-menu__link" href="/auth/auditoria">Auditoría</a>
+      {%- endif %}
       <form method="post" action="/auth/logout" class="user-menu__form">
         {{ ui.csrf_input() }}
         <button type="submit" class="user-menu__link">Salir</button>

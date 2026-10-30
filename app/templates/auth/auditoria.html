@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% import "components/ui.html" as ui with context %}
+
+{% block title %}Auditoría · Validador EET{% endblock %}
+{% block description %}Eventos de seguridad y administración con filtros, detalle y exportación CSV.{% endblock %}
+
+{% block contenido %}
+{% call ui.page_header(
+  "Auditoría",
+  "Registro de accesos, cambios de rol y resets asistidos. Solo lectura: no se puede modificar ni borrar desde aquí.",
+  breadcrumb=[{"label": "Inicio", "href": "/"}, {"label": "Auditoría"}]
+) %}
+  {{ ui.btn("Descargar CSV", href=csv_url, variant="secondary", icon="download") }}
+{% endcall %}
+
+<div class="mb-4">
+  {{ ui.banner(
+    "info",
+    "Se muestran " ~ por_pagina ~ " eventos por página. La exportación incluye hasta 10 000 filas del filtro actual, con BOM UTF-8 para abrir en Excel.",
+    dismissible=False
+  ) }}
+</div>
+
+{# --- Filtros -------------------------------------------------------------- #}
+<form method="get" action="/auth/auditoria" class="card mb-4"
+      aria-label="Filtros de auditoría">
+  <div class="card__body grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="field">
+      <label class="field__label" for="f-accion">Acción</label>
+      <input class="input" id="f-accion" name="accion" type="search"
+             value="{{ f_accion }}" autocomplete="off"
+             placeholder="Ej.: login_fail">
+    </div>
+    <div class="field">
+      <label class="field__label" for="f-actor">Actor</label>
+      <input class="input" id="f-actor" name="actor" type="search"
+             value="{{ f_actor }}" autocomplete="off"
+             placeholder="Ej.: usuario:12">
+    </div>
+    <div class="field">
+      <label class="field__label" for="f-q">Entidad o identificador</label>
+      <input class="input" id="f-q" name="q" type="search" value="{{ f_q }}"
+             autocomplete="off" placeholder="Ej.: usuario o 12">
+    </div>
+    <div class="field">
+      <label class="field__label" for="f-desde">Desde</label>
+      <input class="input" id="f-desde" name="desde" type="date"
+             value="{{ f_desde }}">
+    </div>
+    <div class="field">
+      <label class="field__label" for="f-hasta">Hasta</label>
+      <input class="input" id="f-hasta" name="hasta" type="date"
+             value="{{ f_hasta }}">
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {{ ui.btn("Aplicar filtros", variant="secondary", icon="filter", type="submit") }}
+      {{ ui.btn("Limpiar", href="/auth/auditoria", variant="ghost") }}
+    </div>
+  </div>
+</form>
+
+{# --- Listado -------------------------------------------------------------- #}
+<section class="card" aria-labelledby="listado-auditoria">
+  <header class="card__header">
+    <h2 class="card__title" id="listado-auditoria">Eventos registrados</h2>
+    <p class="card__subtitle">
+      {{ total }} evento{{ "" if total == 1 else "s" }} con los filtros aplicados,
+      del más reciente al más antiguo.
+    </p>
+  </header>
+  <div class="card__body">
+    {% if filas %}
+      {% call ui.table_wrap("Eventos de auditoría") %}
+      <table class="table">
+        <caption class="sr-only">Eventos de auditoría con fecha, actor, acción y detalle</caption>
+        <thead>
+          <tr>
+            <th scope="col">Fecha (UTC)</th>
+            <th scope="col">Actor</th>
+            <th scope="col">Acción</th>
+            <th scope="col" class="hidden sm:table-cell">Entidad</th>
+            <th scope="col" class="hidden md:table-cell">ID</th>
+            <th scope="col" class="hidden lg:table-cell">IP</th>
+            <th scope="col"><span class="sr-only">Detalle</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for fila, detalle in filas %}
+          <tr>
+            <td class="tabular whitespace-nowrap">
+              {{ fila.fecha.strftime("%Y-%m-%d %H:%M:%S") if fila.fecha else "—" }}
+            </td>
+            <td class="tabular">{{ fila.actor or "—" }}</td>
+            <td><code class="text-xs">{{ fila.accion }}</code></td>
+            <td class="hidden sm:table-cell">{{ fila.entidad or "—" }}</td>
+            <td class="hidden md:table-cell tabular">{{ fila.entidad_id or "—" }}</td>
+            <td class="hidden lg:table-cell tabular">{{ fila.ip or "—" }}</td>
+            <td class="text-right">
+              <details class="auth-detalle">
+                <summary class="auth-detalle__resumen">Detalle<span class="sr-only"> del evento {{ fila.id }}</span></summary>
+                <div class="auth-detalle__cuerpo">
+                  <dl class="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <dt class="field__label">Agente</dt>
+                      <dd class="break-all">{{ fila.user_agent or "—" }}</dd>
+                    </div>
+                    <div>
+                      <dt class="field__label">Identificador</dt>
+                      <dd class="tabular">{{ fila.id }}</dd>
+                    </div>
+                  </dl>
+                  <pre class="text-xs break-words whitespace-pre-line">{{ detalle }}</pre>
+                </div>
+              </details>
+            </td>
+          </tr>
+          {%- endfor %}
+        </tbody>
+      </table>
+      {% endcall %}
+      {{ ui.pagination(page, paginas, request) }}
+    {% else %}
+      {{ ui.empty(
+        "Sin eventos para esos filtros",
+        "Amplíe el rango de fechas o limpie los filtros para ver la actividad registrada."
+      ) }}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -30,6 +30,13 @@ FLASH_OK = {
     "session_revoked":    ("Sesión revocada. Ese dispositivo ya no tiene acceso.", "ok"),
     # Autenticación (Fase A4)
     "password_reset":     ("Contraseña restablecida. Ingrese con su nueva clave.", "ok"),
+    # Administración de usuarios (Fase A6b). La contraseña temporal y los
+    # códigos de respaldo nunca viajan por la URL: se muestran en la propia
+    # respuesta del POST, por eso ``password_temporal`` solo documenta el estado.
+    "usuario_creado":     ("Usuario creado. Entregue la contraseña temporal por un canal seguro.", "ok"),
+    "usuario_actualizado": ("Cambio aplicado y registrado en la auditoría.", "ok"),
+    "password_temporal":  ("Contraseña temporal generada. Se muestra una sola vez.", "warn"),
+    "mfa_reseteado":      ("Segundo factor reiniciado. El usuario deberá enrolarse de nuevo.", "ok"),
 }
 
 FLASH_ERROR = {

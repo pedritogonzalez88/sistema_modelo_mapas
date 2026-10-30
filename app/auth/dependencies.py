@@ -21,6 +21,7 @@ Varios permisos en la misma dependencia se interpretan como **alternativa**
 """
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Callable
 from typing import NoReturn
 
@@ -33,6 +34,7 @@ from app.core.database import SessionLocal
 from app.models import Sesion, Usuario
 
 __all__ = [
+    "MENSAJE_RED_INTERNA",
     "MENSAJE_SIN_PERMISO",
     "exigir_permiso",
     "get_current_session",
@@ -40,10 +42,12 @@ __all__ = [
     "negar_acceso",
     "require_permiso",
     "require_roles",
+    "requiere_red_interna",
 ]
 
 _MENSAJE_SIN_SESION = "Sesión requerida."
 MENSAJE_SIN_PERMISO = "No tiene permiso para esta acción."
+MENSAJE_RED_INTERNA = "Esta sección solo está disponible desde la red interna."
 
 
 def get_current_user(request: Request) -> Usuario:
@@ -156,3 +160,49 @@ def require_roles(*roles: str) -> Callable[..., Usuario]:
         return usuario
 
     return _dependencia
+
+
+def requiere_red_interna(request: Request) -> None:
+    """Restringe la administración y la auditoría a la red interna.
+
+    Se aplica **solo** cuando la autenticación está activa y
+    ``EET_ADMIN_INTERNAL_ONLY=true``; con la bandera de autenticación apagada
+    la aplicación conserva el comportamiento anterior a la Fase A1.
+
+    La IP se toma de ``request.client.host``. **Detrás de un reverse proxy hay
+    que definir ``EET_TRUSTED_PROXY_IPS``** (Fase A6a) para que uvicorn
+    reescriba el cliente con ``X-Forwarded-For``; sin esa configuración la IP
+    visible sería la del proxy y todos los accesos quedarían fuera (o dentro)
+    del rango interno por igual.
+
+    Un host que no sea una dirección IP (por ejemplo el ``testclient`` de
+    Starlette) se rechaza: con un CIDR amplio como ``0.0.0.0/0`` solo debe
+    pasar una IP real perteneciente a esa red.
+    """
+    if not settings.auth_enabled or not settings.admin_internal_only:
+        return
+
+    host = request.client.host if request.client else None
+    try:
+        direccion = ipaddress.ip_address((host or "").strip())
+    except ValueError:
+        _registrar_denegacion(
+            request, getattr(request.state, "usuario", None),
+            "admin.red_interna", set(),
+            {"motivo": "ip_no_parseable", "host": host},
+        )
+        raise HTTPException(
+            status_code=403, detail=MENSAJE_RED_INTERNA) from None
+
+    # Un socket dual-stack puede entregar IPv4 mapeada (``::ffff:10.x.x.x``):
+    # se compara como IPv4 para que los CIDR internos sigan siendo válidos.
+    if isinstance(direccion, ipaddress.IPv6Address) and direccion.ipv4_mapped:
+        direccion = direccion.ipv4_mapped
+
+    if not any(direccion in red for red in settings.internal_networks):
+        _registrar_denegacion(
+            request, getattr(request.state, "usuario", None),
+            "admin.red_interna", set(),
+            {"motivo": "fuera_de_rango", "host": host},
+        )
+        raise HTTPException(status_code=403, detail=MENSAJE_RED_INTERNA)
