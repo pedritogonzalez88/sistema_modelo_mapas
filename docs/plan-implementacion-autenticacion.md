@@ -519,7 +519,7 @@ Informe técnico completo: [`docs/qa-visual/resumen-auth.md`](qa-visual/resumen-
 | A3 — TOTP y códigos de respaldo | Completada | `app/auth/service.py`, `docs/fase-a3-totp.md`; E2E pasos 3–5 |
 | A4 — Correo, OTP y recuperación | Completada | `app/auth/mailer.py`, `docs/fase-a4-correo-recuperacion.md`; E2E pasos 7–8 |
 | A5 — LDAP/AD parametrizado (apagado) | Completada, sin directorio real | `app/auth/providers.py`, `uv run python -m app.cli ldap-check`, `docs/fase-a5-ldap.md` |
-| A6 — Endurecimiento, administración, E2E y despliegue | Completada salvo A6.12 | `docs/fase-a6a-endurecimiento.md`, `docs/fase-a6b-administracion.md`, `docs/runbook-autenticacion.md` |
+| A6 — Endurecimiento, administración, E2E y despliegue | Completada (A6.12 cerrada en A6c) | `docs/fase-a6a-endurecimiento.md`, `docs/fase-a6b-administracion.md`, `docs/runbook-autenticacion.md`, `docs/fase-a6c-staging.md` |
 
 ### 13.2 A6.9 — E2E de Playwright
 
@@ -571,8 +571,12 @@ enfocados y con `Enter` disparando el envío.
 
 ### 13.5 Pendientes reales
 
-- **A6.12**: ensayo de despliegue con `auth_enabled=true` en staging, con TLS
-  real y proxy (`EET_TRUSTED_PROXY_IPS`), y verificación de cookies `__Host-`.
+- ~~**A6.12**: ensayo de despliegue con `auth_enabled=true` en staging, con TLS
+  real y proxy (`EET_TRUSTED_PROXY_IPS`), y verificación de cookies `__Host-`.~~
+  **Completada** (`docs/fase-a6c-staging.md`): preflight 20 PASS / 2 WARN /
+  0 FAIL y smoke 15/15 con cookie `__Host-eet_session` (`Secure`, `HttpOnly`,
+  `SameSite=lax`, sin `Domain`). Quedan como requisitos de TI el SMTP real, el
+  DNS/certificado público, los CIDR definitivos y el firewall de borde.
 - **Lector de pantalla** (NVDA/Firefox, VoiceOver/Safari) sobre las pantallas de
   auth: anuncios de `role="status"`/`role="alert"`, clave manual del
   autenticador y códigos de respaldo.

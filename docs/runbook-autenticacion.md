@@ -6,6 +6,9 @@
 > interna. Complementa `docs/despliegue-autenticacion.md` (infraestructura,
 > TLS, proxy y checklist de producción) y `docs/fase-a6b-administracion.md`
 > (alcance técnico de la administración de usuarios y auditoría).
+>
+> §15 reúne los comandos de operación (`reenviar-correo`, `re-cifrar`,
+> `estado-auth`) y §16 el ciclo de vida del entorno de staging (`deploy/`).
 
 Todos los comandos se ejecutan desde la raíz del repositorio. En producción,
 dentro del contenedor:
@@ -383,11 +386,19 @@ La primera cifra; todas descifran. Procedimiento:
    `EET_FERNET_KEYS="v2:<nueva>,v1:<vieja>"`.
 3. Reiniciar la aplicación. Verificar login con TOTP de una cuenta de prueba:
    los secretos v1 se siguen leyendo.
-4. Re-cifrar los datos viejos (tarea pendiente de automatizar; hoy se puede
-   hacer con un script que lea `mfa_totp` y `email_outbox`, descifre con
-   `SecretBox` y vuelva a cifrar; hacerlo con backup previo y ventana de
-   mantenimiento).
-5. Cuando ya no queden blobs `v1`, retirar la clave vieja.
+4. Re-cifrar los datos viejos con el comando de operación (hacer antes un backup
+   de la base y trabajar en ventana de mantenimiento):
+   ```bash
+   docker compose exec app uv run python -m app.cli re-cifrar
+   ```
+   Migra `mfa_totp.secret_enc` y `email_outbox.cuerpo` (los que empiezan con
+   `enc:`) a la clave vigente, actualiza `key_id` e informa
+   `migrados / ya vigentes / fallos`. **Nunca imprime secretos.** Es
+   idempotente: una segunda pasada informa `Re-cifrados: 0`. Sale con 1 si
+   alguna fila no se pudo descifrar (clave anterior ausente o blob corrupto);
+   en ese caso **no la modifica** y hay que reponer la clave que falta.
+5. Cuando ya no queden blobs `v1`, retirar la clave vieja. Verificar con
+   `python -m app.cli re-cifrar`: debe informar `Re-cifrados: 0` y `fallos: 0`.
 
 Si se pierde la clave vigente, los secretos TOTP no se pueden descifrar: el
 sistema lo trata como «sin segundo factor» y el usuario conserva códigos de
@@ -427,11 +438,13 @@ llega y `email_outbox` acumula filas con `intentos > 0` y `ultimo_error`.
 2. Mientras dure: indicar a los usuarios que usen **TOTP o un código de
    respaldo**. El login con contraseña y TOTP no depende del correo.
 3. Los envíos fallidos quedan en `email_outbox`; al restablecer el servicio se
-   reintentan con `mailer.reintentar_pendientes` (job o comando manual):
+   reintentan con el comando de operación (o por cron):
    ```bash
-   docker compose exec app uv run python -c \
-     "from app.auth.mailer import reintentar_pendientes; print(reintentar_pendientes(50))"
+   docker compose exec app uv run python -m app.cli reenviar-correo --limit 50
    ```
+   Informa `revisados / enviados / fallidos` y sale con 1 si alguno falló. Es
+   idempotente: una fila se marca `enviado_en` una sola vez y deja de entrar en
+   el lote.
 4. Si el relay no vuelve, cambiar `EET_EMAIL_BACKEND=console` solo en
    desarrollo; en producción **no** se debe operar sin correo (la recuperación
    y el segundo factor por correo quedan inutilizables).
@@ -654,3 +667,113 @@ cuentas, roles y auditoría permanecen en la base.
 | TOTP no valida | Reloj del teléfono desincronizado | Activar hora automática; ventana permitida ±1 paso |
 | No llega el correo | SMTP caído o en spam | Revisar §10.1, SPF/DKIM/DMARC y la cola `email_outbox` |
 | La contraseña temporal no funciona | Se recargó la página y se generó otra | Pedir un nuevo reset y copiarla sin recargar |
+
+---
+
+## 15. Comandos de operación
+
+Los tres son idempotentes, no escriben secretos en la salida y comparten
+códigos de salida: **0** correcto, **1** con fallos parciales, **2** sin
+configuración de cifrado (`re-cifrar`). En el host, anteponer `uv run`.
+
+### 15.1 `estado-auth` — foto del sistema
+
+```bash
+docker compose exec app uv run python -m app.cli estado-auth
+```
+
+```text
+Estado de autenticación (UTC · 2026-10-30 14:00)
+  Usuarios: 7 (activos 7 · inactivos 0)
+    por rol:       admin 2 · supervision 1 · cargador 1 · asistente 3
+    por proveedor: local 7
+  Sesiones activas: 0
+  Desafíos 2FA pendientes: 0
+  Códigos de respaldo sin usar: 10
+  Correo: 0 pendiente(s) · 0 agotado(s)
+  Último acceso: 2026-10-30 13:58
+```
+
+Útil para el chequeo diario del §13: sesiones vivas, desafíos que quedaron
+colgados, códigos de respaldo disponibles y salud de la cola. Con la base vacía
+muestra ceros y `(sin accesos)`; nunca falla por falta de datos.
+
+### 15.2 `reenviar-correo` — cola de salida
+
+```bash
+docker compose exec app uv run python -m app.cli reenviar-correo --limit 20
+# Correos revisados: 3 · enviados: 3 · fallidos: 0
+```
+
+Reintenta las filas con `enviado_en IS NULL` e `intentos < 5`, en orden de
+llegada. `--limit` (20 por defecto) acota el lote. Pensado para cron cada 5–10
+minutos mientras dure una caída de SMTP (§10.1). Si informa fallos, revisar el
+relay antes de seguir insistiendo: cada pasada suma un intento y a los 5 la fila
+deja de entrar en el lote.
+
+### 15.3 `re-cifrar` — rotación de claves (§9.1)
+
+```bash
+docker compose exec app uv run python -m app.cli re-cifrar
+# Clave vigente: v2 · disponibles: v2, v1
+# Re-cifrados: 12 · ya en la clave vigente: 340 · fallos: 0
+```
+
+- Recorre `mfa_totp.secret_enc` y `email_outbox.cuerpo` con prefijo `enc:`.
+- Descifra con la clave indicada en `key_id` y vuelve a cifrar con la primera
+  de `EET_FERNET_KEYS`; actualiza `key_id` (en la cola, el prefijo
+  `enc:<key_id>:`).
+- Los cuerpos **no** cifrados no se tocan (no son sensibles).
+- No imprime secretos, tokens ni cuerpos: solo contadores.
+- Con `fallos > 0` sale 1 y **deja las filas intactas**: significa que falta una
+  clave en `EET_FERNET_KEYS` o que el blob está corrupto.
+
+Secuencia completa de rotación:
+
+```bash
+# 0) Backup de la base y del archivo de claves
+# 1) EET_FERNET_KEYS="v2:<nueva>,v1:<vieja>" y reiniciar
+# 2) Comprobar login con TOTP de una cuenta de prueba
+# 3) Migrar
+docker compose exec app uv run python -m app.cli re-cifrar
+# 4) Repetir hasta "Re-cifrados: 0 · fallos: 0"
+# 5) EET_FERNET_KEYS="v2:<nueva>", reiniciar y repetir el login de prueba
+```
+
+---
+
+## 16. Staging: levantar, verificar y apagar
+
+Infraestructura en [`deploy/README.md`](../deploy/README.md); informe del ensayo
+en [`docs/fase-a6c-staging.md`](fase-a6c-staging.md). Es otro proyecto de
+Compose (`eet-staging`), con volumen y puertos propios: **no comparte nada con
+el entorno de desarrollo**.
+
+```powershell
+# Levantar (TLS, auth activa, proxy de confianza)
+uv run python scripts/gen-dev-cert.py
+Copy-Item deploy/.env.staging.example deploy/.env.staging   # completar secretos
+docker compose -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging up -d --build
+
+# Verificar
+uv run python scripts/preflight-auth.py `
+  --env-file deploy/.env.staging `
+  --database-url postgresql+psycopg://eet:eet@localhost:5434/eet `
+  --url https://localhost:8443 --insecure
+uv run python scripts/smoke-staging.py --base https://localhost:8443 --insecure
+
+# Operar (los mismos comandos del §15, con el compose del staging)
+docker compose -f deploy/docker-compose.staging.yml exec app `
+  uv run --no-sync --frozen python -m app.cli estado-auth
+
+# Apagar y limpiar (elimina contenedores, red y volumen del staging)
+docker compose -f deploy/docker-compose.staging.yml down -v
+```
+
+`down -v` del staging **no** borra el volumen de desarrollo (`eet-pgdata`): son
+proyectos distintos. Si solo se quiere detener sin perder los datos del ensayo,
+usar `down` sin `-v`.
+
+Credenciales del smoke: `--usuario`/`--password` o, preferible,
+`EET_SMOKE_USER`/`EET_SMOKE_PASSWORD` para no dejarlas en el historial. Al
+terminar hace `logout`: no quedan sesiones activas.

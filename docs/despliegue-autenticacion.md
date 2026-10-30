@@ -415,3 +415,87 @@ que un error de configuración no deje las cookies viajando en claro en internet
 | 413 en cargas válidas | `EET_MAX_UPLOAD_MB` menor que el archivo, o `client_max_body_size` menor que la app |
 | La recuperación «no envía nada» | `EET_EMAIL_BACKEND=console` en producción (prohibido por la validación) |
 | «Demasiados intentos fallidos» con la clave correcta | Bloqueo por cuenta (`5`) o por IP (`EET_LOGIN_IP_MAX_15MIN`); revisar `login_attempts` |
+
+---
+
+## 12. Staging reproducible con TLS (A6.12)
+
+Ensayo completo del despliegue —`EET_AUTH_ENABLED=true`, HTTPS, cookies
+`__Host-` y proxy de confianza— sin tocar el entorno de desarrollo. La
+infraestructura está en [`deploy/`](../deploy/README.md) y el informe del
+ensayo en [`docs/fase-a6c-staging.md`](fase-a6c-staging.md).
+
+### 12.1 Piezas
+
+| Servicio | Imagen | Publica | Notas |
+|---|---|---|---|
+| `db` | `postgis/postgis:16-3.4` | `5434` | Volumen propio `eet-staging_*` |
+| `app` | build del `Dockerfile` real | — | Sin puerto host: solo la ve el proxy; migra al arrancar |
+| `proxy` | `nginx:1.27-alpine` | `8080`, `8443` | IP fija `172.28.0.10`, red `172.28.0.0/24` |
+
+### 12.2 Comandos
+
+```powershell
+# 1) Certificado local (CA + servidor para localhost/127.0.0.1, 365 días)
+uv run python scripts/gen-dev-cert.py
+
+# 2) Variables (copiar y completar los dos secretos)
+Copy-Item deploy/.env.staging.example deploy/.env.staging
+
+# 3) Levantar y esperar healthy
+docker compose -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging up -d --build
+
+# 4) Administrador (la clave va por entorno, nunca por parámetro)
+docker compose -f deploy/docker-compose.staging.yml exec -e EET_ADMIN_PASSWORD=$pw app `
+  uv run --no-sync --frozen python -m app.cli crear-admin `
+  --email coordinacion@aep.gov.py --username staging-admin --nombre "Admin staging"
+
+# 5) Preflight (configuración + base + servicio)
+uv run python scripts/preflight-auth.py `
+  --env-file deploy/.env.staging `
+  --database-url postgresql+psycopg://eet:eet@localhost:5434/eet `
+  --url https://localhost:8443 --insecure
+
+# 6) Smoke del camino completo
+$env:EET_SMOKE_USER='staging-admin'; $env:EET_SMOKE_PASSWORD=$pw
+uv run python scripts/smoke-staging.py --base https://localhost:8443 --insecure
+```
+
+Salidas reales del ensayo (verificado el 30/10/2026): preflight **20 PASS ·
+2 WARN · 0 FAIL**, smoke **15 PASS · 0 FAIL** y cookie
+`__Host-eet_session=***; HttpOnly; Max-Age=43200; Path=/; SameSite=lax; Secure`.
+
+### 12.3 Por qué el preflight necesita `--env-file` y `--database-url`
+
+El preflight lee los `Settings` **reales** del proceso. Dentro del contenedor ya
+están en el entorno:
+
+```bash
+docker compose -f deploy/docker-compose.staging.yml exec app \
+  uv run --no-sync --frozen python scripts/preflight-auth.py
+```
+
+Desde el host, en cambio, hay que darle el archivo y el puerto publicado de la
+base (`db` no se resuelve fuera de la red de Docker). `--database-url` solo
+cambia la URL de conexión del chequeo; no altera el entorno del despliegue.
+
+### 12.4 Diferencias con producción
+
+| Punto | Staging | Producción |
+|---|---|---|
+| Certificado | CA local (`deploy/certs/`) | CA institucional |
+| `EET_PUBLIC_BASE_URL` | `https://localhost:8443` | `https://<dominio>` |
+| `EET_EMAIL_BACKEND` | `console` (aviso del preflight) | `smtp` + relay real |
+| `EET_ADMIN_INTERNAL_ONLY` | `false` (para operar desde el host) | `true` con CIDR reales |
+| Puertos del proxy | `8080`/`8443` | `80`/`443` |
+| Validación de `Settings` | advierte | **falla cerrada** |
+
+### 12.5 Apagado
+
+```powershell
+# Detiene y elimina contenedores, red y volumen del staging
+docker compose -f deploy/docker-compose.staging.yml down -v
+```
+
+No afecta al entorno de desarrollo: es otro proyecto de Compose (`eet-staging`) y
+otro volumen.
