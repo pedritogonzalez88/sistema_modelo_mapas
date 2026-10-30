@@ -19,6 +19,7 @@ import hmac
 import secrets
 import time
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
 from typing import Final
 
 import pyotp
@@ -46,6 +47,7 @@ __all__ = [
     "secret_box",
     "sha256_hex",
     "totp_uri",
+    "utcnow",
     "validar_password",
     "verificar_totp",
     "verify_dummy",
@@ -160,6 +162,17 @@ def validar_password(password: str, username: str | None = None,
 
 
 # --- Tokens y hashes -----------------------------------------------------------
+def utcnow() -> datetime:
+    """UTC *naive* actual, compatible con las columnas ``DateTime`` del esquema.
+
+    ``datetime.utcnow()`` está deprecado desde Python 3.12 y emite
+    ``DeprecationWarning`` en cada llamada. Este helper obtiene el instante
+    consciente de zona y le quita ``tzinfo`` para no cambiar la semántica de las
+    columnas: siguen siendo naive con hora UTC, como todo el resto del esquema.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def new_token(nbytes: int = 32) -> str:
     """Genera un token URL-safe criptográficamente aleatorio."""
     if nbytes < 16:

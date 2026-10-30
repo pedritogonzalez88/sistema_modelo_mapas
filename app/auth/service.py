@@ -11,8 +11,9 @@ Diseño:
 - El login aplica bloqueo por cuenta (``failed_attempts``/``locked_until``),
   resetea el contador al acertar y audita ``login_ok``, ``login_fail`` y
   ``login_locked`` con IP y agente de usuario.
-- Usar ``datetime.utcnow()`` porque las columnas ``DateTime`` del esquema son
-  *naive* (zona horaria implícita UTC), igual que el resto de la aplicación.
+- Usar :func:`app.core.security.utcnow` (UTC *naive*, sin ``DeprecationWarning``)
+  porque las columnas ``DateTime`` del esquema son *naive* (zona horaria
+  implícita UTC), igual que el resto de la aplicación.
 
 Fase A3 (segundo factor):
 
@@ -89,6 +90,7 @@ from app.core.security import (
     secret_box,
     sha256_hex,
     totp_uri,
+    utcnow,
     validar_password,
     verificar_totp,
     verify_password,
@@ -106,11 +108,14 @@ from app.models import (
 __all__ = [
     "CODIGOS_RESPALDO",
     "MAX_ENVIOS_CORREO_HORA",
+    "MAX_ENVIOS_CORREO_POR_IP_HORA",
+    "MAX_FALLOS_MFA_POR_IP",
     "MAX_INTENTOS_CODIGO_CORREO",
     "MAX_INTENTOS_MFA",
     "MAX_RESET_POR_IP_HORA",
     "MAX_RESET_POR_USUARIO_HORA",
     "POLITICAS_MFA",
+    "VENTANA_RATE_LIMIT",
     "ResultadoLogin",
     "ResultadoMfa",
     "EstadoMfa",
@@ -125,10 +130,13 @@ __all__ = [
     "crear_sesion",
     "emitir_codigo_email",
     "estado_mfa",
+    "fallos_por_ip",
     "generar_codigo_email",
     "iniciar_enrolamiento",
+    "ip_bloqueada",
     "limpiar_expiradas",
     "puede_enviar_codigo",
+    "puede_enviar_codigo_por_ip",
     "regenerar_respaldo",
     "restablecer_password",
     "revocar_por_token",
@@ -173,6 +181,13 @@ VIGENCIA_RESET = timedelta(minutes=30)
 MAX_RESET_POR_USUARIO_HORA = 3
 #: Solicitudes de restablecimiento por IP en una hora.
 MAX_RESET_POR_IP_HORA = 10
+
+#: Ventana común del rate limiting por IP (Fase A6a).
+VENTANA_RATE_LIMIT = timedelta(minutes=15)
+#: Fallos de segundo factor por IP en la ventana antes de cortar el acceso.
+MAX_FALLOS_MFA_POR_IP = 10
+#: Códigos por hora que se pueden pedir desde una misma IP.
+MAX_ENVIOS_CORREO_POR_IP_HORA = 10
 
 #: Retardo mínimo de un intento LDAP fallido. Argon2id tarda decenas de ms;
 #: un bind que falla en 1 ms delataría que la cuenta no existe o que el DC no
@@ -311,7 +326,7 @@ def crear_sesion(db: Session, usuario: Usuario, ip: str | None = None,
     if usuario is None or usuario.id is None:
         raise ValueError("No se puede crear una sesión sin usuario persistido.")
     token = new_token(32)
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     sesion = Sesion(
         token_hash=sha256_hex(token),
         usuario_id=usuario.id,
@@ -340,7 +355,7 @@ def cargar_sesion(db: Session, token: str | None) -> Sesion | None:
     )
     if sesion is None or sesion.revoked_at is not None:
         return None
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     if sesion.expires_at is None or sesion.expires_at <= ahora:
         return None
     ultimo = sesion.last_seen_at or sesion.created_at or ahora
@@ -372,7 +387,7 @@ def revocar_sesion(db: Session, sesion: Sesion) -> None:
     if sesion is None:
         return
     if sesion.revoked_at is None:
-        sesion.revoked_at = datetime.utcnow()
+        sesion.revoked_at = utcnow()
         db.commit()
 
 
@@ -383,7 +398,7 @@ def revocar_por_token(db: Session, token: str | None) -> int:
     resultado = db.execute(
         update(Sesion)
         .where(Sesion.token_hash == sha256_hex(token), Sesion.revoked_at.is_(None))
-        .values(revoked_at=datetime.utcnow())
+        .values(revoked_at=utcnow())
     )
     db.commit()
     return int(resultado.rowcount or 0)
@@ -395,7 +410,7 @@ def revocar_todas(db: Session, usuario_id: int, excepto_id=None) -> int:
         Sesion.usuario_id == usuario_id, Sesion.revoked_at.is_(None))
     if excepto_id is not None:
         consulta = consulta.where(Sesion.id != excepto_id)
-    resultado = db.execute(consulta.values(revoked_at=datetime.utcnow()))
+    resultado = db.execute(consulta.values(revoked_at=utcnow()))
     db.commit()
     return int(resultado.rowcount or 0)
 
@@ -406,7 +421,7 @@ def limpiar_expiradas(db: Session, dias: int = 30) -> int:
     Elimina expiradas, revocadas e inactivas antiguas. Nunca toca una sesión
     viva: el umbral se mide contra el momento en que dejó de ser válida.
     """
-    limite = datetime.utcnow() - timedelta(days=max(0, int(dias)))
+    limite = utcnow() - timedelta(days=max(0, int(dias)))
     resultado = db.execute(
         delete(Sesion).where(
             or_(
@@ -431,15 +446,64 @@ def _registrar_intento(db: Session, identificador: str, ip: str | None,
     ))
 
 
+# --- Rate limiting por IP (Fase A6a) -------------------------------------------
+def fallos_por_ip(db: Session, ip: str | None, *, factor: str | None = None,
+                  ventana: timedelta = VENTANA_RATE_LIMIT) -> int:
+    """Fallos registrados desde ``ip`` en la ventana (opcionalmente por factor).
+
+    Sin IP no hay límite: las pruebas y las tareas internas invocan el servicio
+    sin cliente, y bloquear ``None`` cerraría el login entero.
+    """
+    if not ip:
+        return 0
+    condiciones = [
+        LoginAttempt.ip == _ip_corta(ip),
+        LoginAttempt.exito.is_(False),
+        LoginAttempt.created_at >= utcnow() - ventana,
+    ]
+    if factor is not None:
+        condiciones.append(LoginAttempt.factor == factor)
+    total = db.scalar(
+        select(func.count()).select_from(LoginAttempt).where(*condiciones))
+    return int(total or 0)
+
+
+def ip_bloqueada(db: Session, ip: str | None, maximo: int, *,
+                 factor: str | None = None,
+                 ventana: timedelta = VENTANA_RATE_LIMIT) -> bool:
+    """``True`` si ``ip`` ya agotó ``maximo`` fallos en la ventana."""
+    return fallos_por_ip(db, ip, factor=factor, ventana=ventana) >= int(maximo)
+
+
 def autenticar(db: Session, login: str, password: str, ip: str | None = None,
                user_agent: str | None = None) -> ResultadoLogin:
     """Autentica usuario/contraseña aplicando bloqueo por cuenta y auditoría.
 
     Nunca distingue "usuario inexistente" de "contraseña incorrecta": ambos
     casos devuelven ``motivo="credenciales"`` con el mismo coste de tiempo.
+
+    Fase A6a: antes de verificar credenciales se mira el techo **por IP**
+    (``login_ip_max_15min`` fallos en 15 minutos). Es la única defensa contra el
+    *password spraying* repartido entre muchas cuentas, donde el bloqueo por
+    cuenta nunca se activa. El mensaje es el mismo que el del bloqueo por
+    cuenta: no delata si el identificador existe.
     """
     identificador = (login or "").strip().casefold()
-    ahora = datetime.utcnow()
+    ahora = utcnow()
+
+    # 0) Techo por IP: ni siquiera se busca el usuario ni se verifica la clave.
+    if ip and ip_bloqueada(db, ip, int(settings.login_ip_max_15min)):
+        audit.registrar(
+            db, audit.ACTOR_SISTEMA, "login_ip_locked", entidad="ip",
+            detalle={"motivo": "fallos_por_ip",
+                     "maximo": int(settings.login_ip_max_15min),
+                     "ventana_min": int(VENTANA_RATE_LIMIT.total_seconds() // 60)},
+            ip=ip, user_agent=user_agent,
+        )
+        db.commit()
+        return ResultadoLogin(motivo="bloqueado",
+                              espera_min=max(1, int(settings.login_bloqueo_min)))
+
     usuario = buscar_usuario(db, identificador)
 
     # 1) Bloqueo vigente: ni siquiera se verifica la contraseña.
@@ -566,7 +630,7 @@ def cambiar_password(db: Session, usuario: Usuario, actual: str, nueva: str,
         return errores
 
     usuario.password_hash = hash_password(nueva)
-    usuario.password_changed_at = datetime.utcnow()
+    usuario.password_changed_at = utcnow()
     usuario.must_change_password = False
     db.flush()
     revocadas = revocar_todas(db, usuario.id, excepto_id=sesion_actual)
@@ -661,7 +725,7 @@ def _emitir_codigos_respaldo(db: Session, usuario: Usuario) -> list[str]:
         )
     )
     codigos = generar_codigos_respaldo(CODIGOS_RESPALDO)
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     for codigo in codigos:
         db.add(RecoveryCode(
             usuario_id=usuario.id,
@@ -743,7 +807,7 @@ def confirmar_enrolamiento(db: Session, usuario: Usuario, codigo: str, *,
         return None, ("El código no es válido. Verifique que el reloj del "
                       "teléfono esté en hora automática e intente otra vez.")
 
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     fila.confirmed_at = ahora
     fila.last_used_step = paso
     usuario.mfa_enrolled_at = ahora
@@ -816,7 +880,7 @@ def consumir_codigo_respaldo(db: Session, usuario: Usuario, codigo: str) -> bool
             elegido = fila
     if elegido is None:
         return False
-    elegido.used_at = datetime.utcnow()
+    elegido.used_at = utcnow()
     return True
 
 
@@ -846,7 +910,7 @@ def crear_desafio(db: Session, usuario: Usuario, ip: str | None = None) -> str:
     """
     if usuario is None or usuario.id is None:
         raise ValueError("El challenge requiere un usuario persistido.")
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     db.execute(
         update(AuthToken)
         .where(
@@ -881,7 +945,7 @@ def cargar_desafio(db: Session, token: str | None) -> AuthToken | None:
     )
     if fila is None or fila.used_at is not None:
         return None
-    if fila.expires_at is None or fila.expires_at <= datetime.utcnow():
+    if fila.expires_at is None or fila.expires_at <= utcnow():
         return None
     return fila
 
@@ -895,8 +959,13 @@ def verificar_desafio(db: Session, desafio: AuthToken | None, codigo: str, *,
     cookie y el ``next`` ya validado. Cada intento cuenta en
     ``auth_tokens.mfa_attempts``; al llegar a :data:`MAX_INTENTOS_MFA` el
     challenge se invalida y hay que volver a empezar por la contraseña.
+
+    Fase A6a: además del tope del challenge (por cuenta) se aplica uno por IP
+    (:data:`MAX_FALLOS_MFA_POR_IP` fallos en 15 minutos), porque un atacante
+    puede encadenar challenges de varias cuentas desde el mismo origen. Cada
+    fallo queda en ``login_attempts`` con ``factor='mfa'``.
     """
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     if desafio is None:
         return ResultadoMfa(motivo="ausente")
     if desafio.used_at is not None or desafio.expires_at is None \
@@ -908,6 +977,17 @@ def verificar_desafio(db: Session, desafio: AuthToken | None, codigo: str, *,
         desafio.used_at = ahora
         db.commit()
         return ResultadoMfa(motivo="invalido")
+
+    if ip_bloqueada(db, ip, MAX_FALLOS_MFA_POR_IP, factor="mfa"):
+        desafio.used_at = ahora
+        audit.registrar(
+            db, audit.actor_de(usuario), "mfa_ip_locked", entidad="ip",
+            detalle={"motivo": "fallos_por_ip", "maximo": MAX_FALLOS_MFA_POR_IP,
+                     "ventana_min": int(VENTANA_RATE_LIMIT.total_seconds() // 60)},
+            ip=ip, user_agent=user_agent,
+        )
+        db.commit()
+        return ResultadoMfa(motivo="limite", usuario=usuario)
 
     desafio.mfa_attempts = int(desafio.mfa_attempts or 0) + 1
     metodo = _verificar_codigo(db, usuario, codigo or "")
@@ -925,6 +1005,8 @@ def verificar_desafio(db: Session, desafio: AuthToken | None, codigo: str, *,
     limite = desafio.mfa_attempts >= MAX_INTENTOS_MFA
     if limite:
         desafio.used_at = ahora
+    _registrar_intento(db, usuario.username or str(usuario.id), ip,
+                       exito=False, factor="mfa")
     audit.registrar(
         db, audit.actor_de(usuario), "mfa_fail", entidad="usuario",
         entidad_id=usuario.id,
@@ -972,7 +1054,7 @@ def _notificar(usuario: Usuario | None, asunto: str, texto: str,
 def _notificar_enrolamiento(usuario: Usuario) -> None:
     """Aviso de que el segundo factor TOTP quedó activo (plan A4.7)."""
     nombre = _nombre_correo(usuario)
-    momento = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    momento = utcnow().strftime("%Y-%m-%d %H:%M UTC")
     texto = (
         f"Hola {nombre}:\n\n"
         f"Su segundo factor con aplicación autenticadora quedó activado el "
@@ -1000,7 +1082,7 @@ def _notificar_enrolamiento(usuario: Usuario) -> None:
 def _notificar_password_cambiada(usuario: Usuario, ip: str | None) -> None:
     """Aviso de cambio de contraseña desde la pantalla de seguridad."""
     nombre = _nombre_correo(usuario)
-    momento = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    momento = utcnow().strftime("%Y-%m-%d %H:%M UTC")
     origen = ip or "origen no disponible"
     texto = (
         f"Hola {nombre}:\n\n"
@@ -1037,7 +1119,7 @@ def puede_enviar_codigo(db: Session, usuario: Usuario) -> tuple[bool, str, int]:
     """
     if usuario is None or usuario.id is None:
         return False, "limite", 0
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     ultimo = db.scalar(
         select(func.max(MfaEmailCode.created_at)).where(
             MfaEmailCode.usuario_id == usuario.id,
@@ -1059,6 +1141,25 @@ def puede_enviar_codigo(db: Session, usuario: Usuario) -> tuple[bool, str, int]:
     if int(total or 0) >= MAX_ENVIOS_CORREO_HORA:
         return False, "limite", 0
     return True, "ok", 0
+
+
+def puede_enviar_codigo_por_ip(db: Session, ip: str | None) -> bool:
+    """Rate limit del envío de códigos **por IP** (Fase A6a).
+
+    ``puede_enviar_codigo`` protege a cada cuenta (5 por hora); este tope evita
+    que una misma IP bombardee decenas de buzones distintos. Sin IP no limita.
+    """
+    if not ip:
+        return True
+    desde = utcnow() - timedelta(hours=1)
+    total = db.scalar(
+        select(func.count()).select_from(MfaEmailCode).where(
+            MfaEmailCode.ip == _ip_corta(ip),
+            MfaEmailCode.purpose == "mfa",
+            MfaEmailCode.created_at >= desde,
+        )
+    )
+    return int(total or 0) < MAX_ENVIOS_CORREO_POR_IP_HORA
 
 
 def _texto_codigo(codigo: str, usuario: Usuario) -> tuple[str, str]:
@@ -1110,7 +1211,7 @@ def emitir_codigo_email(db: Session, usuario: Usuario, *,
     if hash_codigo is None:
         return False
 
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     db.execute(
         update(MfaEmailCode)
         .where(
@@ -1178,7 +1279,7 @@ def verificar_desafio_email(db: Session, desafio: AuthToken | None, codigo: str,
     método nunca se acepta solo porque venga en la query: exige que exista un
     código emitido, vigente y con intentos disponibles en la base.
     """
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     if desafio is None:
         return ResultadoMfa(motivo="ausente")
     if desafio.used_at is not None or desafio.expires_at is None \
@@ -1200,6 +1301,17 @@ def verificar_desafio_email(db: Session, desafio: AuthToken | None, codigo: str,
         )
         db.commit()
         return ResultadoMfa(motivo="invalido", usuario=usuario)
+
+    if ip_bloqueada(db, ip, MAX_FALLOS_MFA_POR_IP, factor="mfa"):
+        desafio.used_at = ahora
+        audit.registrar(
+            db, audit.actor_de(usuario), "mfa_ip_locked", entidad="ip",
+            detalle={"motivo": "fallos_por_ip", "maximo": MAX_FALLOS_MFA_POR_IP,
+                     "ventana_min": int(VENTANA_RATE_LIMIT.total_seconds() // 60)},
+            ip=ip, user_agent=user_agent,
+        )
+        db.commit()
+        return ResultadoMfa(motivo="limite", usuario=usuario)
 
     if fila.expires_at is None or fila.expires_at <= ahora:
         fila.consumed_at = ahora
@@ -1240,6 +1352,8 @@ def verificar_desafio_email(db: Session, desafio: AuthToken | None, codigo: str,
     limite = desafio.mfa_attempts >= MAX_INTENTOS_MFA
     if limite:
         desafio.used_at = ahora
+    _registrar_intento(db, usuario.username or str(usuario.id), ip,
+                       exito=False, factor="mfa")
     audit.registrar(
         db, audit.actor_de(usuario), "email_otp_fail", entidad="usuario",
         entidad_id=usuario.id,
@@ -1289,7 +1403,7 @@ def _texto_reset(usuario: Usuario, enlace: str) -> tuple[str, str]:
 def _texto_confirmacion(usuario: Usuario, ip: str | None) -> tuple[str, str]:
     """Aviso de contraseña restablecida (sin token ni enlace de acción)."""
     nombre = _nombre_correo(usuario)
-    momento = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    momento = utcnow().strftime("%Y-%m-%d %H:%M UTC")
     origen = ip or "origen no disponible"
     texto = (
         f"Hola {nombre}:\n\n"
@@ -1333,13 +1447,29 @@ def solicitar_reset(db: Session, identificador: str, *, ip: str | None = None,
     El valor de retorno es solo para trazas internas: la vista responde con
     :data:`RESPUESTA_RECUPERACION` siempre, exista o no la cuenta, sea local o
     LDAP, esté activa o no.
+
+    Fase A6a: además del tope por cuenta y del tope por IP de enlaces emitidos,
+    los intentos sobre cuentas no elegibles se registran en ``login_attempts``
+    (``factor='recovery'``). Sin eso, sondear identificadores inexistentes no
+    dejaba rastro y el límite por IP no se activaba nunca.
     """
-    ahora = datetime.utcnow()
+    ahora = utcnow()
+
+    # Techo por IP sobre sondeos fallidos: se comprueba antes de tocar la base
+    # de usuarios para que el coste sea constante.
+    if ip_bloqueada(db, ip, MAX_RESET_POR_IP_HORA, factor="recovery",
+                    ventana=timedelta(hours=1)):
+        _auditar_reset(db, None, enviado=False, motivo="limite_ip",
+                       ip=ip, user_agent=user_agent)
+        db.commit()
+        return False
+
     usuario = buscar_usuario(db, identificador)
 
     if (usuario is None or usuario.auth_provider != "local"
             or not usuario.is_active or not usuario.password_hash
             or not (usuario.email or "").strip()):
+        _registrar_intento(db, identificador, ip, exito=False, factor="recovery")
         _auditar_reset(db, usuario, enviado=False,
                        motivo="cuenta_no_elegible", ip=ip, user_agent=user_agent)
         db.commit()
@@ -1410,7 +1540,7 @@ def validar_token_reset(db: Session, token: str | None) -> AuthToken | None:
     )
     if fila is None or fila.used_at is not None:
         return None
-    if fila.expires_at is None or fila.expires_at <= datetime.utcnow():
+    if fila.expires_at is None or fila.expires_at <= utcnow():
         return None
     usuario = db.get(Usuario, fila.usuario_id)
     if usuario is None or not usuario.is_active or usuario.auth_provider != "local":
@@ -1442,7 +1572,7 @@ def restablecer_password(db: Session, fila: AuthToken, nueva: str,
     if errores:
         return errores
 
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     usuario.password_hash = hash_password(nueva)
     usuario.password_changed_at = ahora
     usuario.must_change_password = False
@@ -1496,7 +1626,7 @@ def sesiones_activas(db: Session, usuario_id: int) -> list[Sesion]:
     Se excluyen revocadas, vencidas por vida absoluta e inactivas: mostrar una
     fila que el gate ya rechaza confundiría al usuario.
     """
-    ahora = datetime.utcnow()
+    ahora = utcnow()
     inactividad = ahora - timedelta(minutes=int(settings.session_idle_min))
     return list(db.scalars(
         select(Sesion).where(
@@ -1529,7 +1659,7 @@ def revocar_sesion_de(db: Session, usuario_id: int, sesion_id: str | UUID, *,
         return "sesion_actual"
     if sesion.revoked_at is not None:
         return "ya"
-    sesion.revoked_at = datetime.utcnow()
+    sesion.revoked_at = utcnow()
     db.flush()
     audit.registrar(
         db, audit.actor_de(db.get(Usuario, usuario_id)), "session_revoked",

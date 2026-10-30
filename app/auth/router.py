@@ -21,7 +21,6 @@ Reglas de seguridad que esta capa garantiza:
 """
 from __future__ import annotations
 
-from datetime import datetime
 from urllib.parse import urlencode
 
 import segno
@@ -45,6 +44,7 @@ from app.auth.service import (
     iniciar_enrolamiento,
     pendiente_enrolamiento,
     puede_enviar_codigo,
+    puede_enviar_codigo_por_ip,
     regenerar_respaldo,
     restablecer_password,
     revocar_por_token,
@@ -57,6 +57,7 @@ from app.auth.service import (
 )
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import utcnow
 from app.models import Sesion, Usuario
 from app.web import templates
 
@@ -208,7 +209,7 @@ def _mfa_response(request: Request, db: Session, desafio,
     estado = estado_mfa(db, usuario)
     fila_codigo = codigo_email_vigente(db, usuario) if usuario is not None else None
     vigente = bool(fila_codigo is not None and fila_codigo.expires_at is not None
-                   and fila_codigo.expires_at > datetime.utcnow())
+                   and fila_codigo.expires_at > utcnow())
     return _sin_cache(templates.TemplateResponse(
         request, "auth/mfa.html",
         {"next": middleware.ruta_segura(siguiente, ""), "error": error,
@@ -301,7 +302,7 @@ def mfa_verificar(request: Request, db: Session = Depends(get_db),
     revocar_por_token(db, request.cookies.get(middleware.nombre_cookie_sesion()))
     token_sesion, _ = crear_sesion(
         db, resultado.usuario, _ip(request), _agente(request),
-        mfa_at=datetime.utcnow(),
+        mfa_at=utcnow(),
     )
     respuesta = RedirectResponse(
         middleware.ruta_segura(siguiente), status_code=303)
@@ -348,6 +349,13 @@ def mfa_enviar(request: Request, db: Session = Depends(get_db),
                    "asistido.")
         return _mfa_response(request, db, desafio, error=mensaje,
                              siguiente=siguiente, metodo="email", espera=espera)
+
+    # Fase A6a: tope por IP. Mismo formulario y mensaje neutro, sin revelar el
+    # motivo real ni si la cuenta tiene correo.
+    if not puede_enviar_codigo_por_ip(db, _ip(request)):
+        return _mfa_response(request, db, desafio,
+                             error="Intente más tarde.",
+                             siguiente=siguiente, metodo="email")
 
     enviado = emitir_codigo_email(
         db, usuario, ip=_ip(request), user_agent=_agente(request))
