@@ -161,6 +161,38 @@ def test_origin_propio_es_aceptado(cliente, fabrica_usuarios):
     assert respuesta.status_code == 303
 
 
+def test_origin_opaco_del_mismo_origen_es_aceptado(cliente, fabrica_usuarios):
+    """Chrome envía ``Origin: null`` por ``Referrer-Policy: no-referrer``.
+
+    Sin esta excepción ningún POST de formulario funciona en un navegador real,
+    aunque el token CSRF sea correcto. La cabecera ``Sec-Fetch-Site``, que fija
+    el navegador, confirma que la petición es del mismo origen.
+    """
+    usuario = fabrica_usuarios()
+    token = _autenticado(cliente, usuario)
+    respuesta = cliente.post(
+        "/auth/cambiar-password",
+        data={"csrf_token": token, "actual": usuario.password, "nueva": NUEVA,
+              "confirmacion": NUEVA},
+        headers={"Origin": "null", "Sec-Fetch-Site": "same-origin"},
+        follow_redirects=False,
+    )
+    assert respuesta.status_code == 303
+
+
+def test_origin_opaco_de_otro_sitio_es_403(cliente, fabrica_usuarios):
+    usuario = fabrica_usuarios()
+    token = _autenticado(cliente, usuario)
+    respuesta = cliente.post(
+        "/auth/cambiar-password",
+        data={"csrf_token": token, "actual": usuario.password, "nueva": NUEVA,
+              "confirmacion": NUEVA},
+        headers={"Origin": "null", "Sec-Fetch-Site": "cross-site"},
+        follow_redirects=False,
+    )
+    assert respuesta.status_code == 403
+
+
 def test_token_valido_permite_el_post(cliente, fabrica_usuarios):
     usuario = fabrica_usuarios()
     token = _autenticado(cliente, usuario)

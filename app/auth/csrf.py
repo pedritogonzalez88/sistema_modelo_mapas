@@ -105,12 +105,25 @@ def token_actual(request: Request) -> str:
 
 
 def _origen_valido(request: Request, cabecera: str | None) -> bool:
-    """Compara esquema y host de ``Origin``/``Referer`` con la petición."""
+    """Compara esquema y host de ``Origin``/``Referer`` con la petición.
+
+    ``Referrer-Policy: no-referrer`` (endurecimiento de A6a para no filtrar
+    tokens en el ``Referer``) hace que el navegador envíe ``Origin: null`` en
+    los POST de formulario **aunque sean del mismo origen**: la especificación
+    de Fetch sustituye el origen serializado por ``null`` cuando la política de
+    referrer es ``no-referrer``. Un ``null`` no se puede comparar con el host,
+    así que se acepta solo si ``Sec-Fetch-Site`` confirma que la petición es
+    del mismo origen (cabecera que fija el navegador y que una página no puede
+    falsear). Sin esa cabecera —clientes que no son navegadores— rige la
+    validación por token, que es el control principal.
+    """
     if not cabecera:
         return True
     partes = urlsplit(cabecera)
     if not partes.scheme or not partes.netloc:
-        return False
+        # Origen opaco (``null``) o valor no parseable: no comparables.
+        mismo_origen = (request.headers.get("sec-fetch-site") or "").strip().lower()
+        return mismo_origen in ("", "same-origin")
     base = request.base_url
     return (partes.scheme == base.scheme
             and partes.netloc.casefold() == base.netloc.casefold())
