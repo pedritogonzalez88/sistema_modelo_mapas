@@ -250,6 +250,9 @@ def verificar_totp(secret: str, code: str, last_step: int | None, window: int = 
 
 ### Fase A4 — Correo, OTP y recuperación (4 días)
 
+> Entregada: ver `docs/fase-a4-correo-recuperacion.md` (mailer, outbox cifrado,
+> código por correo, recuperación neutra, notificaciones y pruebas).
+
 | ID | Tarea |
 |---|---|
 | A4.1 | `Mailer` con backends `console`, `file`, `smtp` (`aiosmtplib`, STARTTLS, timeout 10 s) |
@@ -488,8 +491,8 @@ Cada commit deja la suite en verde y la app funcionando con la bandera apagada.
 - [ ] 5 fallos bloquean temporalmente la cuenta/IP y quedan auditados.
 - [ ] CSRF ausente o inválido devuelve 403 HTML en todos los POST.
 - [ ] TOTP rechaza reutilización y acepta ±1 paso; los códigos de respaldo son de un solo uso.
-- [ ] Código por correo expira en 10 min y admite 5 intentos.
-- [ ] Reset por correo funciona una vez, expira en 30 min y revoca todas las sesiones.
+- [x] Código por correo expira en 10 min y admite 5 intentos.
+- [x] Reset por correo funciona una vez, expira en 30 min y revoca todas las sesiones.
 - [x] Un `asistente` no puede ver entregas de otro ni acceder a Cruces/QA/QC/Exportar (403).
 - [x] `admin` no puede dictaminar fichas ni autorizar reemplazos.
 - [ ] LDAP deshabilitado no abre conexiones; con mock funciona el mapeo de grupos y el DC caído falla cerrado.
