@@ -444,9 +444,12 @@ def test_reset_de_password_propio_esta_prohibido(cliente, panel):
 
 # --- 6. Baja lógica revoca sesiones -------------------------------------------
 def test_desactivar_revoca_sesiones_y_audita(cliente, panel):
+    from datetime import timedelta
+
     from app.auth.service import crear_sesion
     from app.core.database import SessionLocal
-    from app.models import Sesion, Usuario
+    from app.core.security import sha256_hex, utcnow
+    from app.models import AuthToken, Sesion, Usuario
 
     admin = panel.usuario("admin")
     objetivo = panel.usuario("consulta")
@@ -455,6 +458,13 @@ def test_desactivar_revoca_sesiones_y_audita(cliente, panel):
         usuario_db = db.get(Usuario, objetivo.id)
         crear_sesion(db, usuario_db)
         crear_sesion(db, usuario_db)
+        # Challenge de 2FA pendiente: también debe quedar anulado.
+        db.add(AuthToken(
+            usuario_id=objetivo.id, purpose="mfa",
+            token_hash=sha256_hex("challenge-de-prueba"),
+            expires_at=utcnow() + timedelta(minutes=5),
+        ))
+        db.commit()
 
     with _sesion(cliente, admin):
         token = _csrf_de_sesion(cliente)
@@ -467,14 +477,30 @@ def test_desactivar_revoca_sesiones_y_audita(cliente, panel):
     with SessionLocal() as db:
         sesiones = db.scalars(
             select(Sesion).where(Sesion.usuario_id == objetivo.id)).all()
+        desafios = db.scalars(
+            select(AuthToken).where(AuthToken.usuario_id == objetivo.id)).all()
     assert sesiones
     assert all(sesion.revoked_at is not None for sesion in sesiones)
+    assert desafios and all(fila.used_at is not None for fila in desafios)
     assert _db_usuario(objetivo.id).is_active is False
 
     filas = _auditoria("user_disabled", objetivo.id)
     assert filas
     assert filas[0].detalle["motivo"] == "Desvinculación del proyecto"
     assert filas[0].detalle["sesiones_revocadas"] >= 2
+
+    # Reactivar deja la cuenta operativa y audita el evento inverso.
+    with _sesion(cliente, admin):
+        token = _csrf_de_sesion(cliente)
+        reactivada = _post(
+            cliente, f"/auth/usuarios/{objetivo.id}/estado", token,
+            activo="1", motivo="Reincorporación al proyecto",
+        )
+        assert reactivada.status_code == 303
+    assert _db_usuario(objetivo.id).is_active is True
+    filas = _auditoria("user_enabled", objetivo.id)
+    assert filas
+    assert filas[0].detalle["motivo"] == "Reincorporación al proyecto"
 
 
 # --- 7. Reset de contraseña ----------------------------------------------------

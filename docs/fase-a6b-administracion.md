@@ -181,7 +181,7 @@ Ninguno guarda contraseñas, códigos, tokens ni secretos; además
 | Rol | con motivo; sin motivo; sobre la propia cuenta; asistente exige letra |
 | Último admin | degradación permitida con otro admin; servicio rechaza degradar y desactivar al último |
 | Autoprotección | no puede desactivarse; no puede resetear su clave; no puede resetear su 2FA |
-| Baja | revoca todas las sesiones del objetivo y audita con motivo |
+| Baja | revoca todas las sesiones, anula el challenge de 2FA pendiente y audita con motivo; reactivar audita `user_enabled` |
 | Reset de clave | temporal una sola vez, `must_change_password`, revoca sesiones, auditoría sin la clave |
 | Reset de 2FA | borra `mfa_totp`, `recovery_codes` y `mfa_enrolled_at` |
 | Auditoría | 200 para admin y supervisión; 403 para carga; CSV con `text/csv`, BOM y cabecera exacta; sin formularios de escritura |
