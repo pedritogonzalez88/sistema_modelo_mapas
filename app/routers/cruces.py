@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import require_permiso
 from app.core.database import get_db
 from app.services import persist
 from app.web import templates
 
-router = APIRouter(prefix="/cruces")
+router = APIRouter(prefix="/cruces",
+                   dependencies=[Depends(require_permiso("cruces.ver"))])
 
 # Resultados posibles de la terna (tabla 7 del protocolo). Se usa para validar
 # el filtro y para construir los chips con su conteo.

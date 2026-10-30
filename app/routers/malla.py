@@ -7,12 +7,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.csrf import csrf_protect
+from app.auth.dependencies import require_permiso
 from app.core.database import get_db
 from app.models import PuntoMalla
 from app.services import persist
 from app.web import templates
 
-router = APIRouter(prefix="/malla")
+router = APIRouter(prefix="/malla",
+                   dependencies=[Depends(require_permiso("malla.ver"))])
 
 # Windows registra .csv como application/vnd.ms-excel; se fija text/csv para
 # que la plantilla de ejemplo (/static/plantillas/malla.csv) se descargue como
@@ -62,7 +64,8 @@ def pagina(request: Request, q: str | None = None, page: int = 1,
     })
 
 
-@router.post("/upload", dependencies=[Depends(csrf_protect)])
+@router.post("/upload", dependencies=[Depends(csrf_protect),
+                                       Depends(require_permiso("malla.cargar"))])
 async def upload(file: UploadFile, db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
     contenido = await file.read()

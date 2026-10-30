@@ -65,3 +65,28 @@ def _csrf_token(request) -> str:
 
 
 templates.env.globals["csrf_token"] = _csrf_token
+
+
+def _puede(request, permiso: str) -> bool:
+    """Autorización para plantillas (global Jinja ``puede(request, permiso)``).
+
+    La matriz vive en ``app.auth.permissions``; aquí solo se expone. La UI la
+    usa para ocultar navegación y botones: **no** es el control de seguridad,
+    que siempre ocurre en el servidor (``require_permiso``).
+    """
+    from app.auth.permissions import puede
+
+    return puede(request, permiso)
+
+
+def _rol_etiqueta(rol: str | None) -> str:
+    """Etiqueta legible de un rol, sin duplicar el diccionario en el shell."""
+    from app.auth.permissions import ROL_ETIQUETAS
+
+    if not rol:
+        return ""
+    return ROL_ETIQUETAS.get(rol, rol)
+
+
+templates.env.globals["puede"] = _puede
+templates.env.globals["rol_etiqueta"] = _rol_etiqueta

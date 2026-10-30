@@ -1,3 +1,13 @@
+"""Entregas: carga y revisión (4.1–4.4).
+
+Autorización (Fase A2):
+
+- Lectura: ``entregas.ver`` **o** ``entregas.propias``. El ``asistente`` entra
+  solo con el segundo y el router acota el listado a su ``letra_terna``; pedir
+  la vista previa de otra letra responde 403 aunque la URL sea manual.
+- ``upload``/``confirm``/``reject``: ``entregas.gestionar`` (supervisión y
+  carga). Con ``EET_AUTH_ENABLED=false`` las dependencias dejan pasar todo.
+"""
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile
@@ -6,13 +16,28 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.csrf import csrf_protect
+from app.auth.dependencies import negar_acceso, require_permiso
 from app.core.database import get_db
 from app.models import Entrega, ResultadoCruce
 from app.services import persist
 from app.services.importer import importar_excel
 from app.web import templates
 
-router = APIRouter(prefix="/entregas")
+router = APIRouter(prefix="/entregas",
+                   dependencies=[Depends(require_permiso("entregas.ver",
+                                                         "entregas.propias"))])
+
+
+def _alcance(request: Request) -> tuple[bool, str | None]:
+    """``(es_asistente, letra_terna)``.
+
+    Se devuelven las dos piezas porque un asistente **sin** letra asignada no
+    debe ver nada, y eso es distinto de "no es asistente, ve todo".
+    """
+    usuario = getattr(request.state, "usuario", None)
+    if usuario is None or getattr(usuario, "rol", "") != "asistente":
+        return False, None
+    return True, getattr(usuario, "letra_terna", None)
 
 
 @router.get("", response_class=HTMLResponse)
@@ -21,7 +46,18 @@ def listar(request: Request, asistente: str | None = None,
            db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
 
-    q = select(Entrega).where(Entrega.proyecto_id == proyecto.id)
+    # Alcance del asistente: su letra manda sobre cualquier filtro de la URL.
+    es_asistente, letra_propia = _alcance(request)
+    if es_asistente:
+        asistente = letra_propia
+
+    # Condición base compartida por listado, contadores y semanas: el asistente
+    # no debe deducir actividad de otras letras a través de los filtros.
+    base = [Entrega.proyecto_id == proyecto.id]
+    if es_asistente:
+        base.append(Entrega.asistente_letra == letra_propia)
+
+    q = select(Entrega).where(*base)
     if asistente:
         q = q.where(Entrega.asistente_letra == asistente)
     if estado:
@@ -30,16 +66,16 @@ def listar(request: Request, asistente: str | None = None,
         q = q.where(Entrega.semana == semana)
     entregas = db.scalars(q.order_by(Entrega.recibida_en.desc())).all()
 
-    # Conteo por estado del proyecto completo (una sola consulta) para las
+    # Conteo por estado del alcance visible (una sola consulta) para las
     # opciones del filtro: el contador no debe depender del filtro activo.
     conteos = dict(db.execute(
         select(Entrega.estado, func.count())
-        .where(Entrega.proyecto_id == proyecto.id)
+        .where(*base)
         .group_by(Entrega.estado)).all())
 
     semanas = db.scalars(
         select(Entrega.semana)
-        .where(Entrega.proyecto_id == proyecto.id)
+        .where(*base)
         .distinct()
         .order_by(Entrega.semana.desc())).all()
 
@@ -49,10 +85,12 @@ def listar(request: Request, asistente: str | None = None,
         "total_entregas": sum(conteos.values()),
         "f_asistente": asistente or "", "f_estado": estado or "",
         "f_semana": semana or "",
+        "letra_propia": letra_propia,
     })
 
 
-@router.post("/upload", dependencies=[Depends(csrf_protect)])
+@router.post("/upload", dependencies=[Depends(csrf_protect),
+                                      Depends(require_permiso("entregas.gestionar"))])
 async def upload(request: Request, file: UploadFile,
                  asistente_letra: str = Form(...), semana: str = Form(...),
                  tipo: str = Form("avance"), db: Session = Depends(get_db)):
@@ -71,6 +109,16 @@ def preview(request: Request, entrega_id: int, db: Session = Depends(get_db)):
     entrega = db.get(Entrega, entrega_id)
     if entrega is None:
         raise HTTPException(status_code=404, detail="Entrega inexistente.")
+
+    # Se comprueba antes de leer el archivo: el asistente no debe ni abrir el
+    # .xlsx de otra evaluadora.
+    es_asistente, letra_propia = _alcance(request)
+    if es_asistente and (not letra_propia
+                         or entrega.asistente_letra != letra_propia):
+        negar_acceso(request, getattr(request.state, "usuario", None),
+                     "entregas.propias",
+                     {"entrega": entrega_id, "alcance": "letra_ajena"})
+
     ruta = Path(entrega.archivo_path)
     contenido = ruta.read_bytes()
     parsed = importar_excel(contenido)
@@ -91,7 +139,9 @@ def preview(request: Request, entrega_id: int, db: Session = Depends(get_db)):
     })
 
 
-@router.post("/{entrega_id}/confirm", dependencies=[Depends(csrf_protect)])
+@router.post("/{entrega_id}/confirm",
+             dependencies=[Depends(csrf_protect),
+                           Depends(require_permiso("entregas.gestionar"))])
 def confirm(entrega_id: int, db: Session = Depends(get_db)):
     try:
         stats = persist.confirmar_entrega(db, entrega_id)
@@ -101,7 +151,9 @@ def confirm(entrega_id: int, db: Session = Depends(get_db)):
     return RedirectResponse("/cruces?ok=entrega_confirmada", status_code=303)
 
 
-@router.post("/{entrega_id}/reject", dependencies=[Depends(csrf_protect)])
+@router.post("/{entrega_id}/reject",
+             dependencies=[Depends(csrf_protect),
+                           Depends(require_permiso("entregas.gestionar"))])
 def reject(entrega_id: int, motivo: str = Form(""), db: Session = Depends(get_db)):
     try:
         persist.rechazar_entrega(db, entrega_id, motivo or "Sin motivo registrado.")

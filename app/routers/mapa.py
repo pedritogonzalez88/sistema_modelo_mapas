@@ -4,12 +4,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.csrf import csrf_protect
+from app.auth.dependencies import require_permiso
 from app.core.database import get_db
 from app.models import ClaseMapa, ResultadoCruce
 from app.services import persist
 from app.web import templates
 
-router = APIRouter(prefix="/mapa")
+router = APIRouter(prefix="/mapa",
+                   dependencies=[Depends(require_permiso("mapa.ver"))])
 
 
 @router.get("", response_class=HTMLResponse)
@@ -29,7 +31,8 @@ def pagina(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "mapa.html", contexto)
 
 
-@router.post("/upload", dependencies=[Depends(csrf_protect)])
+@router.post("/upload", dependencies=[Depends(csrf_protect),
+                                       Depends(require_permiso("mapa.cargar"))])
 async def upload(file: UploadFile, db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
     contenido = await file.read()

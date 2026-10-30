@@ -6,12 +6,15 @@ from openpyxl import Workbook
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import require_permiso
 from app.core.database import get_db
 from app.models import FichaQAQC, PuntoMalla, ResultadoCruce
 from app.services import persist
 from app.web import templates
 
-router = APIRouter(prefix="/exportar")
+# El consolidado se publica solo con ``exportar`` (supervisión y consulta).
+router = APIRouter(prefix="/exportar",
+                   dependencies=[Depends(require_permiso("exportar"))])
 _ANIOS = list(range(1990, 2025))
 
 

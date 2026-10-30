@@ -7,6 +7,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.csrf import csrf_protect
+from app.auth.dependencies import require_permiso
 from app.core.database import get_db
 from app.domain.classes import ClaseCobertura
 from app.domain.qaqc import EstadoQAQC, eventos_disponibles
@@ -14,7 +15,10 @@ from app.models import FichaQAQC
 from app.services import persist
 from app.web import templates
 
-router = APIRouter(prefix="/qaqc")
+# Lectura para supervisión, carga y consulta; el dictamen es solo de
+# supervisión (``qaqc.decidir``, Fase A2).
+router = APIRouter(prefix="/qaqc",
+                   dependencies=[Depends(require_permiso("qaqc.ver"))])
 
 # Estados que dan la ficha por concluida. Se declara aquí (y no se importa el
 # privado de persist) para ordenar la lista: primero lo que aún exige trabajo.
@@ -137,7 +141,8 @@ def detalle(request: Request, ficha_id: int, db: Session = Depends(get_db)):
                                       _contexto(db, ficha, _eventos_disponibles(ficha)))
 
 
-@router.post("/{ficha_id}", dependencies=[Depends(csrf_protect)])
+@router.post("/{ficha_id}", dependencies=[Depends(csrf_protect),
+                                          Depends(require_permiso("qaqc.decidir"))])
 async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_db)):
     form = await request.form()
     evidencias = [e.strip() for e in form.getlist("evidencias") if e and e.strip()]
@@ -200,7 +205,8 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
     return RedirectResponse(f"/qaqc/{ficha_id}?ok=ficha_guardada", status_code=303)
 
 
-@router.post("/{ficha_id}/evento", dependencies=[Depends(csrf_protect)])
+@router.post("/{ficha_id}/evento", dependencies=[Depends(csrf_protect),
+                                                Depends(require_permiso("qaqc.decidir"))])
 def evento(ficha_id: int, evento: str = Form(...), db: Session = Depends(get_db)):
     try:
         persist.transicionar_ficha(db, ficha_id, evento)
