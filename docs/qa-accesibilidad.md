@@ -546,3 +546,81 @@ las 37 que desaparecen, ninguna está referenciada en `app/templates`,
 antes/después del cambio da **idénticas a 390 px** y, a 1440 px, solo los 265 px
 de la cabecera donde estaba la hamburguesa eliminada.
 
+---
+
+## 8. Pantallas de autenticación (30/10/2026)
+
+Fase A6.10 del plan de autenticación: axe-core sobre las pantallas nuevas a
+**1440 y 390 px**, más comprobaciones de teclado. Informe completo en
+[`docs/qa-visual/resumen-auth.md`](qa-visual/resumen-auth.md); el E2E del flujo
+está en el mismo documento (§3).
+
+### 8.1 Alcance
+
+| Pantalla | Estado auditado |
+|---|---|
+| `/auth/login` | anónimo |
+| `/auth/recuperar` | anónimo |
+| `/auth/restablecer?token=invalido` | enlace vencido/inválido |
+| `/auth/seguridad` | autenticador sin activar, códigos de respaldo recién generados y enrolado |
+| `/auth/mfa` | challenge pendiente (método TOTP) |
+| `/auth/usuarios` | administración con tabla y acciones por fila |
+| `/auth/auditoria` | eventos con detalle y exportación |
+
+`/auth/cambiar-password` no estaba en el alcance de A6.10 y queda pendiente.
+
+### 8.2 Resultado
+
+| Impacto | Antes (1440) | Después (1440 y 390) |
+|---|---|---|
+| critical | 0 | 0 |
+| serious | 3 (`color-contrast` en el pie de las tres pantallas anónimas) | **0** |
+| moderate | 2 (`landmark-unique` en `/auth/usuarios` y `/auth/auditoria`) | **0** |
+| minor | 0 | 0 |
+| **Reglas / nodos** | **5 / 6** | **0 / 0** (16 auditorías) |
+
+Evidencia: `docs/qa-visual/axe-auth/<slug>-<ancho>.json`,
+`docs/qa-visual/axe-auth/resumen.md`, capturas en
+`docs/qa-visual/capturas-auth/` y las salidas de las corridas en
+`docs/qa-visual/logs-auth/` (antes: `a11y-run-2.log` y `a11y-run-3.log`;
+después: `a11y-run-final.log`).
+
+Queda **1 nodo incompleto** de `color-contrast` en `/auth/seguridad` a 390 px
+(celda del agente de usuario recortada por `truncate`); medido sobre el estilo
+calculado da **17.85:1** (`#0f172a` sobre blanco), conforme a 1.4.3.
+
+### 8.3 Correcciones
+
+| Hallazgo | Criterio | Corrección |
+|---|---|---|
+| Pie del layout de auth (`#64748b` sobre `#f4f7f6`, 4.41:1). | 1.4.3 | `.auth-footer` pasa a `text-ink-600` (7.04:1). |
+| Dos breadcrumbs idénticos en `/auth/usuarios` y `/auth/auditoria` (el de la topbar, alimentado por `migas`, y el de `ui.page_header`). | 1.3.6 / ARIA | Se quita `breadcrumb=` de `ui.page_header` en esas dos vistas; queda la miga de la topbar, igual que en el resto de la aplicación. |
+| La región de la tabla (`role="region" aria-label="Cuentas registradas"`) compartía nombre con la `<section aria-labelledby="listado-usuarios">`. | 1.3.6 / ARIA | La región pasa a llamarse «Listado de cuentas registradas». |
+
+No se modificaron textos normativos ni lógica de negocio.
+
+### 8.4 Teclado
+
+Seis recorridos (`/auth/login`, `/auth/mfa` y `/auth/usuarios` × 1440 y 390 px):
+**0 trampas**, **0 elementos ocultos enfocados**, el skip link es el primer
+tabulable del documento y se hace visible al enfocarlo, el primer `Tab` deja un
+anillo de foco visible y `Enter` dispara el `submit` del formulario válido
+(capturado y cancelado en la prueba, sin tocar la base). Detalle en
+`docs/qa-visual/axe-auth/teclado-auth.json`.
+
+> El login y el challenge llevan `autofocus` en el primer campo: el primer `Tab`
+> avanza al control siguiente —visible y con anillo— en lugar del skip link, que
+> sigue siendo alcanzable con `Shift+Tab`. Es una decisión de producto
+> documentada, no una trampa de foco.
+
+### 8.5 Pendientes de estas pantallas
+
+1. **Lector de pantalla** (NVDA + Firefox, VoiceOver + Safari): anuncio de
+   `role="status"`/`role="alert"` tras un error de credenciales o de código, y
+   lectura de la clave manual del autenticador y de los códigos de respaldo.
+2. **Revisión visual humana** de los badges de estado para confirmar que el
+   estado no se comunica solo por color.
+3. Auditoría de `/auth/cambiar-password` y de la variante `?metodo=email` de
+   `/auth/mfa` en la próxima pasada.
+
+

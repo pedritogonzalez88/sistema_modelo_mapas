@@ -499,4 +499,85 @@ Cada commit deja la suite en verde y la app funcionando con la bandera apagada.
 - [ ] Cookies `HttpOnly`+`Secure`+`SameSite=Lax`; HSTS y CSP activos en producción.
 - [ ] Auditoría registra actor real, IP, resultado y motivo en acciones sensibles.
 - [ ] Ningún log/respuesta/tabla expone contraseñas, códigos, tokens ni secretos TOTP.
-- [ ] Suite completa en verde (existentes + nuevas) y axe en cero en las pantallas de auth.
+- [x] Suite completa en verde (existentes + nuevas) y axe en cero en las pantallas de auth.
+
+---
+
+## 13. Estado de ejecución (30/10/2026)
+
+Ejecución del cierre de las fases A6.9 (E2E) y A6.10 (axe) sobre el código del
+repositorio, con la app en `uvicorn :8033` y la base de datos del contenedor.
+Informe técnico completo: [`docs/qa-visual/resumen-auth.md`](qa-visual/resumen-auth.md).
+
+### 13.1 Fases A0–A6
+
+| Fase | Estado | Evidencia |
+|---|---|---|
+| A0 — Preparación (dependencias, settings, seguridad, Alembic) | Completada | `app/core/config.py`, `app/core/security.py`, `migrations/`, arranque con `alembic upgrade head` |
+| A1 — Sesión, login local y CSRF | Completada | `app/auth/middleware.py`, `app/auth/csrf.py`, `docs/fase-a1-sesiones-login-csrf.md` |
+| A2 — Autorización por roles | Completada | `app/auth/permissions.py`, `app/auth/dependencies.py`, `docs/fase-a2-permisos-por-rol.md` |
+| A3 — TOTP y códigos de respaldo | Completada | `app/auth/service.py`, `docs/fase-a3-totp.md`; E2E pasos 3–5 |
+| A4 — Correo, OTP y recuperación | Completada | `app/auth/mailer.py`, `docs/fase-a4-correo-recuperacion.md`; E2E pasos 7–8 |
+| A5 — LDAP/AD parametrizado (apagado) | Completada, sin directorio real | `app/auth/providers.py`, `uv run python -m app.cli ldap-check`, `docs/fase-a5-ldap.md` |
+| A6 — Endurecimiento, administración, E2E y despliegue | Completada salvo A6.12 | `docs/fase-a6a-endurecimiento.md`, `docs/fase-a6b-administracion.md`, `docs/runbook-autenticacion.md` |
+
+### 13.2 A6.9 — E2E de Playwright
+
+`scripts/e2e-auth.mjs` (Chrome 156 headless, sin dependencias nuevas; TOTP
+calculado con `node:crypto` en `scripts/totp.mjs`). **10/10 pasos en verde**:
+
+login con error genérico y sin sesión · enrolamiento obligatorio ·
+clave manual del QR + TOTP + 10 códigos de respaldo · segundo factor por TOTP
+hasta `/` · código de respaldo de un solo uso (y rechazo al repetirlo) · alta,
+cambio de rol, baja/alta, reset de contraseña y de 2FA · auditoría con CSV
+`text/csv; charset=utf-8` y BOM · recuperación completa por correo (enlace del
+`.eml` y código por correo) · `403` del admin en `/cruces` con el menú sin esa
+sección · cierre de sesión.
+
+Evidencia: 18 capturas, `report.json`, `resumen.md` y el CSV descargado en
+`docs/qa-visual/e2e-auth/`.
+
+### 13.3 A6.10 — axe en las pantallas de auth
+
+`scripts/a11y-auth.mjs` sobre `/auth/login`, `/auth/recuperar`,
+`/auth/restablecer?token=invalido`, `/auth/seguridad` (tres estados),
+`/auth/mfa` (challenge pendiente), `/auth/usuarios` y `/auth/auditoria`, a
+**1440 y 390 px**: **16 auditorías, 0 violaciones** `critical`/`serious`/
+`moderate`/`minor`.
+
+Antes de las correcciones había **5 reglas / 6 nodos**: `color-contrast`
+`serious` en el pie de las tres pantallas anónimas (4.41:1) y `landmark-unique`
+`moderate` en `/auth/usuarios` y `/auth/auditoria`. Se corrigieron en CSS y
+plantillas (§8 de `docs/qa-accesibilidad.md`). Teclado en `/auth/login`,
+`/auth/mfa` y `/auth/usuarios`: 6 recorridos sin trampas, sin elementos ocultos
+enfocados y con `Enter` disparando el envío.
+
+### 13.4 Desviaciones
+
+1. **Defecto bloqueante corregido fuera del alcance previsto.** El E2E descubrió
+   que `Referrer-Policy: no-referrer` hace que el navegador envíe
+   `Origin: null` en todos los POST, y la validación CSRF lo rechazaba: **ningún
+   formulario funcionaba en un navegador real** (la suite no lo veía porque
+   `TestClient` no envía la cabecera). Se ajustó `_origen_valido` en
+   `app/auth/csrf.py` para aceptar el origen opaco solo con
+   `Sec-Fetch-Site: same-origin` (o sin la cabecera) y se añadieron dos pruebas
+   de integración. No cambia el control principal (token CSRF).
+2. `EET_PUBLIC_BASE_URL` y `EET_LOGIN_MAX_INTENTOS` se ajustaron **solo en el
+   entorno de la corrida** (enlaces del correo a `:8033`; umbral 10 para que el
+   propio E2E no bloqueara la cuenta al provocar fallos).
+3. La variante `?metodo=email` de `/auth/mfa` se ejercita en el E2E pero la
+   captura axe corresponde a la variante TOTP.
+4. `/auth/cambiar-password` no formaba parte del alcance de A6.10.
+
+### 13.5 Pendientes reales
+
+- **A6.12**: ensayo de despliegue con `auth_enabled=true` en staging, con TLS
+  real y proxy (`EET_TRUSTED_PROXY_IPS`), y verificación de cookies `__Host-`.
+- **Lector de pantalla** (NVDA/Firefox, VoiceOver/Safari) sobre las pantallas de
+  auth: anuncios de `role="status"`/`role="alert"`, clave manual del
+  autenticador y códigos de respaldo.
+- **Revisión visual humana** de los estados (que el color no sea el único
+  portador del significado).
+- LDAP con un directorio real: hoy solo está probado con `ldap3.MOCK_SYNC`.
+- Backfill documentado de `username`/`email` de las cuentas semilla (ids 1–5)
+  antes de activar la bandera en producción.
