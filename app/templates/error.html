@@ -7,6 +7,7 @@
   403: "Acceso restringido",
   404: "Página no encontrada",
   405: "Método no permitido",
+  413: "Archivo demasiado grande",
   500: "Error interno del servidor"
 } %}
 {% set TEXTOS = {
@@ -14,6 +15,7 @@
   403: "No tiene permiso para acceder a este recurso.",
   404: "La dirección solicitada no existe o el registro fue movido. Use la navegación para continuar.",
   405: "La acción solicitada no está permitida en esta dirección.",
+  413: "El archivo enviado supera el tamaño máximo permitido. Reduzca su tamaño o divídalo en partes más pequeñas e intente nuevamente.",
   500: "Ocurrió un fallo inesperado. El equipo técnico fue notificado; intente nuevamente en unos minutos."
 } %}
 {% set titulo = TITULOS.get(CODIGO, "Ocurrió un error") %}

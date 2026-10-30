@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import negar_acceso, require_permiso
+from app.core.config import settings
 from app.core.database import get_db
 from app.models import Entrega, ResultadoCruce
 from app.services import persist
@@ -26,6 +27,23 @@ from app.web import templates
 router = APIRouter(prefix="/entregas",
                    dependencies=[Depends(require_permiso("entregas.ver",
                                                          "entregas.propias"))])
+
+
+def _validar_tamano(tamano: int | None) -> None:
+    """Rechaza la carga antes de procesarla si supera ``max_upload_mb`` (A6a).
+
+    Se comprueba dos veces: con ``file.size`` (lo informa el parser multipart,
+    sin leer el archivo) y con el tamaño real del contenido ya en memoria, para
+    que un cliente que no declare el tamaño tampoco pueda saltarse el tope.
+    """
+    if tamano is None:
+        return
+    limite_mb = int(settings.max_upload_mb)
+    if tamano > limite_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"El archivo supera el límite de {limite_mb} MB.",
+        )
 
 
 def _alcance(request: Request) -> tuple[bool, str | None]:
@@ -94,7 +112,9 @@ def listar(request: Request, asistente: str | None = None,
 async def upload(request: Request, file: UploadFile,
                  asistente_letra: str = Form(...), semana: str = Form(...),
                  tipo: str = Form("avance"), db: Session = Depends(get_db)):
+    _validar_tamano(file.size)
     contenido = await file.read()
+    _validar_tamano(len(contenido))
     try:
         entrega, _ = persist.crear_entrega_pendiente(
             db, asistente_letra, semana, tipo, contenido)

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import require_permiso
+from app.core.config import settings
 from app.core.database import get_db
 from app.models import PuntoMalla
 from app.services import persist
@@ -15,6 +16,18 @@ from app.web import templates
 
 router = APIRouter(prefix="/malla",
                    dependencies=[Depends(require_permiso("malla.ver"))])
+
+
+def _validar_tamano(tamano: int | None) -> None:
+    """Rechaza la carga antes de procesarla si supera ``max_upload_mb`` (A6a)."""
+    if tamano is None:
+        return
+    limite_mb = int(settings.max_upload_mb)
+    if tamano > limite_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"El archivo supera el límite de {limite_mb} MB.",
+        )
 
 # Windows registra .csv como application/vnd.ms-excel; se fija text/csv para
 # que la plantilla de ejemplo (/static/plantillas/malla.csv) se descargue como
@@ -68,7 +81,9 @@ def pagina(request: Request, q: str | None = None, page: int = 1,
                                        Depends(require_permiso("malla.cargar"))])
 async def upload(file: UploadFile, db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
+    _validar_tamano(file.size)
     contenido = await file.read()
+    _validar_tamano(len(contenido))
     try:
         filas = persist.parsear_malla(contenido, file.filename or "malla.csv")
         stats = persist.cargar_malla(db, proyecto.id, filas)

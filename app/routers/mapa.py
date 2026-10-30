@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import require_permiso
+from app.core.config import settings
 from app.core.database import get_db
 from app.models import ClaseMapa, ResultadoCruce
 from app.services import persist
@@ -12,6 +13,18 @@ from app.web import templates
 
 router = APIRouter(prefix="/mapa",
                    dependencies=[Depends(require_permiso("mapa.ver"))])
+
+
+def _validar_tamano(tamano: int | None) -> None:
+    """Rechaza la carga antes de procesarla si supera ``max_upload_mb`` (A6a)."""
+    if tamano is None:
+        return
+    limite_mb = int(settings.max_upload_mb)
+    if tamano > limite_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"El archivo supera el límite de {limite_mb} MB.",
+        )
 
 
 @router.get("", response_class=HTMLResponse)
@@ -35,7 +48,9 @@ def pagina(request: Request, db: Session = Depends(get_db)):
                                        Depends(require_permiso("mapa.cargar"))])
 async def upload(file: UploadFile, db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
+    _validar_tamano(file.size)
     contenido = await file.read()
+    _validar_tamano(len(contenido))
     try:
         stats = persist.cargar_mapa(db, proyecto.id, contenido,
                                      file.filename or "mapa.xlsx")
