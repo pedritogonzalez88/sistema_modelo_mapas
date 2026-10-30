@@ -17,8 +17,9 @@ PATRON_FORM = re.compile(r"<form\b([^>]*)>(.*?)</form>", re.S | re.I)
 PATRON_METODO = re.compile(r'method\s*=\s*"([^"]+)"', re.I)
 MARCADORES_CSRF = ("csrf_token", "csrf_input()")
 
-# 16 formularios de la aplicación + el de logout del shell (Fase A1).
-MINIMO_FORMULARIOS = 17
+# 16 formularios de la aplicación + logout del shell (Fase A1) + los de la
+# pantalla de seguridad y el paso de verificación (Fase A3).
+MINIMO_FORMULARIOS = 22
 
 
 def _formularios():
@@ -62,7 +63,8 @@ def test_el_logout_del_shell_es_post_con_csrf():
 
 
 def test_las_pantallas_de_acceso_incluyen_csrf():
-    for nombre in ("auth/login.html", "auth/cambiar_password.html"):
+    for nombre in ("auth/login.html", "auth/cambiar_password.html",
+                   "auth/mfa.html", "auth/seguridad.html"):
         texto = (PLANTILLAS / nombre).read_text(encoding="utf-8")
         formularios = PATRON_FORM.findall(texto)
         assert formularios, f"{nombre} no declara formularios"
