@@ -186,7 +186,7 @@ desplegar. Rotar los secretos actuales si el `.env.local` se compartió.
 - `/ready` que compruebe la base (hoy `/salud` no verifica DB).
 - Runbook de incidentes, rollback y contactos.
 
-### B8. CI/CD y staging — workflow listo; ejecución pendiente del push
+### B8. CI/CD y staging — workflow publicado; staging pendiente
 
 - Ejecutar el workflow en GitHub y corregir lo que falle.
 - Construir imagen con tag inmutable y publicarla en un registry.
@@ -408,8 +408,10 @@ SMTP real, base limpia, administrador real, backups programados y monitoreo.
 - El workflow ahora publica la imagen en GHCR
   (`ghcr.io/<repo>:sha-<commit>` y `:latest`) en push a `master`, con caché de
   Buildx y `GITHUB_TOKEN`; en PR solo construye.
-- Falta ejecutarlo en GitHub tras el push y configurar staging/despliegue con
-  secretos del servidor.
+- El commit `0601890` se publicó en `master`; la ejecución debe verificarse en
+  GitHub Actions (este entorno no tiene `gh` ni acceso a la API del repo).
+- Falta configurar staging/despliegue con secretos del servidor y aprobación
+  manual.
 
 ### B9 — Hardening del contenedor
 

@@ -389,7 +389,8 @@ Implementado:
 - [x] **B7 — observabilidad**: `/ready` con base, logs con `request_id`,
   healthcheck operativo con HTTP/base/disco/backup/certificado y timer systemd.
 - [x] **B8 — CI/CD**: publicación de imagen en GHCR con tags inmutables;
-  ejecución pendiente del push y del staging.
+  commit `0601890` publicado en `master`. Verificar la ejecución en GitHub y
+  configurar staging.
 - [x] **B9 — contenedor**: non-root, read-only, `cap_drop`, límites y
   `no-new-privileges`, verificado con la imagen real.
 - [x] Suite: **306 unitarias + 278 integración = 584 pruebas**.

@@ -215,3 +215,18 @@ Pendiente en el host:
 - Firewall: solo 80/443 y SSH restringido; Docker socket solo para root.
 - Escaneo de imagen/dependencias (`trivy`, `pip-audit`) y revisión externa.
 - Renovación automática del certificado y prueba de restore mensual.
+
+## 13. CI/CD
+
+`.github/workflows/ci.yml` ejecuta lint, unitarias, integración con PostGIS y
+build en cada push/PR. En push a `master` publica:
+
+```text
+ghcr.io/pedritogonzalez88/sistema_modelo_mapas:sha-<commit>
+ghcr.io/pedritogonzalez88/sistema_modelo_mapas:latest
+```
+
+Para desplegar una versión concreta, cambie la imagen del servicio `app` en el
+compose de producción por el tag `sha-<commit>` (o use `docker pull` y
+`docker compose up -d`). El despliegue a staging/producción con aprobación
+manual queda pendiente de configurar los secretos del servidor.
