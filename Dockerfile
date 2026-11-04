@@ -50,6 +50,10 @@ USER 10001:10001
 
 EXPOSE 8000
 
+# Easypanel y otros PaaS pueden usar el healthcheck de la imagen.
+HEALTHCHECK --interval=30s --timeout=8s --start-period=90s --retries=3 \
+    CMD .venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"
+
 # ``alembic upgrade head`` es idempotente. Se ejecuta con el mismo entorno que
 # Uvicorn (``uv run --no-sync --frozen``) para no resolver dependencias en
 # caliente; si falla, el contenedor no arranca (fail fast).

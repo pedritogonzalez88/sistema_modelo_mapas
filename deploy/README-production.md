@@ -4,6 +4,10 @@ Arquitectura: **un host**, Docker Compose, nginx con TLS, PostgreSQL/PostGIS
 interno (sin puerto publicado), app interna (sin puerto publicado) y backups a
 un disco/NAS externo.
 
+> **Easypanel:** no use este compose dentro de Easypanel. Easypanel debe
+> desplegar la app en modo **App (Dockerfile = `Dockerfile`)** y administrar
+> TLS/proxy. Guía específica: `deploy/README-easypanel.md`.
+
 ## 1. Requisitos
 
 - Dominio y certificado TLS (`fullchain.pem`, `privkey.pem`).
