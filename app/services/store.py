@@ -1,10 +1,18 @@
 from dataclasses import dataclass
+from math import isfinite
 
 from ..domain.classes import ClaseCobertura
 from ..domain.cross_engine import Cruce, TipoResultado, resolver_tabla7
-from ..domain.qaqc import ESTADO_INICIAL, EstadoQAQC, EventoQAQC, eventos_disponibles, transicion
+from ..domain.qaqc import (
+    ESTADO_INICIAL,
+    EstadoQAQC,
+    EventoQAQC,
+    eventos_disponibles,
+    requiere_ficha_qaqc,
+    transicion,
+)
 from ..domain.transition_rules import resolver_plausibilidad
-from .analysis import ResultadoSeccion5, analisis_seccion5
+from .analysis import analisis_seccion5
 
 ERROR_PUNTO_INEXISTENTE = "PUNTO_INEXISTENTE"
 ERROR_SIN_FLUJO_QAQC = "SIN_FLUJO_QAQC"
@@ -78,14 +86,16 @@ class Store:
     def ejecutar_cruce(self, punto, anio, mapa_anterior=None):
         evaluadoras = self._datos.get((punto, anio))
         if evaluadoras is None:
-            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, año {anio}.")
+            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, aÃ±o {anio}.")
         if mapa_anterior is None:
             mapa_anterior = self._consenso_anterior(punto, anio)
         resultado = resolver_tabla7(evaluadoras.get("A"), evaluadoras.get("B"), evaluadoras.get("C"))
         consenso = resultado.consenso if isinstance(resultado.consenso, ClaseCobertura) else None
         plausibilidad = resolver_plausibilidad(mapa_anterior, consenso) if consenso is not None else None
         self._resultados[(punto, anio)] = resultado
-        if resultado.requiere_consenso_tecnico or resultado.requiere_revision:
+        # Misma regla que persist.recalcular_cruce: solo discrepancia absoluta
+        # o SC con terna completa abren ficha; mayorÃ­a e incompleto no.
+        if requiere_ficha_qaqc(evaluadoras.values()):
             self._qaqc[(punto, anio)] = ESTADO_INICIAL
         return Cruce(
             id_punto=str(punto),
@@ -123,13 +133,13 @@ class Store:
     def resolver_qaqc(self, punto, anio, evento):
         clave = (punto, anio)
         if clave not in self._resultados:
-            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, año {anio}.")
+            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, aÃ±o {anio}.")
         if clave not in self._qaqc:
-            raise StoreError(ERROR_SIN_FLUJO_QAQC, f"El cruce del punto {punto}, año {anio} no requiere revisión QAQC.")
+            raise StoreError(ERROR_SIN_FLUJO_QAQC, f"El cruce del punto {punto}, aÃ±o {anio} no requiere revisiÃ³n QAQC.")
         try:
             evento_obj = EventoQAQC(evento)
         except ValueError:
-            raise StoreError(ERROR_EVENTO_INVALIDO, f"El evento QAQC '{evento}' no es válido.") from None
+            raise StoreError(ERROR_EVENTO_INVALIDO, f"El evento QAQC '{evento}' no es vÃ¡lido.") from None
         estado = self._qaqc[clave]
         nuevo = transicion(estado, evento_obj)
         if nuevo is None:
@@ -169,17 +179,38 @@ class Store:
     def configurar_cartografia(self, area_total_ha, pesos=None):
         k = len(_CLASES)
         if area_total_ha is None or area_total_ha <= 0:
-            raise StoreError(ERROR_PESOS_INVALIDOS, "El área total debe ser un número positivo.")
+            raise StoreError(ERROR_PESOS_INVALIDOS, "El Ã¡rea total debe ser un nÃºmero positivo.")
         if pesos is None:
             pesos = [1.0 / k] * k
-        if len(pesos) != k or sum(pesos) <= 0:
-            raise StoreError(ERROR_PESOS_INVALIDOS, "Debe proveerse un peso por cada clase de cobertura con suma positiva.")
+        else:
+            try:
+                pesos = [float(valor) for valor in pesos]
+            except (TypeError, ValueError) as exc:
+                raise StoreError(
+                    ERROR_PESOS_INVALIDOS,
+                    "Los pesos deben ser números (proporciones de área).",
+                ) from exc
+            if len(pesos) != k:
+                raise StoreError(
+                    ERROR_PESOS_INVALIDOS,
+                    f"Debe proveerse un peso por cada una de las {k} clases.",
+                )
+            if not all(isfinite(valor) and valor >= 0 for valor in pesos):
+                raise StoreError(
+                    ERROR_PESOS_INVALIDOS,
+                    "Los pesos deben ser finitos y no negativos.",
+                )
+            if abs(sum(pesos) - 1.0) > 1e-6:
+                raise StoreError(
+                    ERROR_PESOS_INVALIDOS,
+                    "Los pesos deben sumar 1 (proporciones de superficie).",
+                )
         self._area_total_ha = float(area_total_ha)
         self._pesos_cartografia = [float(valor) for valor in pesos]
 
     def seccion5(self):
         if self._area_total_ha is None or self._pesos_cartografia is None:
-            raise StoreError(ERROR_AREA_NO_CONFIGURADA, "El área total no está configurada.")
+            raise StoreError(ERROR_AREA_NO_CONFIGURADA, "El Ã¡rea total no estÃ¡ configurada.")
         muestra = []
         for (punto, anio), resultado in self._resultados.items():
             if not isinstance(resultado.consenso, ClaseCobertura):

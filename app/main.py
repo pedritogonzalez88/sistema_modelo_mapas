@@ -6,22 +6,68 @@ que consume Uvicorn. Los middlewares se agregan al final: Starlette construye
 la pila en orden inverso, así que ``SecurityHeaders`` queda por fuera de
 ``AuthGate`` y este por fuera de los routers.
 """
+import logging
+import re
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.auth.middleware import AuthGateMiddleware, SecurityHeadersMiddleware
 from app.auth.router import router as auth_router
 from app.core.config import settings
-from app.core.database import SessionLocal, init_db
+from app.core.database import SessionLocal, engine, init_db
 from app.routers import cruces, dashboard, entregas, exportar, malla, mapa, qaqc, reemplazos
 from app.services import persist
 from app.web import templates
+
+logger = logging.getLogger("eet.acceso")
+
+_RE_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+
+
+class AccessLogMiddleware(BaseHTTPMiddleware):
+    """Registra método, ruta, estado y duración sin cuerpos ni query strings.
+
+    Añade ``X-Request-ID`` para correlacionar logs. Los healthchecks exitosos
+    se registran en DEBUG para no inundar el journal; los 5xx siempre en WARNING.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        inicio = time.perf_counter()
+        solicitado = request.headers.get("X-Request-ID", "")
+        request_id = solicitado if _RE_REQUEST_ID.fullmatch(solicitado) else uuid.uuid4().hex
+        request.state.request_id = request_id
+        try:
+            response = await call_next(request)
+        except Exception:
+            duracion = (time.perf_counter() - inicio) * 1000
+            logger.exception(
+                "request_id=%s metodo=%s ruta=%s estado=500 duracion_ms=%.1f",
+                request_id, request.method, request.url.path, duracion,
+            )
+            raise
+        duracion = (time.perf_counter() - inicio) * 1000
+        response.headers["X-Request-ID"] = request_id
+        ruta = request.url.path
+        nivel = logging.WARNING if response.status_code >= 500 else logging.INFO
+        if (ruta in {"/salud", "/health", "/ready"} and response.status_code < 500) \
+                or ruta.startswith("/static/"):
+            nivel = logging.DEBUG
+        logger.log(
+            nivel,
+            "request_id=%s metodo=%s ruta=%s estado=%s duracion_ms=%.1f",
+            request_id, request.method, ruta, response.status_code, duracion,
+        )
+        return response
 
 
 @asynccontextmanager
@@ -33,10 +79,17 @@ async def lifespan(app: FastAPI):
     cierra en `finally`: `next(get_db())` dejaría el generador sin finalizar.
     `persist.seed` es idempotente, así que repetir el arranque no duplica datos.
     """
-    init_db()
+    # DDL solo en desarrollo/tests. En staging/producción el esquema lo
+    # administra Alembic (el contenedor ejecuta `alembic upgrade head` antes de
+    # Uvicorn); create_all/ALTER en runtime quedaría fuera de control.
+    if settings.environment == "dev":
+        init_db()
     db = SessionLocal()
     try:
-        persist.seed(db)
+        # Producción no crea usuarios nominales ni datos de demostración: el
+        # administrador se crea con scripts/bootstrap_admin.py.
+        if settings.environment != "prod":
+            persist.seed(db)
     finally:
         db.close()
     yield
@@ -49,7 +102,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     el resto de la aplicación muestra error.html con navegación y sin trazas.
     El 403 de CSRF y el 401 del gate también pasan por aquí.
     """
-    if request.url.path.startswith(("/salud", "/api")) or \
+    if request.url.path.startswith(("/salud", "/ready", "/api")) or \
             "application/json" in request.headers.get("accept", ""):
         return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
     return templates.TemplateResponse(
@@ -92,6 +145,24 @@ def create_app() -> FastAPI:
     def salud():
         return {"estado": "ok"}
 
+    @app.get("/health")
+    def health():
+        """Alias de ``/salud`` para monitores que usan la convención /health."""
+        return {"estado": "ok"}
+
+    @app.get("/ready")
+    def ready():
+        """Readiness real: comprueba que la base responde antes de dar tráfico."""
+        try:
+            with engine.connect() as conexion:
+                conexion.execute(text("SELECT 1"))
+        except Exception:  # noqa: BLE001 - solo se informa el estado
+            # Sin traza ni cadena de conexión: podría contener credenciales.
+            logger.error("readiness: la base de datos no responde")
+            return JSONResponse(
+                {"estado": "no_listo", "base": "error"}, status_code=503)
+        return {"estado": "listo", "base": "ok"}
+
     @app.get("/inicio")
     def inicio():
         return RedirectResponse("/", status_code=302)
@@ -101,6 +172,7 @@ def create_app() -> FastAPI:
     # `request.client.host` reflejen lo que informó el reverse proxy.
     app.add_middleware(AuthGateMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(AccessLogMiddleware)
     proxies = settings.trusted_proxy_hosts
     if proxies:
         # Solo se aceptan X-Forwarded-Proto/For de estas IPs/CIDR. Sin la

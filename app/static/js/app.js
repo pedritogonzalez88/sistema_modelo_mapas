@@ -231,4 +231,44 @@
     boton.setAttribute("aria-pressed", visible ? "false" : "true");
     boton.textContent = visible ? "Mostrar contraseña" : "Ocultar contraseña";
   });
+
+  /* ---------------------------------------------------------------------
+     7) Diálogos modales de acciones: <dialog> nativo con fallback a
+     `open` en navegadores antiguos. Escape, foco inicial y devolución del
+     foco los resuelve el propio elemento dialog.
+     --------------------------------------------------------------------- */
+  document.addEventListener("click", function (ev) {
+    var abrir = ev.target.closest("[data-modal-open]");
+    if (abrir) {
+      var dialogo = document.getElementById(abrir.getAttribute("data-modal-open"));
+      if (!dialogo) return;
+      ev.preventDefault();
+      if (typeof dialogo.showModal === "function") {
+        dialogo.showModal();
+      } else {
+        dialogo.setAttribute("open", "");
+        dialogo.scrollIntoView({ block: "center" });
+      }
+      var primero = dialogo.querySelector(
+        "select, input:not([type='hidden']), textarea, button"
+      );
+      if (primero && typeof primero.focus === "function") primero.focus();
+      return;
+    }
+
+    var cerrar = ev.target.closest("[data-modal-close]");
+    if (!cerrar) return;
+    var contenedor = cerrar.closest("dialog");
+    if (contenedor) contenedor.close();
+  });
+
+  Array.prototype.forEach.call(
+    document.querySelectorAll("dialog[data-modal]"),
+    function (dialogo) {
+      /* Clic en el backdrop (fuera del contenido) cierra el modal. */
+      dialogo.addEventListener("click", function (ev) {
+        if (ev.target === dialogo) dialogo.close();
+      });
+    }
+  );
 })();

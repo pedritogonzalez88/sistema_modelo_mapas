@@ -25,8 +25,8 @@ RUTAS_HTML = [
 
 
 @pytest.fixture(scope="module")
-def client():
-    """Cliente de pruebas con el ciclo de vida de la app (startup/shutdown)."""
+def client(datos_web):
+    """Cliente de pruebas con datos propios y ciclo de vida de la app."""
     from app.main import app
 
     with TestClient(app) as c:
@@ -46,6 +46,44 @@ def test_salud_devuelve_json(client):
     assert respuesta.status_code == 200
     assert "application/json" in respuesta.headers["content-type"]
     assert respuesta.json() == {"estado": "ok"}
+
+
+def test_health_devuelve_json(client):
+    """Alias público para monitores que usan la convención /health."""
+    respuesta = client.get("/health")
+    assert respuesta.status_code == 200
+    assert "application/json" in respuesta.headers["content-type"]
+    assert respuesta.json() == {"estado": "ok"}
+
+
+def test_ready_comprueba_la_base(client):
+    respuesta = client.get("/ready")
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {"estado": "listo", "base": "ok"}
+
+
+def test_ready_devuelve_503_si_la_base_no_responde(client, monkeypatch):
+    import app.main as main
+
+    class MotorCaido:
+        def connect(self):
+            raise RuntimeError("sin base")
+
+    monkeypatch.setattr(main, "engine", MotorCaido())
+
+    respuesta = client.get("/ready")
+    assert respuesta.status_code == 503
+    assert respuesta.json() == {"estado": "no_listo", "base": "error"}
+    assert "sin base" not in respuesta.text
+
+
+def test_las_respuestas_llevan_request_id(client):
+    respuesta = client.get("/salud", headers={"X-Request-ID": "prueba-123"})
+    assert respuesta.headers["x-request-id"] == "prueba-123"
+
+    generado = client.get("/salud").headers["x-request-id"]
+    assert generado
+    assert len(generado) == 32
 
 
 def test_cruce_inexistente_es_404_html(client):

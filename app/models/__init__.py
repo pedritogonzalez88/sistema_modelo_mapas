@@ -14,6 +14,7 @@ from geoalchemy2 import Geometry
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
@@ -24,6 +25,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     false,
     func,
     text,
@@ -106,6 +108,10 @@ class PuntoMalla(Base):
     contra esta tabla; nunca desplazan el punto automaticamente."""
 
     __tablename__ = "puntos_malla"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "punto_id",
+                         name="uq_puntos_malla_proyecto_punto"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyectos.id"), index=True)
@@ -128,6 +134,10 @@ class Entrega(Base):
     huella SHA-256 como evidencia, incluso si la entrega es rechazada."""
 
     __tablename__ = "entregas"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "asistente_letra", "semana", "version",
+                         name="uq_entregas_proyecto_letra_semana_version"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyectos.id"), index=True)
@@ -153,6 +163,12 @@ class Interpretacion(Base):
     Formato largo: las exportaciones reconstruyen las columnas A1990-A2024."""
 
     __tablename__ = "interpretaciones"
+    __table_args__ = (
+        UniqueConstraint("entrega_id", "punto_id", "anio", "asistente_letra",
+                         name="uq_interpretaciones_entrega_punto_anio_letra"),
+        CheckConstraint("clase IS NULL OR (clase >= 1 AND clase <= 9)",
+                        name="ck_interpretaciones_clase_1_9"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     entrega_id: Mapped[int] = mapped_column(ForeignKey("entregas.id"), index=True)
@@ -175,6 +191,21 @@ class ResultadoCruce(Base):
     queda en auditoria; las interpretaciones de origen no se tocan."""
 
     __tablename__ = "resultados_cruce"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "punto_id", "anio",
+                         name="uq_resultados_cruce_proyecto_punto_anio"),
+        CheckConstraint(
+            "(a IS NULL OR (a >= 1 AND a <= 9)) AND "
+            "(b IS NULL OR (b >= 1 AND b <= 9)) AND "
+            "(c IS NULL OR (c >= 1 AND c <= 9))",
+            name="ck_resultados_cruce_abc_1_9",
+        ),
+        CheckConstraint(
+            "clase_consolidada IS NULL OR "
+            "(clase_consolidada >= 1 AND clase_consolidada <= 9)",
+            name="ck_resultados_cruce_consolidada_1_9",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyectos.id"), index=True)
@@ -192,11 +223,63 @@ class ResultadoCruce(Base):
     )
 
 
+class ResultadoCruceHistorial(Base):
+    """Historial append-only de cada recálculo de cruce.
+
+    ``resultados_cruce`` guarda solo el estado vigente; esta tabla conserva
+    quién y con qué entrega/regla se produjo cada versión.
+    """
+
+    __tablename__ = "resultados_cruce_historial"
+    __table_args__ = (
+        Index("ix_resultados_cruce_historial_punto",
+              "proyecto_id", "punto_id", "anio", "cambiado_en"),
+        CheckConstraint(
+            "(a IS NULL OR (a >= 1 AND a <= 9)) AND "
+            "(b IS NULL OR (b >= 1 AND b <= 9)) AND "
+            "(c IS NULL OR (c >= 1 AND c <= 9))",
+            name="ck_resultados_cruce_historial_abc_1_9",
+        ),
+        CheckConstraint(
+            "clase_consolidada IS NULL OR "
+            "(clase_consolidada >= 1 AND clase_consolidada <= 9)",
+            name="ck_resultados_cruce_historial_consolidada_1_9",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    proyecto_id: Mapped[int] = mapped_column(
+        ForeignKey("proyectos.id"), index=True)
+    punto_id: Mapped[int] = mapped_column(Integer, index=True)
+    anio: Mapped[int] = mapped_column(Integer, index=True)
+    entrega_id: Mapped[int | None] = mapped_column(
+        ForeignKey("entregas.id"), nullable=True, index=True)
+    a: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    b: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    c: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    resultado: Mapped[str] = mapped_column(String(30))
+    clase_consolidada: Mapped[int | None] = mapped_column(
+        SmallInteger, nullable=True)
+    regla_version: Mapped[str] = mapped_column(String(30))
+    actor: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    cambiado_en: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now())
+
+
 class FichaQAQC(Base):
     """Expediente de resolucion de discrepancias absolutas. El anio afectado
     es obligatorio: identifica inequivocamente que cruce se resuelve."""
 
     __tablename__ = "fichas_qaqc"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "punto_id", "anio",
+                         name="uq_fichas_qaqc_proyecto_punto_anio"),
+        CheckConstraint(
+            "clase_definitiva IS NULL OR "
+            "(clase_definitiva >= 1 AND clase_definitiva <= 9)",
+            name="ck_fichas_qaqc_clase_1_9",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyectos.id"), index=True)
@@ -246,6 +329,10 @@ class Reemplazo(Base):
     existir en la malla y pertenecer al mismo estrato (4.7)."""
 
     __tablename__ = "reemplazos"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "punto_origen", "punto_reserva",
+                         name="uq_reemplazos_proyecto_origen_reserva"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyectos.id"), index=True)
@@ -269,6 +356,12 @@ class ClaseMapa(Base):
     no puede calcularse: esta prohibido usar una evaluadora como mapa."""
 
     __tablename__ = "clases_mapa"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "punto_id", "anio",
+                         name="uq_clases_mapa_proyecto_punto_anio"),
+        CheckConstraint("clase >= 1 AND clase <= 9",
+                        name="ck_clases_mapa_clase_1_9"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyectos.id"), index=True)

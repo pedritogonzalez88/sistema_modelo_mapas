@@ -4,18 +4,23 @@ Reutiliza el dominio existente (cross_engine, qaqc) sin modificarlo:
 convierte entre codigos enteros 1-9 de la BD y las etiquetas del dominio.
 """
 from hashlib import sha256
-from io import BytesIO
 from pathlib import Path
 import re
 
 from geoalchemy2 import WKTElement
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.domain.classes import SIN_CONSENSO, ClaseCobertura
 from app.domain.cross_engine import TipoResultado, resolver_tabla7
-from app.domain.qaqc import EstadoQAQC, EventoQAQC, transicion
+from app.domain.qaqc import (
+    EstadoQAQC,
+    EventoQAQC,
+    requiere_ficha_qaqc,
+    transicion,
+)
 from app.models import (
     Auditoria,
     ClaseMapa,
@@ -26,11 +31,17 @@ from app.models import (
     PuntoMalla,
     Reemplazo,
     ResultadoCruce,
+    ResultadoCruceHistorial,
     Usuario,
 )
 from app.seed_data import USUARIOS_SEMILLA, mfa_policy_para_rol
 from app.services.analysis import analisis_seccion5
-from app.services.importer import CAUSAS_RESERVA, ResultadoImportacion, importar_excel
+from app.services.importer import (
+    CAUSAS_RESERVA,
+    ResultadoImportacion,
+    abrir_libro,
+    importar_excel,
+)
 
 _CLASES = list(ClaseCobertura)
 _ESTADOS_CERRADOS = {"Resuelto por consenso", "Reemplazo completado"}
@@ -43,6 +54,18 @@ class StoreError(Exception):
         super().__init__(mensaje)
         self.codigo = codigo
         self.mensaje = mensaje
+
+
+class ErrorEntrega(ValueError):
+    """Una entrega no puede confirmarse.
+
+    ``codigo`` lo consume el router para redirigir a la vista previa con el
+    flash correspondiente, sin perder el detalle del motivo.
+    """
+
+    def __init__(self, mensaje: str, codigo: str = "confirmacion_invalida"):
+        super().__init__(mensaje)
+        self.codigo = codigo
 
 
 def _para_json(obj):
@@ -75,6 +98,13 @@ def clase_a_dominio(codigo: int | None, es_sc: bool = False):
         return SIN_CONSENSO
     if codigo is None:
         return None
+    # Un índice negativo devolvería silenciosamente otra clase (0 -> Otras
+    # tierras) y un 99 rompería más adelante con IndexError. Se falla aquí.
+    if (isinstance(codigo, bool) or not isinstance(codigo, int)
+            or not 1 <= codigo <= len(_CLASES)):
+        raise ValueError(
+            f"Código de clase fuera de rango (1-{len(_CLASES)}): {codigo!r}."
+        )
     return _CLASES[codigo - 1]
 
 
@@ -117,7 +147,8 @@ def seed(db: Session) -> None:
 
 # --- Entregas -----------------------------------------------------------------
 def crear_entrega_pendiente(db: Session, letra: str, semana: str, tipo: str,
-                            contenido: bytes, actor: str = "cargador"):
+                            contenido: bytes, actor: str = "cargador",
+                            cargado_por_id: int | None = None):
     digest = sha256(contenido).hexdigest()
     duplicada = db.scalar(select(Entrega).where(
         Entrega.sha256 == digest, Entrega.asistente_letra == letra))
@@ -131,23 +162,42 @@ def crear_entrega_pendiente(db: Session, letra: str, semana: str, tipo: str,
         Entrega.asistente_letra == letra, Entrega.semana == semana))
     version = (ultima or 0) + 1
 
+    # Parsear antes de escribir: un archivo inválido no deja huérfanos en
+    # uploads/ ni una fila de entrega a medias.
+    parsed: ResultadoImportacion = importar_excel(contenido)
+
     ruta = settings.upload_path / f"{digest}.xlsx"
+    creada = False
     if not ruta.exists():
         ruta.write_bytes(contenido)
+        creada = True
 
-    parsed: ResultadoImportacion = importar_excel(contenido)
     entrega = Entrega(
         proyecto_id=proyecto.id, asistente_letra=letra, semana=semana, tipo=tipo,
         version=version, archivo_path=str(ruta), sha256=digest, estado="pendiente",
+        cargada_por_id=cargado_por_id,
         detalle_validacion={
             "cruces": len(parsed.datos), "errores": len(parsed.errores),
             "nota": parsed.nota,
             "primeros_errores": parsed.errores[:50],
         },
     )
-    db.add(entrega)
-    db.commit()
-    db.refresh(entrega)
+    try:
+        db.add(entrega)
+        db.flush()
+        db.add(Auditoria(
+            actor=actor, accion="entrega_recibida", entidad="entrega",
+            entidad_id=str(entrega.id),
+            detalle={"letra": letra, "semana": semana, "version": version,
+                     "sha256": digest[:16], "errores": len(parsed.errores)},
+        ))
+        db.commit()
+        db.refresh(entrega)
+    except Exception:
+        db.rollback()
+        if creada:
+            ruta.unlink(missing_ok=True)
+        raise
     return entrega, parsed
 
 
@@ -158,67 +208,110 @@ def confirmar_entrega(db: Session, entrega_id: int, actor: str = "cargador") -> 
 
     contenido = Path(entrega.archivo_path).read_bytes()
     parsed = importar_excel(contenido)
+    # Un archivo con celdas inválidas o duplicados contradictorios no puede
+    # confirmarse: la vista previa lo promete y, si se aceptara, se perderían
+    # celdas en silencio. El operador debe corregir el original y volver a
+    # subirlo (queda como nueva versión).
+    if parsed.errores:
+        raise ErrorEntrega(
+            f"El archivo tiene {len(parsed.errores)} error(es) de validación; "
+            "corríjalos y vuelva a cargarlo antes de confirmar.",
+            codigo="validacion_pendiente",
+        )
     letra = entrega.asistente_letra
     srid = db.get(Proyecto, entrega.proyecto_id).srid
 
-    # 1. Interpretaciones (vacío = ausencia: no se guarda fila)
+    # Todo se escribe en una sola transacción: si falla el recálculo o un
+    # movimiento de reserva, la entrega sigue pendiente y no quedan datos
+    # parciales. El commit va al final.
     n_guardadas = 0
-    for (punto, anio), valores in parsed.datos.items():
-        etiqueta = valores.get(letra)
-        codigo, es_sc = clase_a_db(etiqueta)
-        if codigo is None and not es_sc:
-            continue
-        meta = parsed.puntos_meta.get(punto, {})
-        db.add(Interpretacion(
-            entrega_id=entrega.id, proyecto_id=entrega.proyecto_id,
-            punto_id=punto, anio=anio, asistente_letra=letra,
-            clase=codigo, es_sc=es_sc,
-            x=meta.get("x"), y=meta.get("y"), nota=meta.get("nota"),
-        ))
-        n_guardadas += 1
+    n_ausencias = 0
+    try:
+        # 1. Interpretaciones. Una celda explícitamente vacía se persiste como
+        # ausencia (clase NULL): así una corrección puede borrar el valor de una
+        # entrega anterior en vez de que este siga ganando por ser el único.
+        for (punto, anio), valores in parsed.datos.items():
+            if letra not in valores:
+                # La hoja no trae esta evaluadora para el punto/año: no opina.
+                continue
+            etiqueta = valores[letra]
+            codigo, es_sc = clase_a_db(etiqueta)
+            meta = parsed.puntos_meta.get(punto, {})
+            db.add(Interpretacion(
+                entrega_id=entrega.id, proyecto_id=entrega.proyecto_id,
+                punto_id=punto, anio=anio, asistente_letra=letra,
+                clase=codigo, es_sc=es_sc,
+                x=meta.get("x"), y=meta.get("y"), nota=meta.get("nota"),
+            ))
+            if codigo is None and not es_sc:
+                n_ausencias += 1
+            else:
+                n_guardadas += 1
 
-    # 2. Malla oficial: registrar o contrastar coordenadas (nunca desplazar)
-    observaciones = []
-    for punto, meta in parsed.puntos_meta.items():
-        x, y = meta.get("x"), meta.get("y")
-        malla = db.scalar(select(PuntoMalla).where(
-            PuntoMalla.proyecto_id == entrega.proyecto_id, PuntoMalla.punto_id == punto))
-        if malla is None:
-            geom = None
-            if x is not None and y is not None:
-                geom = WKTElement(f"POINT({x} {y})", srid=srid)
-            db.add(PuntoMalla(proyecto_id=entrega.proyecto_id, punto_id=punto,
-                              geom=geom, origen="importacion"))
-        elif x is not None and y is not None and malla.geom is not None:
-            actual = db.scalar(func.ST_AsText(malla.geom))
-            if actual != f"POINT({x} {y})":
-                observaciones.append(
-                    f"Punto {punto}: coordenadas {x},{y} difieren de la malla ({actual}).")
+        # 2. Malla oficial: registrar o contrastar coordenadas (nunca desplazar)
+        observaciones = []
+        for punto, meta in parsed.puntos_meta.items():
+            x, y = meta.get("x"), meta.get("y")
+            malla = db.scalar(select(PuntoMalla).where(
+                PuntoMalla.proyecto_id == entrega.proyecto_id,
+                PuntoMalla.punto_id == punto))
+            if malla is None:
+                geom = None
+                if x is not None and y is not None:
+                    geom = WKTElement(f"POINT({x} {y})", srid=srid)
+                db.add(PuntoMalla(proyecto_id=entrega.proyecto_id,
+                                  punto_id=punto, geom=geom,
+                                  origen="importacion"))
+            elif x is not None and y is not None and malla.geom is not None:
+                actual = db.scalar(func.ST_AsText(malla.geom))
+                if actual != f"POINT({x} {y})":
+                    observaciones.append(
+                        f"Punto {punto}: coordenadas {x},{y} difieren de la "
+                        f"malla ({actual}).")
 
-    entrega.estado = "aceptada"
-    entrega.detalle_validacion = {**(entrega.detalle_validacion or {}),
-                                  "observaciones_malla": observaciones,
-                                  "interpretaciones_guardadas": n_guardadas}
-    db.add(Auditoria(actor=actor, accion="entrega_aceptada", entidad="entrega",
-                     entidad_id=str(entrega.id),
-                     detalle={"letra": letra, "semana": entrega.semana,
-                              "version": entrega.version, "guardadas": n_guardadas}))
-    db.commit()
+        entrega.estado = "aceptada"
+        # Publica interpretaciones y estado antes de recalcular; sigue dentro
+        # de la transacción, así que un fallo posterior revierte todo.
+        db.flush()
 
-    # 3. Recalcular cruces afectados (ultima version aceptada por letra)
-    claves = {(p, a) for (p, a) in parsed.datos}
-    n_cruces = 0
-    for punto, anio in claves:
-        recalcular_cruce(db, entrega.proyecto_id, punto, anio)
-        n_cruces += 1
+        # 3. Recalcular cruces afectados (última versión aceptada por letra)
+        claves = {(p, a) for (p, a) in parsed.datos}
+        n_cruces = 0
+        for punto, anio in claves:
+            recalcular_cruce(db, entrega.proyecto_id, punto, anio,
+                             actor=actor, entrega_id=entrega.id)
+            n_cruces += 1
 
-    # 4. Movimientos de reserva de la columna Notas (4.6 / Tabla 5)
-    obs_reserva = _procesar_movimientos(db, entrega.proyecto_id, parsed.movimientos,
-                                        actor)
-    observaciones.extend(obs_reserva)
-    db.commit()
-    return {"interpretaciones": n_guardadas, "cruces": n_cruces,
-            "observaciones": observaciones}
+        # 4. Movimientos de reserva de la columna Notas (4.6 / Tabla 5)
+        obs_reserva = _procesar_movimientos(
+            db, entrega.proyecto_id, parsed.movimientos, actor)
+        observaciones.extend(obs_reserva)
+        entrega.detalle_validacion = {
+            **(entrega.detalle_validacion or {}),
+            "observaciones_malla": observaciones,
+            "interpretaciones_guardadas": n_guardadas,
+            "ausencias_registradas": n_ausencias,
+        }
+        db.add(Auditoria(actor=actor, accion="entrega_aceptada",
+                         entidad="entrega", entidad_id=str(entrega.id),
+                         detalle={"letra": letra, "semana": entrega.semana,
+                                  "version": entrega.version,
+                                  "guardadas": n_guardadas,
+                                  "ausencias": n_ausencias}))
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ErrorEntrega(
+            "La entrega contiene datos duplicados que violan una restricción "
+            "de integridad; revísela y vuelva a cargarla.",
+            codigo="duplicado",
+        ) from exc
+    except Exception:
+        db.rollback()
+        raise
+
+    return {"interpretaciones": n_guardadas, "ausencias": n_ausencias,
+            "cruces": n_cruces, "observaciones": observaciones}
 
 
 def _malla_de(db: Session, proyecto_id: int, punto: int) -> PuntoMalla | None:
@@ -374,14 +467,15 @@ def parsear_malla(contenido: bytes, nombre: str) -> list[dict]:
     import io
 
     if nombre.lower().endswith(".csv"):
-        texto = contenido.decode("utf-8-sig")
+        try:
+            texto = contenido.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise ValueError("El CSV no está codificado en UTF-8.") from exc
         lector = csv.DictReader(io.StringIO(texto))
         filas = [{k.strip().lower(): (v.strip() if isinstance(v, str) else v)
                   for k, v in f.items()} for f in lector]
     else:
-        from openpyxl import load_workbook
-
-        libro = load_workbook(BytesIO(contenido), data_only=True, read_only=True)
+        libro = abrir_libro(contenido)
         try:
             ws = libro.active
             crudas = list(ws.iter_rows(values_only=True))
@@ -442,10 +536,15 @@ def _ultima_interpretacion(db: Session, proyecto_id: int, punto: int, anio: int,
                Interpretacion.punto_id == punto, Interpretacion.anio == anio,
                Interpretacion.asistente_letra == letra,
                Entrega.estado == "aceptada")
-        .order_by(Entrega.version.desc(), Entrega.id.desc()))
+        # La versión se numera por letra + semana, así que no es comparable
+        # entre semanas: la semana 05 v2 no debe ganarle a la 06 v1. Manda la
+        # entrega aceptada más reciente y, a igual fecha, el id mayor.
+        .order_by(Entrega.recibida_en.desc(), Entrega.id.desc()))
 
 
-def recalcular_cruce(db: Session, proyecto_id: int, punto: int, anio: int) -> ResultadoCruce:
+def recalcular_cruce(db: Session, proyecto_id: int, punto: int, anio: int,
+                     actor: str = "sistema",
+                     entrega_id: int | None = None) -> ResultadoCruce:
     interps = {letra: _ultima_interpretacion(db, proyecto_id, punto, anio, letra)
                for letra in ("A", "B", "C")}
     valores = {letra: (clase_a_dominio(i.clase, i.es_sc) if i else None)
@@ -462,6 +561,11 @@ def recalcular_cruce(db: Session, proyecto_id: int, punto: int, anio: int) -> Re
     else:
         nombre_res = "incompleto" if SIN_CONSENSO not in valores.values() else "discrepancia"
 
+    ficha = db.scalar(select(FichaQAQC).where(
+        FichaQAQC.proyecto_id == proyecto_id,
+        FichaQAQC.punto_id == punto, FichaQAQC.anio == anio))
+    ficha_cerrada = ficha is not None and ficha.estado in _ESTADOS_CERRADOS
+
     cruce = db.scalar(select(ResultadoCruce).where(
         ResultadoCruce.proyecto_id == proyecto_id,
         ResultadoCruce.punto_id == punto, ResultadoCruce.anio == anio))
@@ -473,18 +577,35 @@ def recalcular_cruce(db: Session, proyecto_id: int, punto: int, anio: int) -> Re
     c_db, _ = clase_a_db(valores["C"])
     cruce.a, cruce.b, cruce.c = a_db, b_db, c_db
     cruce.resultado = nombre_res
-    cruce.clase_consolidada = consol
-    cruce.regla_version = settings.regla_version
+    if not ficha_cerrada:
+        # Solo el cálculo automático escribe el consolidado. Una ficha cerrada
+        # contiene una decisión humana (consenso o reemplazo completado) que no
+        # debe desaparecer porque después llegue otra entrega semanal.
+        cruce.clase_consolidada = consol
+        cruce.regla_version = settings.regla_version
+    elif cruce.clase_consolidada is None and ficha.clase_definitiva is not None:
+        # Caso defensivo: ficha cerrada sin consolidado previo (datos migrados).
+        cruce.clase_consolidada = ficha.clase_definitiva
+        cruce.regla_version = "qaqc-consenso"
+
+    # Historial append-only: el estado vigente se puede reconstruir con la
+    # entrega, la regla y el actor que lo produjeron.
+    db.add(ResultadoCruceHistorial(
+        proyecto_id=proyecto_id, punto_id=punto, anio=anio,
+        entrega_id=entrega_id, a=a_db, b=b_db, c=c_db,
+        resultado=nombre_res,
+        clase_consolidada=cruce.clase_consolidada,
+        regla_version=cruce.regla_version,
+        actor=actor,
+    ))
     db.flush()
 
-    # Ficha QA/QC automática: terna completa con 3 clases distintas o SC presente
-    presentes = [v for v in valores.values() if v is not None]
-    distintas = {v for v in presentes}
-    if len(presentes) == 3 and (len(distintas) == 3 or SIN_CONSENSO in distintas):
-        existe = db.scalar(select(FichaQAQC).where(
-            FichaQAQC.proyecto_id == proyecto_id,
-            FichaQAQC.punto_id == punto, FichaQAQC.anio == anio))
-        if existe is None:
+    # Ficha QA/QC automática solo para discrepancia absoluta (3 clases
+    # distintas) o SC, siempre con la terna completa. La mayoría 2/3 se
+    # consolida sin ficha y la terna incompleta no es un desacuerdo (protocolo
+    # 4.2 y 6.3); la regla vive en el dominio para no divergir de Store.
+    if requiere_ficha_qaqc(valores.values()):
+        if ficha is None:
             db.add(FichaQAQC(
                 proyecto_id=proyecto_id, punto_id=punto, anio=anio,
                 estado=EstadoQAQC.DETECTADO.value,
@@ -536,9 +657,7 @@ def cargar_malla(db: Session, proyecto_id: int, filas: list[dict],
 
 def _parsear_mapa_xlsx(contenido: bytes) -> list[dict]:
     """Formato ancho: ID_PUNTO + A1990..A2024 con clases 1-9 (mapas MADES)."""
-    from openpyxl import load_workbook
-
-    libro = load_workbook(BytesIO(contenido), data_only=True, read_only=True)
+    libro = abrir_libro(contenido)
     try:
         ws = libro.active
         filas = list(ws.iter_rows(values_only=True))
@@ -829,9 +948,15 @@ def actualizar_ficha(db: Session, ficha_id: int, datos: dict, actor: str = "supe
     if datos.get("debate") is not None:
         ficha.debate = datos["debate"]
     if datos.get("dictamen") is not None:
-        ficha.dictamen = datos["dictamen"]
+        dictamen = str(datos["dictamen"]).strip().lower()
+        if dictamen not in ("consenso", "sin_consenso"):
+            raise ValueError("El dictamen debe ser 'consenso' o 'sin_consenso'.")
+        ficha.dictamen = dictamen
     if datos.get("clase_definitiva") is not None:
-        ficha.clase_definitiva = datos["clase_definitiva"]
+        clase = datos["clase_definitiva"]
+        if not isinstance(clase, int) or not 1 <= clase <= 9:
+            raise ValueError("La clase definitiva debe ser un número del 1 al 9.")
+        ficha.clase_definitiva = clase
     if datos.get("reemplazo") is not None:
         ficha.reemplazo = datos["reemplazo"]
     if datos.get("causa_descarte") is not None:
@@ -862,8 +987,10 @@ def transicionar_ficha(db: Session, ficha_id: int, evento_nombre: str, actor: st
     nuevo = transicion(estado_actual, evento)
     if nuevo is None:
         raise ValueError(f"No se permite '{evento.value}' desde '{estado_actual.value}'.")
-    if evento is EventoQAQC.APROBAR_CONSENSO and not ficha.clase_definitiva:
-        raise ValueError("Para aprobar por consenso se exige clase definitiva 1-9.")
+    if evento is EventoQAQC.APROBAR_CONSENSO:
+        clase = ficha.clase_definitiva
+        if not isinstance(clase, int) or not 1 <= clase <= 9:
+            raise ValueError("Para aprobar por consenso se exige clase definitiva 1-9.")
     ficha.estado = nuevo.value
     if nuevo.value in _ESTADOS_CERRADOS:
         ficha.cerrada_en = datetime.utcnow()

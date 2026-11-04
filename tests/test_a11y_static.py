@@ -103,7 +103,7 @@ def _parsear(html: str) -> Documento:
 
 
 @pytest.fixture(scope="module")
-def client():
+def client(datos_web):
     from app.main import app
 
     with TestClient(app) as c:

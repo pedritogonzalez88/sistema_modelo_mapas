@@ -110,6 +110,7 @@ from app.models import (
     Sesion,
     Usuario,
 )
+from app.seed_data import mfa_policy_para_rol
 
 __all__ = [
     "CODIGOS_RESPALDO",
@@ -1231,6 +1232,14 @@ def emitir_codigo_email(db: Session, usuario: Usuario, *,
     """
     if usuario is None or usuario.id is None or not (usuario.email or "").strip():
         return False
+    # El tope también se aplica aquí, no solo en el reenvío: el login inicial
+    # llamaba a esta función directamente y permitía inundar el buzón (y
+    # invalidar el código en curso) con solo conocer la contraseña.
+    permitido, _motivo, _espera = puede_enviar_codigo(db, usuario)
+    if not permitido:
+        return False
+    if not puede_enviar_codigo_por_ip(db, ip):
+        return False
     codigo = generar_codigo_email()
     hash_codigo = _cifrar_hash(codigo, usuario)
     if hash_codigo is None:
@@ -1252,6 +1261,9 @@ def emitir_codigo_email(db: Session, usuario: Usuario, *,
         purpose="mfa",
         expires_at=ahora + VIGENCIA_CODIGO_CORREO,
         attempts=0,
+        # Explícito: los topes comparan con utcnow() de la app, no con el reloj
+        # del servidor de base de datos.
+        created_at=ahora,
         ip=_ip_corta(ip),
     ))
     audit.registrar(
@@ -1979,6 +1991,13 @@ def crear_usuario_admin(db: Session, *, actor: Usuario | None, nombre: str,
     elif politica not in POLITICAS_MFA:
         errores.append("La política de segundo factor no es válida.")
         politica = MFA_POR_DEFECTO
+    # Los roles críticos no pueden nacer sin TOTP, ni siquiera si el formulario
+    # envía explícitamente "disabled" o "email".
+    if rol_limpio in MFA_POR_ROL and politica != "totp":
+        errores.append(
+            "Los roles Administración y Supervisión exigen TOTP obligatorio; "
+            "no se admite otra política de segundo factor."
+        )
 
     if usuario_limpio and correo_limpio:
         duplicados = db.scalars(
@@ -2087,8 +2106,17 @@ def cambiar_rol_usuario(db: Session, actor: Usuario | None, usuario_id: int,
         return usuario, errores
 
     anterior, letra_anterior = usuario.rol, usuario.letra_terna
+    politica_anterior = usuario.mfa_policy
+    cambio_rol = anterior != rol_limpio
     usuario.rol = rol_limpio
     usuario.letra_terna = letra_limpia
+    if cambio_rol:
+        # La política de segundo factor se deriva del rol: promover a admin o
+        # supervisión debe exigir TOTP aunque la cuenta se haya creado sin él.
+        usuario.mfa_policy = mfa_policy_para_rol(rol_limpio)
+        # Un rol impuesto por un administrador deja de ser propiedad del
+        # directorio: si no, el siguiente login LDAP lo revertiría.
+        usuario.role_source = "manual"
     db.flush()
     audit.registrar(
         db, audit.actor_de(actor), "role_changed", entidad="usuario",
@@ -2098,6 +2126,9 @@ def cambiar_rol_usuario(db: Session, actor: Usuario | None, usuario_id: int,
             "a": rol_limpio,
             "letra_anterior": letra_anterior,
             "letra": letra_limpia,
+            "mfa_policy_anterior": politica_anterior,
+            "mfa_policy": usuario.mfa_policy,
+            "role_source": usuario.role_source,
             "motivo": motivo_limpio,
         },
         ip=ip, user_agent=user_agent,

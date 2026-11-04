@@ -68,7 +68,7 @@ USUARIOS_SEMILLA: tuple[dict, ...] = (
     {
         "nombre": "Daniel Meza",
         "username": "daniel.meza",
-        "email": "viento100@gmail.com",
+        "email": "daniel.meza@aep.gov.py",
         "rol": "admin",
         "letra_terna": None,
     },

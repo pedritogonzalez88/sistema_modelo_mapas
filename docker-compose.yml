@@ -2,6 +2,7 @@ services:
   db:
     image: postgis/postgis:16-3.4
     container_name: eet-mapa-aep
+    restart: unless-stopped
     environment:
       POSTGRES_DB: eet
       POSTGRES_USER: eet
@@ -19,6 +20,7 @@ services:
   app:
     build: .
     container_name: eet-app
+    restart: unless-stopped
     # Entorno local de autenticación (gitignored). Si no existe, la app arranca
     # como antes: sin auth y solo con la conexión a la base.
     env_file:
@@ -28,9 +30,23 @@ services:
       EET_DATABASE_URL: postgresql+psycopg://eet:eet@db:5432/eet
     ports:
       - "8000:8000"
+    # Solo desarrollo: la imagen de producción corre como 10001:10001, pero
+    # aquí se mantiene root para que los uploads del bind mount y las pruebas
+    # del host no dependan de la propiedad del directorio.
+    user: "0:0"
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/salud', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
     volumes:
       - ./uploads:/app/uploads
 

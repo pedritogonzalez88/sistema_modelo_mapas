@@ -60,12 +60,13 @@ MFA_MAX_AGE = 300
 # todavía **no** tiene sesión (la sesión nace al superar el desafío).
 RUTAS_PUBLICAS = frozenset({
     "/auth/login", "/auth/logout", "/auth/mfa", "/auth/mfa/enviar",
-    "/auth/recuperar", "/auth/restablecer", "/salud", "/favicon.ico",
+    "/auth/recuperar", "/auth/restablecer", "/salud", "/health", "/ready",
+    "/favicon.ico",
 })
 PREFIJOS_PUBLICOS = ("/static/",)
 
 # Rutas que ni siquiera abren una sesión de base de datos.
-_RUTAS_SIN_SESION = frozenset({"/salud", "/favicon.ico"})
+_RUTAS_SIN_SESION = frozenset({"/salud", "/health", "/ready", "/favicon.ico"})
 
 # Con ``must_change_password`` la única navegación permitida es el cambio.
 RUTAS_CAMBIO_PASSWORD = frozenset({"/auth/cambiar-password", "/auth/logout"})

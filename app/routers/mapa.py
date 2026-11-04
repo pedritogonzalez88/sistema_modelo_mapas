@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth.audit import actor_de_request
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import require_permiso
 from app.core.config import settings
@@ -46,15 +47,17 @@ def pagina(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/upload", dependencies=[Depends(csrf_protect),
                                        Depends(require_permiso("mapa.cargar"))])
-async def upload(file: UploadFile, db: Session = Depends(get_db)):
+async def upload(request: Request, file: UploadFile,
+                 db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
     _validar_tamano(file.size)
     contenido = await file.read()
     _validar_tamano(len(contenido))
     try:
-        stats = persist.cargar_mapa(db, proyecto.id, contenido,
-                                     file.filename or "mapa.xlsx")
+        stats = persist.cargar_mapa(
+            db, proyecto.id, contenido, file.filename or "mapa.xlsx",
+            actor=actor_de_request(request))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     _ = stats
     return RedirectResponse("/mapa?ok=mapa_cargado", status_code=303)

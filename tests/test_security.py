@@ -308,3 +308,10 @@ def test_normalizar_codigo_unifica_escritura():
 def test_normalizar_codigo_devuelve_texto_limpio_si_no_cumple_formato():
     assert security.normalizar_codigo("abc-12") == "ABC-12"
     assert security.normalizar_codigo("") == ""
+
+
+def test_health_y_ready_son_rutas_publicas():
+    from app.auth.middleware import es_ruta_publica
+
+    assert es_ruta_publica("/health") is True
+    assert es_ruta_publica("/ready") is True

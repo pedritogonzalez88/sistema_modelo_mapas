@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth.audit import actor_de_request
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import require_permiso
 from app.core.config import settings
@@ -79,15 +80,17 @@ def pagina(request: Request, q: str | None = None, page: int = 1,
 
 @router.post("/upload", dependencies=[Depends(csrf_protect),
                                        Depends(require_permiso("malla.cargar"))])
-async def upload(file: UploadFile, db: Session = Depends(get_db)):
+async def upload(request: Request, file: UploadFile,
+                 db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
     _validar_tamano(file.size)
     contenido = await file.read()
     _validar_tamano(len(contenido))
     try:
         filas = persist.parsear_malla(contenido, file.filename or "malla.csv")
-        stats = persist.cargar_malla(db, proyecto.id, filas)
+        stats = persist.cargar_malla(
+            db, proyecto.id, filas, actor=actor_de_request(request))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     _ = stats
     return RedirectResponse("/malla?ok=malla_cargada", status_code=303)

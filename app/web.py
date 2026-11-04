@@ -42,6 +42,8 @@ FLASH_OK = {
 FLASH_ERROR = {
     "archivo_invalido": "El archivo no tiene un formato válido.",
     "duplicado":        "El archivo ya fue cargado (misma huella SHA-256).",
+    "validacion_pendiente": "El archivo tiene errores de validación. Corríjalos y vuelva a cargarlo antes de confirmar.",
+    "confirmacion_invalida": "La entrega no se pudo confirmar. Revise el archivo y vuelva a intentarlo.",
     "clase_requerida":  "Para cerrar por consenso se exige una clase definitiva 1–9.",
     "transicion_invalida": "El cambio de estado solicitado no está permitido desde el estado actual.",
     # Autenticación (Fase A3)

@@ -1,80 +1,130 @@
 {% extends "base.html" %}
 {% import "components/ui.html" as ui with context %}
+{% import "components/icons.html" as icons %}
 
 {% block title %}Usuarios · Validador EET{% endblock %}
 {% block description %}Alta de cuentas, cambio de rol, baja lógica y resets asistidos de contraseña y segundo factor.{% endblock %}
 
 {# --- Acciones por fila -----------------------------------------------------
-   Cada acción es un formulario POST independiente con su token CSRF y el
-   motivo obligatorio. Se agrupan en un <details> para no saturar la tabla.
+   El disparador abre un <dialog> nativo (modal, trampa de foco y Escape
+   incluidos). Sin JS, el CSS muestra los diálogos en línea y oculta el
+   disparador: los formularios POST siguen siendo accesibles.
    ------------------------------------------------------------------------- #}
-{% macro acciones_fila(fila, roles, etiquetas_rol, letras) %}
-<details class="auth-detalle">
-  <summary class="auth-detalle__resumen">Acciones<span class="sr-only"> de {{ fila.nombre }}</span></summary>
-  <div class="auth-detalle__cuerpo">
+{% macro acciones_trigger(fila) %}
+<button type="button" class="btn btn--secondary btn--sm"
+        data-modal-open="acciones-{{ fila.id }}"
+        aria-haspopup="dialog"
+        aria-controls="acciones-{{ fila.id }}"
+        aria-label="Acciones de {{ fila.nombre }}">
+  Acciones
+</button>
+{% endmacro %}
 
-    <form method="post" action="/auth/usuarios/{{ fila.id }}/rol"
-          class="flex flex-col gap-2 border-b border-line pb-3">
-      {{ ui.csrf_input() }}
-      <label class="field__label" for="rol-{{ fila.id }}">Nuevo rol</label>
-      <select class="select" id="rol-{{ fila.id }}" name="rol">
-        {%- for clave in roles %}
-        <option value="{{ clave }}"{% if fila.rol == clave %} selected{% endif %}>{{ etiquetas_rol.get(clave, clave) }}</option>
-        {%- endfor %}
-      </select>
-      <label class="field__label" for="letra-{{ fila.id }}">Letra de terna (solo asistente)</label>
-      <select class="select" id="letra-{{ fila.id }}" name="letra">
-        <option value="">—</option>
-        {%- for letra in letras %}
-        <option value="{{ letra }}"{% if fila.letra_terna == letra %} selected{% endif %}>Evaluadora {{ letra }}</option>
-        {%- endfor %}
-      </select>
-      <label class="field__label" for="motivo-rol-{{ fila.id }}">Motivo del cambio</label>
-      <input class="input" id="motivo-rol-{{ fila.id }}" name="motivo"
-             type="text" maxlength="200" required
-             placeholder="Ej.: rotación de funciones">
-      {{ ui.btn("Cambiar rol", variant="secondary", size="sm", type="submit") }}
-    </form>
-
-    <form method="post" action="/auth/usuarios/{{ fila.id }}/estado"
-          class="flex flex-col gap-2 border-b border-line pb-3">
-      {{ ui.csrf_input() }}
-      <input type="hidden" name="activo" value="{{ '0' if fila.is_active else '1' }}">
-      <label class="field__label" for="motivo-estado-{{ fila.id }}">
-        Motivo de {{ 'la baja' if fila.is_active else 'la reactivación' }}
-      </label>
-      <input class="input" id="motivo-estado-{{ fila.id }}" name="motivo"
-             type="text" maxlength="200" required
-             placeholder="Ej.: desvinculación del proyecto">
-      {% if fila.is_active %}
-        {{ ui.btn("Desactivar cuenta", variant="danger", size="sm", type="submit") }}
-      {% else %}
-        {{ ui.btn("Activar cuenta", variant="secondary", size="sm", type="submit") }}
-      {% endif %}
-    </form>
-
-    <form method="post" action="/auth/usuarios/{{ fila.id }}/reset-password"
-          class="flex flex-col gap-2 border-b border-line pb-3">
-      {{ ui.csrf_input() }}
-      <label class="field__label" for="motivo-clave-{{ fila.id }}">Motivo del reset de contraseña</label>
-      <input class="input" id="motivo-clave-{{ fila.id }}" name="motivo"
-             type="text" maxlength="200" required
-             placeholder="Ej.: olvidó su contraseña">
-      {{ ui.btn("Generar contraseña temporal", variant="secondary", size="sm", type="submit") }}
-    </form>
-
-    <form method="post" action="/auth/usuarios/{{ fila.id }}/reset-mfa"
-          class="flex flex-col gap-2">
-      {{ ui.csrf_input() }}
-      <label class="field__label" for="motivo-mfa-{{ fila.id }}">Motivo del reset de 2FA</label>
-      <input class="input" id="motivo-mfa-{{ fila.id }}" name="motivo"
-             type="text" maxlength="200" required
-             placeholder="Ej.: cambió de teléfono">
-      {{ ui.btn("Reiniciar segundo factor", variant="secondary", size="sm", type="submit") }}
-    </form>
-
+{% macro acciones_modal(fila, roles, etiquetas_rol, letras) %}
+<dialog class="auth-modal" id="acciones-{{ fila.id }}" data-modal
+        aria-labelledby="acciones-titulo-{{ fila.id }}">
+  <div class="auth-modal__cabecera">
+    <div>
+      <h2 class="auth-modal__titulo" id="acciones-titulo-{{ fila.id }}">
+        Acciones de {{ fila.nombre }}
+      </h2>
+      <p class="auth-modal__subtitulo">
+        {{ fila.username or fila.email or "Cuenta" }}
+        · {{ etiquetas_rol.get(fila.rol, fila.rol) }}
+      </p>
+    </div>
+    <button type="button" class="auth-modal__cerrar" data-modal-close
+            aria-label="Cerrar acciones">
+      {{ icons.icon("x", "w-4 h-4") }}
+    </button>
   </div>
-</details>
+
+  <div class="auth-modal__cuerpo">
+    <section class="auth-modal__seccion" aria-labelledby="modal-rol-{{ fila.id }}">
+      <h3 class="auth-modal__seccion-titulo" id="modal-rol-{{ fila.id }}">
+        Rol y terna
+      </h3>
+      <form method="post" action="/auth/usuarios/{{ fila.id }}/rol"
+            class="flex flex-col gap-2">
+        {{ ui.csrf_input() }}
+        <label class="field__label" for="rol-{{ fila.id }}">Nuevo rol</label>
+        <select class="select" id="rol-{{ fila.id }}" name="rol">
+          {%- for clave in roles %}
+          <option value="{{ clave }}"{% if fila.rol == clave %} selected{% endif %}>{{ etiquetas_rol.get(clave, clave) }}</option>
+          {%- endfor %}
+        </select>
+        <label class="field__label" for="letra-{{ fila.id }}">Letra de terna (solo asistente)</label>
+        <select class="select" id="letra-{{ fila.id }}" name="letra">
+          <option value="">—</option>
+          {%- for letra in letras %}
+          <option value="{{ letra }}"{% if fila.letra_terna == letra %} selected{% endif %}>Evaluadora {{ letra }}</option>
+          {%- endfor %}
+        </select>
+        <label class="field__label" for="motivo-rol-{{ fila.id }}">Motivo del cambio</label>
+        <input class="input" id="motivo-rol-{{ fila.id }}" name="motivo"
+               type="text" maxlength="200" required
+               placeholder="Ej.: rotación de funciones">
+        {{ ui.btn("Cambiar rol", variant="secondary", size="sm", type="submit") }}
+      </form>
+    </section>
+
+    <section class="auth-modal__seccion" aria-labelledby="modal-estado-{{ fila.id }}">
+      <h3 class="auth-modal__seccion-titulo" id="modal-estado-{{ fila.id }}">
+        Estado de la cuenta
+      </h3>
+      <form method="post" action="/auth/usuarios/{{ fila.id }}/estado"
+            class="flex flex-col gap-2">
+        {{ ui.csrf_input() }}
+        <input type="hidden" name="activo" value="{{ '0' if fila.is_active else '1' }}">
+        <label class="field__label" for="motivo-estado-{{ fila.id }}">
+          Motivo de {{ 'la baja' if fila.is_active else 'la reactivación' }}
+        </label>
+        <input class="input" id="motivo-estado-{{ fila.id }}" name="motivo"
+               type="text" maxlength="200" required
+               placeholder="Ej.: desvinculación del proyecto">
+        {% if fila.is_active %}
+          {{ ui.btn("Desactivar cuenta", variant="danger", size="sm", type="submit") }}
+        {% else %}
+          {{ ui.btn("Activar cuenta", variant="secondary", size="sm", type="submit") }}
+        {% endif %}
+      </form>
+    </section>
+
+    <section class="auth-modal__seccion" aria-labelledby="modal-clave-{{ fila.id }}">
+      <h3 class="auth-modal__seccion-titulo" id="modal-clave-{{ fila.id }}">
+        Reset de contraseña
+      </h3>
+      <form method="post" action="/auth/usuarios/{{ fila.id }}/reset-password"
+            class="flex flex-col gap-2">
+        {{ ui.csrf_input() }}
+        <label class="field__label" for="motivo-clave-{{ fila.id }}">Motivo del reset de contraseña</label>
+        <input class="input" id="motivo-clave-{{ fila.id }}" name="motivo"
+               type="text" maxlength="200" required
+               placeholder="Ej.: olvidó su contraseña">
+        {{ ui.btn("Generar contraseña temporal", variant="secondary", size="sm", type="submit") }}
+      </form>
+    </section>
+
+    <section class="auth-modal__seccion" aria-labelledby="modal-mfa-{{ fila.id }}">
+      <h3 class="auth-modal__seccion-titulo" id="modal-mfa-{{ fila.id }}">
+        Reset de segundo factor
+      </h3>
+      <form method="post" action="/auth/usuarios/{{ fila.id }}/reset-mfa"
+            class="flex flex-col gap-2">
+        {{ ui.csrf_input() }}
+        <label class="field__label" for="motivo-mfa-{{ fila.id }}">Motivo del reset de 2FA</label>
+        <input class="input" id="motivo-mfa-{{ fila.id }}" name="motivo"
+               type="text" maxlength="200" required
+               placeholder="Ej.: cambió de teléfono">
+        {{ ui.btn("Reiniciar segundo factor", variant="secondary", size="sm", type="submit") }}
+      </form>
+    </section>
+
+    <div class="auth-modal__pie">
+      {{ ui.btn("Cerrar", variant="ghost", size="sm", type="button", data_modal_close=True) }}
+    </div>
+  </div>
+</dialog>
 {% endmacro %}
 
 {% block contenido %}
@@ -329,7 +379,7 @@
               {{ fila.last_login_at.strftime("%Y-%m-%d %H:%M") if fila.last_login_at else "—" }}
             </td>
             <td class="text-right">
-              {{ acciones_fila(fila, roles, etiquetas_rol, letras) }}
+              {{ acciones_trigger(fila) }}
             </td>
           </tr>
           {%- endfor %}
@@ -337,6 +387,9 @@
       </table>
       {% endcall %}
       {{ ui.pagination(page, paginas, request) }}
+      {%- for fila, _mfa in filas %}
+      {{ acciones_modal(fila, roles, etiquetas_rol, letras) }}
+      {%- endfor %}
     {% else %}
       {{ ui.empty(
         "Sin cuentas para esos filtros",

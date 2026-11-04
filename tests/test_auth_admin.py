@@ -183,7 +183,35 @@ def test_solo_admin_entra_a_gestion_de_usuarios(cliente, panel):
             assert "text/html" in respuesta.headers["content-type"]
 
 
+def test_listado_de_usuarios_usa_dialogo_de_acciones(cliente, panel):
+    admin = panel.usuario("admin")
+    with _sesion(cliente, admin):
+        respuesta = cliente.get("/auth/usuarios")
+    assert respuesta.status_code == 200
+    assert "<dialog" in respuesta.text
+    assert 'data-modal-open="acciones-' in respuesta.text
+    assert 'aria-haspopup="dialog"' in respuesta.text
+    assert "data-modal-close" in respuesta.text
+
+
 # --- 2. Alta y validaciones ----------------------------------------------------
+def test_alta_admin_rechaza_mfa_no_totp(cliente, panel):
+    admin = panel.usuario("admin")
+    sufijo = uuid.uuid4().hex[:8]
+
+    with _sesion(cliente, admin):
+        token = _csrf_de_sesion(cliente)
+        respuesta = _post(
+            cliente, "/auth/usuarios", token,
+            nombre="Admin sin TOTP", username=f"adm-{sufijo}",
+            email=f"adm-{sufijo}@ejemplo.org", rol="admin", letra="",
+            mfa_policy="disabled", password=PASSWORD, confirmacion=PASSWORD,
+        )
+
+    assert respuesta.status_code == 200
+    assert "TOTP" in respuesta.text
+
+
 def test_alta_de_usuario_y_validaciones(cliente, panel):
     from app.core.security import verify_password
     from app.models import Usuario

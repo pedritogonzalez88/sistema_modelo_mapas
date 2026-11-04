@@ -1,0 +1,22 @@
+[Unit]
+Description=Backup cifrado del Validador EET (PostgreSQL/PostGIS + uploads)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+# Ajuste /mnt/backup/eet al NAS o disco externo real.
+ExecStart=/opt/sistema_modelo_mapas/scripts/backup-local.sh \
+    --dest /mnt/backup/eet \
+    --key-file /etc/eet/backup.key \
+    --container eet-db-prod \
+    --retention-days 30 \
+    --verify
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=1h
+StandardOutput=journal
+StandardError=journal

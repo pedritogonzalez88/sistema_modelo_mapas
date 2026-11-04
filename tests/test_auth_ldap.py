@@ -572,7 +572,8 @@ def test_auto_provision_crea_usuario_con_rol(ldap_activo, usuarios_ldap,
         assert fila.rol == "supervision"
         assert fila.auth_provider == "ldap"
         assert fila.role_source == "ldap"
-        assert fila.mfa_policy == "any"
+        # El rol mapeado (supervisión) impone TOTP desde el alta.
+        assert fila.mfa_policy == "totp"
         assert fila.password_hash is None
         assert fila.ldap_dn
 

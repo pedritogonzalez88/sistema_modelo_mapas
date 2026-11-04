@@ -37,6 +37,7 @@ from app.auth import audit
 from app.core.config import Settings, settings
 from app.core.security import hash_password, verify_dummy, verify_password
 from app.models import Usuario
+from app.seed_data import mfa_policy_para_rol
 
 __all__ = [
     "AuthProvider",
@@ -619,6 +620,9 @@ class LdapProvider:
             usuario.external_id = identificador[:255]
         if usuario.role_source == "ldap" and usuario.rol != rol:
             usuario.rol = rol
+            # Igual que en el alta: el rol mapeado desde el directorio impone
+            # su política de segundo factor (admin/supervisión -> TOTP).
+            usuario.mfa_policy = mfa_policy_para_rol(rol)
             cambios.append("rol")
         db.flush()
         if cambios:
@@ -652,7 +656,7 @@ class LdapProvider:
             auth_provider="ldap",
             password_hash=None,
             is_active=True,
-            mfa_policy="any",
+            mfa_policy=mfa_policy_para_rol(rol),
             role_source="ldap",
             ldap_dn=dn,
             external_id=username[:255],

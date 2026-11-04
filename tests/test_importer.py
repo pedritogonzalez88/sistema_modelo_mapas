@@ -1,8 +1,12 @@
+import pytest
+
 from app.domain.classes import ClaseCobertura
 from app.domain.cross_engine import TipoResultado
 from app.services.importer import (
     importar_excel,
     ERROR_EVALUADORA_DESCONOCIDA,
+    ERROR_FORMULA_SIN_CACHE,
+    ERROR_HOJA_NO_RECONOCIDA,
     ERROR_ID_PUNTO_INVALIDO,
     ERROR_ETIQUETA_INVALIDA,
 )
@@ -240,3 +244,152 @@ def test_deteccion_errores_importacion(crear_libro):
     assert ERROR_ID_PUNTO_INVALIDO in tipos_error
     assert ERROR_ETIQUETA_INVALIDA in tipos_error
     assert ERROR_EVALUADORA_DESCONOCIDA in tipos_error
+
+
+def test_importar_excel_archivo_invalido_es_valueerror():
+    with pytest.raises(ValueError, match='xlsx'):
+        importar_excel(b'esto no es un archivo zip')
+
+
+# --- B6: IDs decimales, fórmulas sin caché y hojas silenciosas ------------------
+@pytest.mark.parametrize("id_punto", [101.0, "101.0", "101,0", " P-101 "])
+def test_el_id_de_punto_decimal_no_concatena_los_digitos(crear_libro, id_punto):
+    contenido = crear_libro([{
+        "titulo": "Evaluador_A",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+        "filas": [["A", id_punto, 1]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert res.errores == []
+    assert (101, 1990) in res.datos
+    assert (1010, 1990) not in res.datos
+
+
+def test_un_id_de_punto_con_fraccion_no_cero_es_invalido(crear_libro):
+    contenido = crear_libro([{
+        "titulo": "Evaluador_A",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+        "filas": [["A", 101.5, 1]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert [e["tipo"] for e in res.errores] == [ERROR_ID_PUNTO_INVALIDO]
+    assert res.datos == {}
+
+
+@pytest.mark.parametrize("id_ev, esperado", [(1.0, "A"), (2, "B"), ("3.0", "C")])
+def test_el_id_de_evaluadora_numerico_se_resuelve(crear_libro, id_ev, esperado):
+    contenido = crear_libro([{
+        "titulo": "Evaluadores",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+        "filas": [[id_ev, 101, 1]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert res.errores == []
+    assert res.datos[(101, 1990)] == {esperado: ClaseCobertura.BOSQUE_NATURAL}
+
+
+def test_un_id_ev_desconocido_no_se_sustituye_por_el_nombre_de_la_hoja(crear_libro):
+    contenido = crear_libro([{
+        "titulo": "Evaluador_A",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+        "filas": [["Z", 101, 1]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert [e["tipo"] for e in res.errores] == [ERROR_EVALUADORA_DESCONOCIDA]
+    assert res.datos == {}
+
+
+def test_una_formula_sin_cache_se_reporta_y_no_se_importa_como_vacia(crear_libro):
+    contenido = crear_libro([{
+        "titulo": "Evaluador_A",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+        "filas": [["A", 101, "=1+1"]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert [e["tipo"] for e in res.errores] == [ERROR_FORMULA_SIN_CACHE]
+    assert res.errores[0]["celda"] == "C2"
+    assert (101, 1990) not in res.datos
+
+
+def test_una_formula_sin_cache_en_el_punto_tambien_se_reporta(crear_libro):
+    contenido = crear_libro([{
+        "titulo": "Evaluador_A",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+        "filas": [["A", "=100+1", 1]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert [e["tipo"] for e in res.errores] == [ERROR_FORMULA_SIN_CACHE]
+    assert res.errores[0]["celda"] == "B2"
+    assert res.datos == {}
+
+
+def test_una_hoja_con_datos_pero_sin_columnas_se_reporta(crear_libro):
+    contenido = crear_libro([{
+        "titulo": "Datos",
+        "encabezado": ["PUNTO", "X", "Y"],
+        "filas": [[101, -57.5, -25.3]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert [e["tipo"] for e in res.errores] == [ERROR_HOJA_NO_RECONOCIDA]
+    assert res.errores[0]["hoja"] == "Datos"
+    assert res.datos == {}
+
+
+def test_una_hoja_sin_id_ev_ni_nombre_de_evaluadora_se_reporta(crear_libro):
+    contenido = crear_libro([{
+        "titulo": "Datos",
+        "encabezado": ["PUNTO", "A1990"],
+        "filas": [[101, 1]],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert [e["tipo"] for e in res.errores] == [ERROR_HOJA_NO_RECONOCIDA]
+    assert res.datos == {}
+
+
+def test_las_hojas_auxiliares_no_generan_error(crear_libro):
+    contenido = crear_libro([
+        {
+            "titulo": "Portada",
+            "encabezado": ["Título", "Fecha"],
+            "filas": [["Libro de cruces", "2026-11-04"]],
+        },
+        {
+            "titulo": "Evaluador_A",
+            "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+            "filas": [["A", 101, 1]],
+        },
+    ])
+
+    res = importar_excel(contenido)
+
+    assert res.errores == []
+    assert res.datos[(101, 1990)] == {"A": ClaseCobertura.BOSQUE_NATURAL}
+
+
+def test_un_libro_sin_filas_de_cruce_se_reporta(crear_libro):
+    contenido = crear_libro([{
+        "titulo": "Evaluador_A",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A1990"],
+        "filas": [],
+    }])
+
+    res = importar_excel(contenido)
+
+    assert [e["tipo"] for e in res.errores] == [ERROR_HOJA_NO_RECONOCIDA]
+    assert res.datos == {}

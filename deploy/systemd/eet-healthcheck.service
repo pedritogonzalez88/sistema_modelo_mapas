@@ -1,0 +1,20 @@
+[Unit]
+Description=Healthcheck operativo del Validador EET
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+# Opcional: EET_TELEGRAM_TOKEN y EET_TELEGRAM_CHAT_ID (modo 600).
+EnvironmentFile=-/etc/eet/healthcheck.env
+# Ajuste el dominio real. El certificado y el destino de backup deben existir.
+ExecStart=/opt/sistema_modelo_mapas/.venv/bin/python \
+    /opt/sistema_modelo_mapas/scripts/healthcheck-production.py \
+    --base-url https://eet.example.gov.py \
+    --backup-dir /mnt/backup/eet \
+    --cert /opt/sistema_modelo_mapas/deploy/certs/fullchain.pem
+Nice=10
+TimeoutStartSec=2min
+StandardOutput=journal
+StandardError=journal

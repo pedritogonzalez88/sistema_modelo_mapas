@@ -18,7 +18,9 @@ RUN npm run css:build
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    UV_NO_CACHE=1 \
+    UV_CACHE_DIR=/tmp/uv-cache
 
 WORKDIR /app
 
@@ -32,10 +34,19 @@ COPY app ./app
 # Esquema versionado: el arranque aplica las migraciones antes de Uvicorn.
 COPY alembic.ini ./
 COPY migrations ./migrations
+# Utilidades de operación: preflight, bootstrap de administrador, smoke.
+COPY scripts ./scripts
 # CSS compilado en la etapa 1 (app.css está en .dockerignore)
 COPY --from=css /build/app/static/css/app.css ./app/static/css/app.css
 
-RUN mkdir -p uploads
+RUN mkdir -p uploads \
+    && addgroup --system --gid 10001 eet \
+    && adduser --system --uid 10001 --ingroup eet --home /app eet \
+    && chown -R eet:eet /app
+
+# La aplicación corre sin privilegios. El volumen de uploads debe pertenecer a
+# 10001:10001 en el host (ver deploy/README-production.md).
+USER 10001:10001
 
 EXPOSE 8000
 

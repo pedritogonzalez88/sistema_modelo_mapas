@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth.audit import actor_de_request
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import negar_acceso, require_permiso
 from app.core.config import settings
@@ -116,10 +117,14 @@ async def upload(request: Request, file: UploadFile,
     contenido = await file.read()
     _validar_tamano(len(contenido))
     try:
+        usuario = getattr(request.state, "usuario", None)
         entrega, _ = persist.crear_entrega_pendiente(
-            db, asistente_letra, semana, tipo, contenido)
+            db, asistente_letra, semana, tipo, contenido,
+            actor=actor_de_request(request),
+            cargado_por_id=getattr(usuario, "id", None),
+        )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     # Sin flash: la propia vista previa es el feedback de la carga.
     return RedirectResponse(f"/entregas/{entrega.id}/preview", status_code=303)
 
@@ -140,8 +145,16 @@ def preview(request: Request, entrega_id: int, db: Session = Depends(get_db)):
                      {"entrega": entrega_id, "alcance": "letra_ajena"})
 
     ruta = Path(entrega.archivo_path)
-    contenido = ruta.read_bytes()
-    parsed = importar_excel(contenido)
+    try:
+        contenido = ruta.read_bytes()
+        parsed = importar_excel(contenido)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="El archivo original de la entrega ya no está disponible.",
+        ) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     existentes = set(db.execute(select(ResultadoCruce.punto_id, ResultadoCruce.anio).where(
         ResultadoCruce.proyecto_id == entrega.proyecto_id)).all())
     nuevos = sum(1 for clave in parsed.datos if clave not in existentes)
@@ -162,11 +175,18 @@ def preview(request: Request, entrega_id: int, db: Session = Depends(get_db)):
 @router.post("/{entrega_id}/confirm",
              dependencies=[Depends(csrf_protect),
                            Depends(require_permiso("entregas.gestionar"))])
-def confirm(entrega_id: int, db: Session = Depends(get_db)):
+def confirm(request: Request, entrega_id: int, db: Session = Depends(get_db)):
     try:
-        stats = persist.confirmar_entrega(db, entrega_id)
+        stats = persist.confirmar_entrega(
+            db, entrega_id, actor=actor_de_request(request))
+    except persist.ErrorEntrega as exc:
+        # La vista previa es donde se ven los errores del archivo: se vuelve
+        # allí con un flash, en lugar de un 400 sin contexto.
+        return RedirectResponse(
+            f"/entregas/{entrega_id}/preview?error={exc.codigo}",
+            status_code=303)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     _ = stats
     return RedirectResponse("/cruces?ok=entrega_confirmada", status_code=303)
 
@@ -174,9 +194,12 @@ def confirm(entrega_id: int, db: Session = Depends(get_db)):
 @router.post("/{entrega_id}/reject",
              dependencies=[Depends(csrf_protect),
                            Depends(require_permiso("entregas.gestionar"))])
-def reject(entrega_id: int, motivo: str = Form(""), db: Session = Depends(get_db)):
+def reject(request: Request, entrega_id: int, motivo: str = Form(""),
+           db: Session = Depends(get_db)):
     try:
-        persist.rechazar_entrega(db, entrega_id, motivo or "Sin motivo registrado.")
+        persist.rechazar_entrega(
+            db, entrega_id, motivo or "Sin motivo registrado.",
+            actor=actor_de_request(request))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return RedirectResponse("/entregas?ok=entrega_rechazada", status_code=303)

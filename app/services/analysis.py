@@ -8,6 +8,7 @@ Sigue a Olofsson et al. (2014) y al protocolo 5.1-5.5:
   muestra: lista de pares (mapa, consenso) como ClaseCobertura.
 """
 from dataclasses import dataclass
+from math import isfinite
 
 from ..domain.classes import ClaseCobertura
 
@@ -37,11 +38,37 @@ def _redondear(valor):
 
 def analisis_seccion5(muestra, area_total_ha, pesos):
     k = len(_CLASES)
-    if pesos is None or len(pesos) != k or sum(pesos) <= 0:
+    if area_total_ha is None or not isfinite(float(area_total_ha)) \
+            or float(area_total_ha) <= 0:
+        raise ValueError("El área total debe ser un número positivo y finito.")
+    area_total_ha = float(area_total_ha)
+
+    if pesos is None:
         pesos = [1.0 / k] * k
-        nota = "Ponderadores no válidos; se usó una distribución uniforme."
+        nota = ("No se especificaron ponderadores; se usó una distribución "
+                "uniforme entre las 9 clases.")
     else:
-        pesos = [float(valor) for valor in pesos]
+        try:
+            pesos = [float(valor) for valor in pesos]
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "Los ponderadores deben ser números (proporciones de área)."
+            ) from exc
+        if len(pesos) != k:
+            raise ValueError(
+                f"Se esperaban {k} ponderadores (uno por clase) y llegaron "
+                f"{len(pesos)}."
+            )
+        if not all(isfinite(valor) and valor >= 0 for valor in pesos):
+            raise ValueError(
+                "Los ponderadores deben ser finitos y no negativos."
+            )
+        total_pesos = sum(pesos)
+        if abs(total_pesos - 1.0) > 1e-6:
+            raise ValueError(
+                "Los ponderadores deben sumar 1 (proporciones de superficie); "
+                f"la suma recibida es {total_pesos:.6f}."
+            )
         nota = ""
     # Matriz de confusion muestral: filas = mapa, columnas = referencia.
     matriz = [[0] * k for _ in range(k)]
@@ -50,7 +77,6 @@ def analisis_seccion5(muestra, area_total_ha, pesos):
             continue
         matriz[_indice_clase(mapa)][_indice_clase(consenso)] += 1
     filas = [sum(fila) for fila in matriz]
-    columnas = [sum(matriz[i][j] for i in range(k)) for j in range(k)]
     # Matriz de error ponderada: p_ij = W_i * n_ij / n_i (proporciones de area).
     proporcion = [[0.0] * k for _ in range(k)]
     for i in range(k):
@@ -89,14 +115,11 @@ def analisis_seccion5(muestra, area_total_ha, pesos):
             exactitud_productor.append(pesos[j] * proporcion[j][j] / p_col[j])
         else:
             exactitud_productor.append(0.0)
-    # Kappa sobre conteos muestrales (acuerdo observado vs. esperado por azar).
-    total = sum(filas)
-    if total > 0:
-        po = sum(matriz[j][j] for j in range(k)) / total
-        pe = sum(filas[i] * columnas[i] for i in range(k)) / total ** 2
-        kappa = (po - pe) / (1 - pe) if pe < 1 else 0.0
-    else:
-        kappa = 0.0
+    # Kappa ponderado por área, coherente con la exactitud global:
+    # po = diagonal de la matriz ponderada; pe = producto de marginales.
+    po = exactitud_total
+    pe = sum(p_fila[i] * p_col[i] for i in range(k))
+    kappa = (po - pe) / (1 - pe) if pe < 1 else 0.0
     return ResultadoSeccion5(
         clases=_CLASES,
         ponderadores=[_redondear(valor) for valor in pesos],

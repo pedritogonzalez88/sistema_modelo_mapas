@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+from app.auth.audit import actor_de_request
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import require_permiso
 from app.core.database import get_db
@@ -156,9 +157,12 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
             datos["dictamen"] = form["dictamen"]
         if "clase_definitiva" in form and form["clase_definitiva"]:
             try:
-                datos["clase_definitiva"] = int(form["clase_definitiva"])
+                clase = int(form["clase_definitiva"])
             except (TypeError, ValueError):
                 raise ValueError("La clase definitiva debe ser un número del 1 al 9.") from None
+            if not 1 <= clase <= 9:
+                raise ValueError("La clase definitiva debe ser un número del 1 al 9.")
+            datos["clase_definitiva"] = clase
         # Los sensores se pueden vaciar: el marcador distingue "no enviado" de "ninguno".
         if "sensores_present" in form:
             datos["sensores"] = form.getlist("sensores")
@@ -187,7 +191,8 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
                 datos.get("clase_definitiva") or ficha.clase_definitiva):
             raise ValueError(MENSAJE_CLASE_REQUERIDA)
 
-        persist.actualizar_ficha(db, ficha_id, datos)
+        persist.actualizar_ficha(db, ficha_id, datos,
+                                 actor=actor_de_request(request))
     except ValueError as exc:
         # Error de validación: se vuelve a pintar la ficha (400, HTML) sin
         # perder lo escrito y sin exponer el error como JSON.
@@ -207,9 +212,11 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
 
 @router.post("/{ficha_id}/evento", dependencies=[Depends(csrf_protect),
                                                 Depends(require_permiso("qaqc.decidir"))])
-def evento(ficha_id: int, evento: str = Form(...), db: Session = Depends(get_db)):
+def evento(request: Request, ficha_id: int, evento: str = Form(...),
+           db: Session = Depends(get_db)):
     try:
-        persist.transicionar_ficha(db, ficha_id, evento)
+        persist.transicionar_ficha(db, ficha_id, evento,
+                                   actor=actor_de_request(request))
     except ValueError as exc:
         db.rollback()
         if "clase definitiva" in str(exc).lower():

@@ -62,6 +62,15 @@ def test_el_logout_del_shell_es_post_con_csrf():
     assert any(marcador in encontrados[0] for marcador in MARCADORES_CSRF)
 
 
+def test_acciones_de_usuario_usan_dialogo_modal():
+    """La tabla de usuarios abre las acciones en un <dialog> accesible."""
+    texto = (PLANTILLAS / "auth" / "usuarios.html").read_text(encoding="utf-8")
+    assert "<dialog" in texto
+    assert 'data-modal-open="acciones-' in texto
+    assert 'aria-haspopup="dialog"' in texto
+    assert "data-modal-close" in texto
+
+
 def test_las_pantallas_de_acceso_incluyen_csrf():
     for nombre in ("auth/login.html", "auth/cambiar_password.html",
                    "auth/mfa.html", "auth/seguridad.html",

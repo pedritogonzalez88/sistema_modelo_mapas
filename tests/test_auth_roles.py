@@ -93,12 +93,14 @@ def roles_db():
 
     def entrega(letra: str) -> SimpleNamespace:
         """Entrega mínima: la prueba de alcance no abre el .xlsx."""
-        numero_semana = uuid.uuid4().int % 100
+        # Semana única por prueba para no chocar con la restricción
+        # (proyecto, letra, semana, versión).
+        semana = f"2026-W{uuid.uuid4().hex[:8]}"
         with SessionLocal() as db:
             fila = Entrega(
                 proyecto_id=proyecto_id,
                 asistente_letra=letra,
-                semana=f"2026-W{numero_semana:02d}",
+                semana=semana,
                 tipo="avance",
                 version=1,
                 archivo_path="",
@@ -276,6 +278,57 @@ def test_cargador_lee_analisis_pero_no_dictamina_ni_exporta(cliente, auth_activa
         assert 'action="/malla/upload"' in cliente.get("/malla").text
         assert 'action="/mapa/upload"' in cliente.get("/mapa").text
         assert 'action="/entregas/upload"' in cliente.get("/entregas").text
+
+
+def test_la_carga_de_entrega_audita_al_usuario_real(cliente, auth_activa, roles_db,
+                                                   crear_libro):
+    from pathlib import Path
+
+    from app.core.database import SessionLocal
+    from app.models import Auditoria, Entrega
+
+    cargador = roles_db.usuario("cargador")
+    punto = 880000 + uuid.uuid4().int % 9999
+    contenido = crear_libro([{
+        "titulo": "Evaluador_A",
+        "encabezado": ["ID_EV", "ID_PUNTO", "A2008"],
+        "filas": [["A", punto, 1]],
+    }])
+    semana = f"2026-W{uuid.uuid4().hex[:8]}"
+    entrega_id: int | None = None
+    ruta: Path | None = None
+    try:
+        with _sesion(cliente, cargador):
+            token = _csrf_de_sesion(cliente)
+            respuesta = cliente.post(
+                "/entregas/upload",
+                data={"csrf_token": token, "asistente_letra": "A",
+                      "semana": semana, "tipo": "avance"},
+                files={"file": ("avance.xlsx", contenido,
+                                "application/vnd.openxmlformats-officedocument."
+                                "spreadsheetml.sheet")},
+                follow_redirects=False,
+            )
+        assert respuesta.status_code == 303, respuesta.text
+
+        with SessionLocal() as db:
+            entrega = db.scalar(select(Entrega).where(Entrega.semana == semana))
+            assert entrega is not None
+            assert entrega.cargada_por_id == cargador.id
+            fila = db.scalar(select(Auditoria).where(
+                Auditoria.accion == "entrega_recibida",
+                Auditoria.entidad_id == str(entrega.id)))
+            assert fila is not None, "la carga debe quedar auditada"
+            assert fila.actor == f"usuario:{cargador.id}"
+            entrega_id = entrega.id
+            ruta = Path(entrega.archivo_path)
+    finally:
+        if entrega_id is not None:
+            with SessionLocal() as db:
+                db.execute(delete(Entrega).where(Entrega.id == entrega_id))
+                db.commit()
+        if ruta is not None:
+            ruta.unlink(missing_ok=True)
 
 
 def test_cargador_lee_la_ficha_sin_formularios_de_dictamen(cliente, auth_activa,

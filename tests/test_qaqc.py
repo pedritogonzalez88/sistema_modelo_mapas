@@ -1,13 +1,16 @@
 """Pruebas para app.domain.qaqc."""
 import pytest
 
+from app.domain.classes import SIN_CONSENSO, ClaseCobertura
 from app.domain.qaqc import (
     ESTADO_INICIAL,
     EstadoQAQC,
     EventoQAQC,
     eventos_disponibles,
+    requiere_ficha_qaqc,
     transicion,
 )
+from app.services.store import Store
 
 
 def test_estado_inicial():
@@ -61,3 +64,38 @@ def test_eventos_disponibles_pendiente_aprobacion():
 
 def test_eventos_disponibles_estado_final():
     assert eventos_disponibles(EstadoQAQC.REEMPLAZO_COMPLETADO) == []
+
+
+@pytest.mark.parametrize("valores,esperado", [
+    ((1, 1, 1), False),                 # unanimidad
+    ((1, 1, 5), False),                 # mayoría 2/3: se consolida sin ficha
+    ((1, None, 1), False),              # terna incompleta: no es desacuerdo
+    ((1, 5, None), False),
+    ((None, None, None), False),
+    ((1, 5, 6), True),                  # discrepancia absoluta
+    ((1, 1, SIN_CONSENSO), True),       # SC en terna completa
+])
+def test_requiere_ficha_qaqc(valores, esperado):
+    assert requiere_ficha_qaqc(valores) is esperado
+
+
+def test_store_no_abre_ficha_para_mayoria():
+    store = Store()
+    store.cargar({(1, 2020): {
+        "A": ClaseCobertura.BOSQUE_NATURAL,
+        "B": ClaseCobertura.BOSQUE_NATURAL,
+        "C": ClaseCobertura.PASTIZALES,
+    }})
+    store.ejecutar_cruce(1, 2020)
+    assert store.pendientes() == []
+
+
+def test_store_abre_ficha_para_discrepancia():
+    store = Store()
+    store.cargar({(1, 2020): {
+        "A": ClaseCobertura.BOSQUE_NATURAL,
+        "B": ClaseCobertura.PASTIZALES,
+        "C": ClaseCobertura.HUMEDALES,
+    }})
+    store.ejecutar_cruce(1, 2020)
+    assert len(store.pendientes()) == 1

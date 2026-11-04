@@ -39,6 +39,12 @@ def actor_de(usuario: Usuario | None) -> str:
     return f"usuario:{identificador}" if identificador is not None else ACTOR_SISTEMA
 
 
+def actor_de_request(request) -> str:
+    """Actor de la petición actual; ``sistema`` si no hay sesión."""
+    estado = getattr(request, "state", None)
+    return actor_de(getattr(estado, "usuario", None) if estado is not None else None)
+
+
 def _clave_reservada(clave: str) -> bool:
     minuscula = str(clave).casefold()
     return any(fragmento in minuscula for fragmento in _CLAVES_RESERVADAS)
