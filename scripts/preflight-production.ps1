@@ -62,8 +62,12 @@ Check (((& $get 'EET_TRUSTED_PROXY_IPS') -ne '')) 'EET_TRUSTED_PROXY_IPS configu
 Check (((& $get 'EET_EXPOSE_DOCS') -match '^(?i:false)$')) 'EET_EXPOSE_DOCS=false'
 Check (((& $get 'EET_SECRET_KEY').Length -ge 32)) 'EET_SECRET_KEY >= 32 caracteres'
 Check (((& $get 'EET_AUTH_PEPPER').Length -ge 16)) 'EET_AUTH_PEPPER >= 16 caracteres'
+Check (((& $get 'POSTGRES_USER') -ne '')) 'POSTGRES_USER configurado'
+Check (((& $get 'POSTGRES_DB') -ne '')) 'POSTGRES_DB configurado'
 Check (((& $get 'POSTGRES_PASSWORD').Length -ge 24)) 'POSTGRES_PASSWORD >= 24 caracteres'
-Check (((& $get 'EET_DATABASE_URL').Contains(":$((& $get 'POSTGRES_PASSWORD'))@"))) 'EET_DATABASE_URL usa el password de PostgreSQL'
+Check (((& $get 'POSTGRES_PASSWORD') -match '^[A-Za-z0-9_-]+$')) 'POSTGRES_PASSWORD URL-safe (sin @ : / % # ?)'
+Check (((& $get 'EET_DATABASE_URL')).Contains("://$((& $get 'POSTGRES_USER')):$((& $get 'POSTGRES_PASSWORD'))@")) 'EET_DATABASE_URL usa usuario y password de PostgreSQL'
+Check (((& $get 'EET_DATABASE_URL')).Contains("/$((& $get 'POSTGRES_DB'))")) 'EET_DATABASE_URL usa POSTGRES_DB'
 Check (-not ($map.Keys | Where-Object { $_ -like 'EET_DEMO_*' })) 'Sin variables EET_DEMO_*'
 Check (-not (($map.Values | Where-Object { $_ -match 'CAMBIAR' }))) 'Sin valores CAMBIAR pendientes'
 

@@ -126,6 +126,25 @@ El backup incluye PostgreSQL/PostGIS y `uploads`, se cifra con AES-256-CBC
 (PBKDF2) y verifica la restauración en una base temporal antes de publicar los
 archivos `.enc`.
 
+## Easypanel
+
+No use el `docker-compose.yml` de desarrollo en Easypanel: tiene
+`container_name` y `ports`, que Easypanel administra. Use el modo
+**App/Dockerfile** o, si prefiere Compose, `docker-compose.easypanel.yml`.
+Guía completa: `deploy/README-easypanel.md`.
+
+Para generar las variables que se pegan en **Environment**:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/prepare-easypanel-env.ps1 `
+  -Dominio "eet.aep.gov.py" -SmtpHost "smtp.aep.gov.py" `
+  -SmtpUser "validador" -AdminEmail "admin@aep.gov.py"
+```
+
+El script crea `deploy/.env.easypanel` (gitignored) con password de base
+URL-safe y secretos aleatorios. Easypanel no lee ese archivo: hay que copiar su
+contenido al editor de Environment.
+
 ## Monitoreo
 
 ```powershell

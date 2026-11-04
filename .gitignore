@@ -10,5 +10,6 @@ node_modules/
 # Entorno de staging (A6.12): secretos y certificados locales nunca se versionan.
 deploy/.env.staging
 deploy/.env.production
+deploy/.env.easypanel
 deploy/certs/
 deploy/.env.local

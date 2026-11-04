@@ -10,14 +10,14 @@ services:
     container_name: eet-db-prod
     restart: unless-stopped
     environment:
-      POSTGRES_DB: eet
-      POSTGRES_USER: eet
+      POSTGRES_DB: ${POSTGRES_DB:-eet}
+      POSTGRES_USER: ${POSTGRES_USER:-eet}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env.production}
     volumes:
       - eet-prod-pgdata:/var/lib/postgresql/data
     shm_size: 256m
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eet -d eet"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eet} -d ${POSTGRES_DB:-eet}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -45,7 +45,7 @@ services:
       - ./.env.production
     environment:
       # El password debe ser URL-safe (ver prepare-production.ps1).
-      EET_DATABASE_URL: postgresql+psycopg://eet:${POSTGRES_PASSWORD}@db:5432/eet
+      EET_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-eet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-eet}
     depends_on:
       db:
         condition: service_healthy

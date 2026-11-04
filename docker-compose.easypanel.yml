@@ -1,0 +1,79 @@
+# Compose para Easypanel (servicio de tipo Compose).
+#
+# Easypanel administra el proxy, TLS y los dominios. Por eso este archivo NO
+# usa container_name, ports, nginx ni IPs fijas: solo app + PostgreSQL/PostGIS.
+#
+# En Easypanel:
+#   - Build Path: /
+#   - Docker Compose File: docker-compose.easypanel.yml
+#   - Environment: completar las variables de .env.example y habilitar
+#     "Create .env file" para que Docker Compose las inyecte.
+#   - Domain: servicio interno "app", puerto 8000.
+#
+# Alternativa recomendada: usar un servicio App (Dockerfile = Dockerfile) y
+# una base PostGIS aparte, sin Compose. Ver deploy/README-easypanel.md.
+name: eet-easypanel
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # Easypanel escribe .env desde su editor de Environment.
+    env_file:
+      - .env
+    volumes:
+      - eet-uploads:/app/uploads
+    expose:
+      - "8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 1.5
+    pids_limit: 256
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          .venv/bin/python -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"
+      interval: 15s
+      timeout: 8s
+      retries: 12
+      start_period: 90s
+
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eet}
+      POSTGRES_USER: ${POSTGRES_USER:-eet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en Environment}
+    volumes:
+      - eet-pgdata:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    shm_size: 256m
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eet} -d ${POSTGRES_DB:-eet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  eet-pgdata:
+  eet-uploads:
