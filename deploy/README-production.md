@@ -30,9 +30,23 @@ powershell -ExecutionPolicy Bypass -File scripts/prepare-production.ps1 `
   -VpnCidr "10.20.0.0/16"
 ```
 
-El script crea `deploy/.env.production` (gitignored). No lo suba al
-repositorio ni lo comparta. También puede copiar
-`deploy/.env.production.example` y completarlo a mano.
+En Linux/WSL:
+
+```bash
+bash scripts/prepare-production.sh \
+  --dominio "eet.aep.gov.py" \
+  --smtp-host "smtp.aep.gov.py" \
+  --smtp-user "validador" \
+  --admin-email "admin@aep.gov.py" \
+  --vpn-cidr "10.20.0.0/16"
+```
+
+Ambos crean `deploy/.env.production` (gitignored) con secretos aleatorios y
+password de base URL-safe. No lo suba al repositorio ni lo comparta. También
+puede copiar `deploy/.env.production.example` y completarlo a mano.
+
+> En WSL, si el repositorio está en `/mnt/c`, `chmod 600` puede no aplicarse.
+> Ejecute el script sobre una ruta ext4 o habilite metadata en `/etc/wsl.conf`.
 
 Revise especialmente:
 

@@ -85,10 +85,15 @@ El log del watchdog está en `%LOCALAPPDATA%\EET\keep-local.log`.
 Guía completa: `deploy/README-production.md`.
 
 ```powershell
-# 1. Generar deploy/.env.production con secretos y datos reales
+# 1. Generar deploy/.env.production con secretos y datos reales (Windows)
 powershell -ExecutionPolicy Bypass -File scripts/prepare-production.ps1 `
   -Dominio "eet.aep.gov.py" -SmtpHost "smtp.aep.gov.py" `
   -SmtpUser "validador" -AdminEmail "admin@aep.gov.py"
+
+# 1b. Equivalente en Linux/WSL
+bash scripts/prepare-production.sh `
+  --dominio "eet.aep.gov.py" --smtp-host "smtp.aep.gov.py" `
+  --smtp-user "validador" --admin-email "admin@aep.gov.py"
 
 # 2. Copiar fullchain.pem/privkey.pem a deploy/certs y validar
 powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1
