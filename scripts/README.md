@@ -95,6 +95,13 @@ bash scripts/prepare-production.sh `
   --dominio "eet.aep.gov.py" --smtp-host "smtp.aep.gov.py" `
   --smtp-user "validador" --admin-email "admin@aep.gov.py"
 
+# 1c. TLS en nginx externo (app escucha HTTP en 127.0.0.1:8000)
+bash scripts/prepare-production.sh --http-only `
+  --dominio "eet.aep.gov.py" --smtp-host "smtp.aep.gov.py" `
+  --smtp-user "validador" --admin-email "admin@aep.gov.py"
+# Luego: deploy/docker-compose.http.yml + deploy/nginx.external.conf
+# Guía: deploy/README-http.md
+
 # 2. Copiar fullchain.pem/privkey.pem a deploy/certs y validar
 powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1
 

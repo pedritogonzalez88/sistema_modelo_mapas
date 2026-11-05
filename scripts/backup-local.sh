@@ -15,6 +15,8 @@ VERIFY=0
 REPO="/opt/sistema_modelo_mapas"
 KEY_FILE=""
 CONTAINER=""
+DB_USER=""
+DB_NAME=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -23,6 +25,8 @@ while [[ $# -gt 0 ]]; do
         --repo) REPO="${2:-$REPO}"; shift 2 ;;
         --key-file) KEY_FILE="${2:-}"; shift 2 ;;
         --container) CONTAINER="${2:-}"; shift 2 ;;
+        --db-user) DB_USER="${2:-}"; shift 2 ;;
+        --db-name) DB_NAME="${2:-}"; shift 2 ;;
         --verify) VERIFY=1; shift ;;
         *) echo "Argumento desconocido: $1" >&2; exit 2 ;;
     esac
@@ -47,6 +51,16 @@ if [[ -z "$CONTAINER" ]]; then
 fi
 [[ -n "$CONTAINER" ]] || { echo "No hay contenedor de PostgreSQL corriendo." >&2; exit 1; }
 
+# Toma usuario/base del propio contenedor para no depender de eet/eet.
+if [[ -z "$DB_USER" ]]; then
+    DB_USER="$(docker exec "$CONTAINER" printenv POSTGRES_USER 2>/dev/null | tr -d '\r' || true)"
+fi
+if [[ -z "$DB_NAME" ]]; then
+    DB_NAME="$(docker exec "$CONTAINER" printenv POSTGRES_DB 2>/dev/null | tr -d '\r' || true)"
+fi
+DB_USER="${DB_USER:-eet}"
+DB_NAME="${DB_NAME:-eet}"
+
 mkdir -p "$DEST"
 STAMP=$(date +%Y%m%d-%H%M%S)
 TMP=$(mktemp -d)
@@ -55,7 +69,7 @@ DUMP_PLAIN="$TMP/eet.dump"
 UPLOADS_PLAIN="$TMP/uploads.tgz"
 
 echo "== Dump de PostgreSQL ($CONTAINER) =="
-docker exec "$CONTAINER" pg_dump -U eet -d eet -Fc -f /tmp/eet_backup.dump
+docker exec "$CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc -f /tmp/eet_backup.dump
 docker cp "$CONTAINER:/tmp/eet_backup.dump" "$DUMP_PLAIN"
 docker exec "$CONTAINER" rm -f /tmp/eet_backup.dump
 
@@ -69,19 +83,19 @@ docker exec "$CONTAINER" pg_restore --list /tmp/eet_verify.dump >/dev/null
 
 if [[ "$VERIFY" == "1" ]]; then
     echo "== Restauración en base temporal =="
-    docker exec "$CONTAINER" psql -U eet -d postgres -c \
+    docker exec "$CONTAINER" psql -U "$DB_USER" -d postgres -c \
         "DROP DATABASE IF EXISTS eet_restore_test;" >/dev/null
-    docker exec "$CONTAINER" psql -U eet -d postgres -c \
+    docker exec "$CONTAINER" psql -U "$DB_USER" -d postgres -c \
         "CREATE DATABASE eet_restore_test;" >/dev/null
-    docker exec "$CONTAINER" psql -U eet -d eet_restore_test -c \
+    docker exec "$CONTAINER" psql -U "$DB_USER" -d eet_restore_test -c \
         "CREATE EXTENSION IF NOT EXISTS postgis;" >/dev/null
-    docker exec "$CONTAINER" pg_restore -U eet -d eet_restore_test \
+    docker exec "$CONTAINER" pg_restore -U "$DB_USER" -d eet_restore_test \
         --no-owner --no-privileges --exit-on-error /tmp/eet_verify.dump >/dev/null
-    USUARIOS=$(docker exec "$CONTAINER" psql -U eet -d eet_restore_test \
+    USUARIOS=$(docker exec "$CONTAINER" psql -U "$DB_USER" -d eet_restore_test \
         -Atc "select count(*) from usuarios;")
-    CRUCES=$(docker exec "$CONTAINER" psql -U eet -d eet_restore_test \
+    CRUCES=$(docker exec "$CONTAINER" psql -U "$DB_USER" -d eet_restore_test \
         -Atc "select count(*) from resultados_cruce;")
-    docker exec "$CONTAINER" psql -U eet -d postgres -c \
+    docker exec "$CONTAINER" psql -U "$DB_USER" -d postgres -c \
         "DROP DATABASE eet_restore_test;" >/dev/null
     echo "Restauración OK: usuarios=$USUARIOS, cruces=$CRUCES"
 fi

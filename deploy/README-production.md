@@ -7,6 +7,10 @@ un disco/NAS externo.
 > **Easypanel:** no use este compose dentro de Easypanel. Easypanel debe
 > desplegar la app en modo **App (Dockerfile = `Dockerfile`)** y administrar
 > TLS/proxy. Guía específica: `deploy/README-easypanel.md`.
+>
+> **TLS en un nginx externo:** si el certificado lo termina un nginx del host,
+> use el modo HTTP (`--http-only` / `-HttpOnly`) y
+> `deploy/docker-compose.http.yml`. Guía: `deploy/README-http.md`.
 
 ## 1. Requisitos
 
@@ -45,6 +49,11 @@ Ambos crean `deploy/.env.production` (gitignored) con secretos aleatorios y
 password de base URL-safe. No lo suba al repositorio ni lo comparta. También
 puede copiar `deploy/.env.production.example` y completarlo a mano.
 
+Para **TLS terminado en un nginx externo**, agregue `--http-only` (bash) o
+`-HttpOnly` (PowerShell). El script ajusta `EET_TRUSTED_PROXY_IPS` a
+`127.0.0.1/32` y añade `EET_HTTP_BIND`/`EET_HTTP_PORT`. Ver
+`deploy/README-http.md`.
+
 > En WSL, si el repositorio está en `/mnt/c`, `chmod 600` puede no aplicarse.
 > Ejecute el script sobre una ruta ext4 o habilite metadata en `/etc/wsl.conf`.
 
@@ -79,6 +88,12 @@ powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1
 
 Valida variables, ausencia de demo/placeholders, certificados, `docker compose
 config` y `Settings()` en la imagen. Debe terminar en **PREFLIGHT OK**.
+
+En modo HTTP con nginx externo no hay certificados locales:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1 -HttpOnly
+```
 
 ## 5. Levantar el stack
 

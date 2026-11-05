@@ -10,6 +10,10 @@
 #       --admin-email "admin@aep.gov.py" \
 #       --vpn-cidr "10.20.0.0/16"
 #
+# Modo HTTP con nginx externo que termina TLS:
+#   ... --http-only
+# La app escucha en 127.0.0.1:8000 y confía en 127.0.0.1/32.
+#
 # El password SMTP se solicita de forma interactiva si no se pasa
 # --smtp-password. Evite pasarlo por argumento en servidores compartidos:
 # quedaría visible en el historial/procesos.
@@ -31,13 +35,25 @@ VPN_CIDR=""
 DB_HOST="db"
 DB_USER="eet"
 DB_NAME="eet"
-TRUSTED_PROXY_IPS="172.30.0.10"
+TRUSTED_PROXY_IPS=""
 ADMIN_INTERNAL_ONLY="true"
+HTTP_ONLY=0
+HTTP_BIND="127.0.0.1"
+HTTP_PORT="8000"
 FORCE=0
 
 uso() {
-    sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     cat <<'EOF'
+Genera deploy/.env.production con secretos aleatorios y datos de producción.
+No imprime secretos. El archivo queda gitignored y con permisos 600.
+
+Uso:
+  bash scripts/prepare-production.sh \
+      --dominio "eet.aep.gov.py" \
+      --smtp-host "smtp.aep.gov.py" \
+      --smtp-user "validador" \
+      --admin-email "admin@aep.gov.py" \
+      --vpn-cidr "10.20.0.0/16"
 
 Opciones:
   --dominio DOMINIO          Dominio público, sin https:// (obligatorio)
@@ -51,7 +67,10 @@ Opciones:
   --db-host HOST             Host de PostgreSQL (por defecto db)
   --db-user USUARIO          Usuario de PostgreSQL (por defecto eet)
   --db-name NOMBRE           Base de datos (por defecto eet)
-  --trusted-proxy-ips IPS    Proxy de confianza (por defecto 172.30.0.10)
+  --trusted-proxy-ips IPS    Proxy de confianza (según el modo)
+  --http-only                TLS en nginx externo; app en 127.0.0.1:8000
+  --http-bind IP             Interfaz de la app en modo HTTP (127.0.0.1)
+  --http-port PUERTO         Puerto de la app en modo HTTP (8000)
   --public-admin             EET_ADMIN_INTERNAL_ONLY=false (Easypanel/Internet)
   --force                    Reemplaza deploy/.env.production si existe
   --help                     Muestra esta ayuda
@@ -77,6 +96,9 @@ while [[ $# -gt 0 ]]; do
         --db-user) DB_USER="${2:-}"; shift 2 ;;
         --db-name) DB_NAME="${2:-}"; shift 2 ;;
         --trusted-proxy-ips) TRUSTED_PROXY_IPS="${2:-}"; shift 2 ;;
+        --http-only) HTTP_ONLY=1; shift ;;
+        --http-bind) HTTP_BIND="${2:-}"; shift 2 ;;
+        --http-port) HTTP_PORT="${2:-}"; shift 2 ;;
         --public-admin) ADMIN_INTERNAL_ONLY="false"; shift ;;
         --force) FORCE=1; shift ;;
         --help|-h) uso; exit 0 ;;
@@ -90,8 +112,18 @@ done
 [[ -n "$ADMIN_EMAIL" ]] || die "Falta --admin-email."
 command -v openssl >/dev/null 2>&1 || die "Se requiere openssl."
 [[ "$SMTP_PORT" =~ ^[0-9]+$ ]] || die "SMTP_PORT inválido."
+[[ "$HTTP_PORT" =~ ^[0-9]+$ ]] || die "HTTP_PORT inválido."
+[[ -n "$HTTP_BIND" ]] || die "HTTP_BIND no puede quedar vacío."
 [[ "$DB_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "DB_USER inválido."
 [[ "$DB_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "DB_NAME inválido."
+
+if [[ -z "$TRUSTED_PROXY_IPS" ]]; then
+    if [[ "$HTTP_ONLY" == "1" ]]; then
+        TRUSTED_PROXY_IPS="127.0.0.1/32"
+    else
+        TRUSTED_PROXY_IPS="172.30.0.10"
+    fi
+fi
 
 if [[ -e "$DESTINO" && "$FORCE" != "1" ]]; then
     die "Ya existe $DESTINO. Use --force para reemplazarlo."
@@ -134,7 +166,10 @@ env_quote() {
     printf '"%s"' "$valor"
 }
 
-mkdir -p "$CERTS" "$UPLOADS"
+mkdir -p "$UPLOADS"
+if [[ "$HTTP_ONLY" != "1" ]]; then
+    mkdir -p "$CERTS"
+fi
 umask 077
 TMP="$(mktemp "${DESTINO}.XXXXXX")"
 trap 'rm -f "$TMP"' EXIT
@@ -164,6 +199,10 @@ trap 'rm -f "$TMP"' EXIT
     printf 'EET_ADMIN_INTERNAL_ONLY=%s\n' "$ADMIN_INTERNAL_ONLY"
     printf 'EET_INTERNAL_CIDRS=%s\n' "$CIDRS"
     printf 'EET_TRUSTED_PROXY_IPS=%s\n' "$TRUSTED_PROXY_IPS"
+    if [[ "$HTTP_ONLY" == "1" ]]; then
+        printf 'EET_HTTP_BIND=%s\n' "$HTTP_BIND"
+        printf 'EET_HTTP_PORT=%s\n' "$HTTP_PORT"
+    fi
     printf 'EET_EXPOSE_DOCS=false\n'
     printf 'EET_MAX_UPLOAD_MB=20\n'
     printf 'EET_LDAP_ENABLED=false\n'
@@ -188,13 +227,21 @@ else
     PROPIETARIO_UPLOADS="Ejecute: sudo install -d -o 10001 -g 10001 -m 0750 $UPLOADS"
 fi
 
+if [[ "$HTTP_ONLY" == "1" ]]; then
+    COMPOSE_FILE="deploy/docker-compose.http.yml"
+    PASO_TLS="1. Configure deploy/nginx.external.conf en el nginx externo (TLS) y recárguelo."
+else
+    COMPOSE_FILE="deploy/docker-compose.prod.yml"
+    PASO_TLS="1. Copie fullchain.pem y privkey.pem en deploy/certs/."
+fi
+
 printf 'Configuración creada: %s\n' "$DESTINO"
 printf 'Correo administrador para el bootstrap: %s\n' "$ADMIN_EMAIL"
 printf '\nSiguientes pasos:\n'
 printf '  0. %s\n' "$PROPIETARIO_UPLOADS"
-printf '  1. Copie fullchain.pem y privkey.pem en deploy/certs/.\n'
-printf '  2. Valide: docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml config --quiet\n'
-printf '  3. Levante: docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml up -d --build\n'
+printf '  %s\n' "$PASO_TLS"
+printf '  2. Valide: docker compose --env-file deploy/.env.production -f %s config --quiet\n' "$COMPOSE_FILE"
+printf '  3. Levante: docker compose --env-file deploy/.env.production -f %s up -d --build\n' "$COMPOSE_FILE"
 printf '  4. Cree el admin:\n'
-printf '     docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml \\\n'
+printf '     docker compose --env-file deploy/.env.production -f %s \\\n' "$COMPOSE_FILE"
 printf '       run --rm --no-deps app .venv/bin/python scripts/bootstrap_admin.py\n'

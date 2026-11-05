@@ -14,6 +14,7 @@ param(
     [Parameter(Mandatory = $true)][string]$AdminEmail,
     [string]$EmailFrom,
     [string]$VpnCidr,
+    [switch]$HttpOnly,
     [switch]$Force
 )
 
@@ -68,6 +69,8 @@ if ($VpnCidr) {
     $cidrs = "$cidrs,$($VpnCidr.Trim())"
 }
 
+$trustedProxy = if ($HttpOnly) { "127.0.0.1/32" } else { "172.30.0.10" }
+
 $lineas = @(
     "# Generado por scripts/prepare-production.ps1 — NO versionar.",
     "EET_ENVIRONMENT=prod",
@@ -91,7 +94,12 @@ $lineas = @(
     "EET_EMAIL_FROM=$(Quote-Env $EmailFrom)",
     "EET_ADMIN_INTERNAL_ONLY=true",
     "EET_INTERNAL_CIDRS=$cidrs",
-    "EET_TRUSTED_PROXY_IPS=172.30.0.10",
+    "EET_TRUSTED_PROXY_IPS=$trustedProxy"
+)
+if ($HttpOnly) {
+    $lineas += @("EET_HTTP_BIND=127.0.0.1", "EET_HTTP_PORT=8000")
+}
+$lineas += @(
     "EET_EXPOSE_DOCS=false",
     "EET_MAX_UPLOAD_MB=20",
     "EET_LDAP_ENABLED=false"
@@ -99,7 +107,9 @@ $lineas = @(
 
 $uploads = Join-Path $repo 'uploads'
 New-Item -ItemType Directory -Force -Path (Split-Path $destino) | Out-Null
-New-Item -ItemType Directory -Force -Path $certs | Out-Null
+if (-not $HttpOnly) {
+    New-Item -ItemType Directory -Force -Path $certs | Out-Null
+}
 New-Item -ItemType Directory -Force -Path $uploads | Out-Null
 [IO.File]::WriteAllText($destino, (($lineas -join "`n") + "`n"),
     [Text.UTF8Encoding]::new($false))
@@ -107,13 +117,20 @@ New-Item -ItemType Directory -Force -Path $uploads | Out-Null
 # Restringir el archivo al usuario actual (NTFS). Si falla, no bloquea.
 & icacls.exe $destino /inheritance:r /grant:r "$($env:USERNAME):(F)" 2>$null | Out-Null
 
+$composeFile = if ($HttpOnly) { "deploy/docker-compose.http.yml" } else { "deploy/docker-compose.prod.yml" }
+$pasoTls = if ($HttpOnly) {
+    "1. Configure deploy/nginx.external.conf en el nginx externo (TLS) y recárguelo."
+} else {
+    "1. Copie fullchain.pem y privkey.pem en deploy/certs/."
+}
+
 Write-Host "Configuración creada: $destino"
 Write-Host "Correo administrador para el bootstrap: $AdminEmail"
 Write-Host ""
 Write-Host "Siguientes pasos:"
 Write-Host "  0. En el host Linux, dé al directorio de uploads el UID del contenedor:"
 Write-Host "     sudo install -d -o 10001 -g 10001 -m 0750 $uploads"
-Write-Host "  1. Copie fullchain.pem y privkey.pem en deploy/certs/."
-Write-Host "  2. Ejecute: powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1"
-Write-Host "  3. Levante: docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml up -d --build"
+Write-Host "  $pasoTls"
+Write-Host "  2. Ejecute: powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1 -HttpOnly:$HttpOnly"
+Write-Host "  3. Levante: docker compose --env-file deploy/.env.production -f $composeFile up -d --build"
 Write-Host "  4. Cree el admin: scripts/bootstrap-admin.ps1 (o el comando del README)."

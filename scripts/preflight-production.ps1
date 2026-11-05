@@ -4,10 +4,14 @@
 param(
     [string]$EnvFile = 'deploy/.env.production',
     [string]$ComposeFile = 'deploy/docker-compose.prod.yml',
+    [switch]$HttpOnly,
     [switch]$SkipSettings
 )
 
 $ErrorActionPreference = 'Stop'
+if ($HttpOnly -and -not $PSBoundParameters.ContainsKey('ComposeFile')) {
+    $ComposeFile = 'deploy/docker-compose.http.yml'
+}
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $envPath = Join-Path $repo $EnvFile
 $composePath = Join-Path $repo $ComposeFile
@@ -71,9 +75,13 @@ Check (((& $get 'EET_DATABASE_URL')).Contains("/$((& $get 'POSTGRES_DB'))")) 'EE
 Check (-not ($map.Keys | Where-Object { $_ -like 'EET_DEMO_*' })) 'Sin variables EET_DEMO_*'
 Check (-not (($map.Values | Where-Object { $_ -match 'CAMBIAR' }))) 'Sin valores CAMBIAR pendientes'
 
-$certDir = Join-Path $repo 'deploy\certs'
-Check (Test-Path (Join-Path $certDir 'fullchain.pem')) 'deploy/certs/fullchain.pem'
-Check (Test-Path (Join-Path $certDir 'privkey.pem')) 'deploy/certs/privkey.pem'
+if ($HttpOnly) {
+    Write-Host "Modo HTTP: TLS lo termina el nginx externo; no se exigen certificados locales."
+} else {
+    $certDir = Join-Path $repo 'deploy\certs'
+    Check (Test-Path (Join-Path $certDir 'fullchain.pem')) 'deploy/certs/fullchain.pem'
+    Check (Test-Path (Join-Path $certDir 'privkey.pem')) 'deploy/certs/privkey.pem'
+}
 
 $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
 if (-not $wsl) {
