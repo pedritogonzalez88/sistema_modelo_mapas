@@ -10,8 +10,8 @@
 # Diferencias deliberadas con desarrollo:
 #   - La aplicación NO publica puertos: solo la alcanza el proxy por la red
 #     interna (`app:8000`).
-#   - La base usa el puerto 5434 en el host y un volumen propio
-#     (`eet-staging_eet-staging-pgdata`), para no rozar el volumen de dev.
+#   - La base solo se publica en loopback (127.0.0.1:5434) y usa un volumen
+#     propio (`eet-staging_eet-staging-pgdata`), para no rozar el de dev.
 #   - El proxy tiene IP fija (172.28.0.10) para que `EET_TRUSTED_PROXY_IPS`
 #     sea un CIDR estable y `X-Forwarded-Proto/For` se acepten solo de él.
 
@@ -26,7 +26,7 @@ services:
       POSTGRES_USER: eet
       POSTGRES_PASSWORD: eet
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - eet-staging-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -51,15 +51,15 @@ services:
       db:
         condition: service_healthy
     volumes:
-      # Mismo volumen de archivos que dev: el staging solo ensaya autenticación.
-      - ../uploads:/app/uploads
+      # Volumen propio: no comparte archivos con desarrollo.
+      - eet-staging-uploads:/app/uploads
     healthcheck:
       # `python` del sistema alcanza: urllib es de la biblioteca estándar.
       test:
         - CMD-SHELL
         - >-
           python -c "import urllib.request;
-          urllib.request.urlopen('http://127.0.0.1:8000/salud', timeout=3)"
+          urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"
       interval: 10s
       timeout: 5s
       retries: 12
@@ -88,6 +88,7 @@ services:
 
 volumes:
   eet-staging-pgdata:
+  eet-staging-uploads:
 
 networks:
   staging:

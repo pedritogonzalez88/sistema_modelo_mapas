@@ -92,7 +92,9 @@ def aplicar_cookie_sesion(respuesta: Response, token: str) -> None:
 
 
 def borrar_cookie_sesion(respuesta: Response) -> None:
-    respuesta.delete_cookie(nombre_cookie_sesion(), path="/")
+    respuesta.delete_cookie(nombre_cookie_sesion(), path="/",
+                            secure=settings.cookie_secure, httponly=True,
+                            samesite="lax")
 
 
 def nombre_cookie_mfa() -> str:
@@ -110,7 +112,9 @@ def aplicar_cookie_mfa(respuesta: Response, token: str) -> None:
 
 
 def borrar_cookie_mfa(respuesta: Response) -> None:
-    respuesta.delete_cookie(nombre_cookie_mfa(), path="/")
+    respuesta.delete_cookie(nombre_cookie_mfa(), path="/",
+                            secure=settings.cookie_secure, httponly=True,
+                            samesite="lax")
 
 
 def es_ruta_publica(ruta: str) -> bool:

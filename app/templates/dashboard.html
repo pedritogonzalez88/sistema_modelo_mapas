@@ -222,8 +222,10 @@
 {% else %}
 {# --- Panel del asistente: solo sus entregas ------------------------------ #}
 {% set mis_entregas = entregas if entregas else [] %}
-{% set pendientes_propias = mis_entregas|selectattr("estado", "equalto", "pendiente")|list|length %}
-{% set aceptadas_propias = mis_entregas|selectattr("estado", "equalto", "aceptada")|list|length %}
+{% set resumen = entregas_resumen if entregas_resumen is defined and entregas_resumen else none %}
+{% set total_propias = resumen.total if resumen else mis_entregas|length %}
+{% set pendientes_propias = resumen.pendientes if resumen else mis_entregas|selectattr("estado", "equalto", "pendiente")|list|length %}
+{% set aceptadas_propias = resumen.aceptadas if resumen else mis_entregas|selectattr("estado", "equalto", "aceptada")|list|length %}
 
 <div class="mb-6">
   {{ ui.banner(
@@ -234,7 +236,7 @@
 </div>
 
 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-  {{ ui.stat("Mis entregas", mis_entregas|length,
+  {{ ui.stat("Mis entregas", total_propias,
              hint="Recepciones registradas con su letra de terna") }}
   {{ ui.stat("Pendientes de revisión", pendientes_propias,
              hint="Esperando confirmación de supervisión",

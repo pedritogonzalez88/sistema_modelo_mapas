@@ -201,5 +201,5 @@ def reject(request: Request, entrega_id: int, motivo: str = Form(""),
             db, entrega_id, motivo or "Sin motivo registrado.",
             actor=actor_de_request(request))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return RedirectResponse("/entregas?ok=entrega_rechazada", status_code=303)

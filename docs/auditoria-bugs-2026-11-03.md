@@ -599,3 +599,34 @@ Las skills disponibles en este entorno son `opencode` (documentación de
 OpenCode) y `report` (reporte de incidencias de OpenCode); ninguna aplica a este
 repositorio. Por eso el trabajo se apoyó en subagentes especializados por área
 en lugar de en esas skills.
+
+## Correcciones aplicadas (2026-11-06)
+
+| ID | Corrección |
+|---|---|
+| A-5 residual | `crear_desafio` ya no invalida challenges vivos; purga los vencidos. Un login nuevo no deja fuera al titular. |
+| A-11 staging | `deploy/nginx.conf` usa `Host $http_host` y `X-Forwarded-Host $http_host`, conservando el puerto 8443. |
+| A-12 | `app/core/excel.py` centraliza `celda_segura`; el XLSX consolidado y el CSV de auditoría prefijan fórmulas. |
+| A-13 / M-37 | `seed-usuarios` conserva `is_active` salvo `--reactivar`; `--con-password` revoca sesiones y tokens. |
+| A-14 | Bloqueo `FOR UPDATE` del challenge MFA y consumo atómico de códigos de respaldo y pasos TOTP. |
+| M-16 | Manejador de `RequestValidationError`: HTML para formularios y JSON para integraciones. |
+| M-17 | `listar_cruces` ajusta `page` a la última página y devuelve la página efectiva. |
+| M-24 | `delete_cookie` conserva `secure`, `httponly` y `samesite` al revocar cookies. |
+| M-29 | DSN por defecto alineado al compose de desarrollo (`localhost:5432`). |
+| M-31 / M-33 | Staging publica PostgreSQL solo en `127.0.0.1:5434` y usa un volumen de uploads propio. |
+| M-32 | Migraciones `0001`–`0005` idempotentes para bases creadas con `init_db()` sin `alembic_version`. Verificado en base temporal. |
+| M-40 | El panel del asistente calcula totales/pendientes/aceptadas con agregados, no con las últimas 20 filas. |
+| B-4 | Sin `B904` pendientes; `raise ... from` en los dos casos restantes. |
+
+Validación:
+
+```text
+307 unitarias + 283 integración = 590 passed
+ruff F,E9,B904                  = OK
+alembic upgrade desde init_db   = 0005 (head), check limpio
+nginx staging/prod/external     = nginx -t OK
+docker compose staging          = config OK
+```
+
+Los cambios locales del lanzador oculto del watchdog (`scripts/run-hidden.vbs`,
+`register-autostart.ps1`) no forman parte de esta corrección.

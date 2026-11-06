@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
@@ -95,6 +96,21 @@ async def lifespan(app: FastAPI):
     yield
 
 
+async def validation_exception_handler(request: Request,
+                                       exc: RequestValidationError):
+    """Errores de validación como HTML legible o JSON para integraciones."""
+    if request.url.path.startswith(("/api", "/salud", "/ready")) or \
+            "application/json" in request.headers.get("accept", ""):
+        return JSONResponse({"detail": exc.errors()}, status_code=422)
+    return templates.TemplateResponse(
+        request, "error.html",
+        {"codigo": 422,
+         "mensaje": "Los datos enviados no son válidos. Revise el formulario.",
+         "proyecto": None},
+        status_code=422,
+    )
+
+
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Errores HTTP como HTML legible, salvo rutas de máquina.
 
@@ -126,6 +142,7 @@ def create_app() -> FastAPI:
         openapi_url=None if ocultar_docs else "/openapi.json",
     )
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
     static_dir = Path(__file__).parent / "static"
     static_dir.mkdir(exist_ok=True)

@@ -263,6 +263,74 @@ def test_re_cifrar_migra_filas_reales(monkeypatch, capsys):
 
 
 @pytest.mark.integration
+def test_semilla_no_reactiva_ni_deja_sesiones_al_cambiar_password():
+    from datetime import timedelta
+
+    from sqlalchemy import delete, select
+
+    from app.auth import audit
+    from app.cli import _aplicar_semilla
+    from app.core.database import SessionLocal
+    from app.core.security import hash_password, utcnow
+    from app.models import Auditoria, Sesion, Usuario
+
+    sufijo = uuid.uuid4().hex[:8]
+    username = f"seed-{sufijo}"
+    email = f"{username}@ejemplo.test"
+    datos = {"nombre": "Semilla Prueba", "username": username, "email": email,
+             "rol": "consulta", "letra_terna": None}
+
+    with SessionLocal() as db:
+        usuario = Usuario(
+            nombre=datos["nombre"], username=username, email=email,
+            rol="consulta", auth_provider="local",
+            password_hash=hash_password("Clave-Segura-2026"),
+            is_active=False,
+        )
+        db.add(usuario)
+        db.flush()
+        usuario_id = usuario.id
+        db.commit()
+
+    try:
+        with SessionLocal() as db:
+            _aplicar_semilla(db, [(datos, db.get(Usuario, usuario_id))],
+                             con_password=False)
+        with SessionLocal() as db:
+            assert db.get(Usuario, usuario_id).is_active is False
+
+        with SessionLocal() as db:
+            _aplicar_semilla(db, [(datos, db.get(Usuario, usuario_id))],
+                             con_password=False, reactivar=True)
+        with SessionLocal() as db:
+            assert db.get(Usuario, usuario_id).is_active is True
+            db.add(Sesion(
+                token_hash=uuid.uuid4().hex * 2,
+                usuario_id=usuario_id,
+                expires_at=utcnow() + timedelta(days=1),
+            ))
+            db.commit()
+
+        with SessionLocal() as db:
+            _aplicar_semilla(db, [(datos, db.get(Usuario, usuario_id))],
+                             con_password=True)
+        with SessionLocal() as db:
+            sesion = db.scalar(select(Sesion).where(
+                Sesion.usuario_id == usuario_id))
+            assert sesion is not None and sesion.revoked_at is not None
+            assert db.get(Usuario, usuario_id).must_change_password is True
+    finally:
+        with SessionLocal() as db:
+            db.execute(delete(Sesion).where(Sesion.usuario_id == usuario_id))
+            db.execute(delete(Auditoria).where(
+                Auditoria.entidad == "usuario",
+                Auditoria.entidad_id == str(usuario_id),
+                Auditoria.actor == audit.ACTOR_CLI))
+            db.execute(delete(Usuario).where(Usuario.id == usuario_id))
+            db.commit()
+
+
+@pytest.mark.integration
 def test_estado_auth_no_falla_sin_datos(capsys):
     from app.cli import main
 

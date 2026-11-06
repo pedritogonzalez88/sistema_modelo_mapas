@@ -46,7 +46,7 @@ bash scripts/test-local.sh /mnt/c/Users/<usuario>/PycharmProjects/sistema_modelo
 5. Siembra datos demo idempotentes con `scripts/seed_demo_data.py`:
    60 cruces, 56 fichas, la entrega 1 con un `.xlsx` válido y las cuentas
    `demo.admin` / `demo.consulta`.
-6. Ejecuta `pytest -q` (306 pruebas) y `pytest -m integration` (278 pruebas).
+6. Ejecuta `pytest -q` (307 pruebas) y `pytest -m integration` (283 pruebas).
 7. Hace smoke HTTP de `/salud` y, si la autenticación está activa, login real
    de administrador y denegación de `/auth/usuarios` para consulta.
 
@@ -67,6 +67,10 @@ Se registran dos tareas:
   solos.
 - **EET Local Watchdog**: revisa `/salud` cada 5 minutos y levanta el stack si
   WSL o los contenedores se detuvieron.
+
+Ambas tareas se lanzan mediante `scripts/run-hidden.vbs` (`wscript.exe`) para
+que PowerShell arranque oculto desde el inicio y Windows Terminal no muestre un
+flash de consola cada 5 minutos.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/register-autostart.ps1

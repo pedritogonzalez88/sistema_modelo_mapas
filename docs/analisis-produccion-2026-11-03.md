@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-11-03
 **Alcance:** un proyecto, un servidor, una instancia (decisiones confirmadas).
-**Estado del código:** 306 pruebas unitarias + 278 de integración = **584 passed**.
+**Estado del código:** 307 pruebas unitarias + 283 de integración = **590 passed**.
 **Migración actual:** `0005 (head)`, `alembic check` sin diferencias.
 
 ---

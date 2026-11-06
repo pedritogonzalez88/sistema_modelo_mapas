@@ -692,7 +692,9 @@ def _parsear_mapa_xlsx(contenido: bytes) -> list[dict]:
             try:
                 clase = int(float(v))
             except (TypeError, ValueError):
-                raise ValueError(f"Clase inválida '{v}' (punto {punto}, año {anio}).")
+                raise ValueError(
+                    f"Clase inválida '{v}' (punto {punto}, año {anio})."
+                ) from None
             if not 1 <= clase <= 9:
                 raise ValueError(f"Clase {clase} fuera de 1-9 (punto {punto}, año {anio}).")
             registros.append({"punto_id": punto, "anio": anio, "clase": clase})
@@ -843,11 +845,13 @@ def resumen_dashboard(db: Session, proyecto_id: int) -> dict:
 
 def listar_cruces(db: Session, proyecto_id: int, resultado: str | None = None,
                   punto: int | None = None, anio: int | None = None,
-                  page: int = 1, per_page: int = 50) -> tuple[list, int]:
+                  page: int = 1, per_page: int = 50) -> tuple[list, int, int]:
     """Cruces de la terna paginados, con el id de ficha QA/QC si existe.
 
-    Devuelve ``(filas, total)``, donde cada fila es ``(ResultadoCruce, id_ficha)``
-    y ``total`` cuenta los cruces que cumplen los filtros (sin paginar).
+    Devuelve ``(filas, total, page)``; ``page`` se ajusta a la última página
+    cuando el cliente pide una fuera de rango. Cada fila es
+    ``(ResultadoCruce, id_ficha)`` y ``total`` cuenta los cruces que cumplen
+    los filtros (sin paginar).
 
     El id de la ficha se resuelve con una subconsulta escalar correlacionada en
     lugar de un ``outerjoin``: un cruce tiene como maximo una ficha, pero si en
@@ -873,6 +877,8 @@ def listar_cruces(db: Session, proyecto_id: int, resultado: str | None = None,
 
     total = db.scalar(
         select(func.count()).select_from(ResultadoCruce).where(*cond)) or 0
+    paginas = max(1, (int(total) + per_page - 1) // per_page)
+    page = min(page, paginas)
 
     ficha_id = (
         select(FichaQAQC.id)
@@ -892,7 +898,7 @@ def listar_cruces(db: Session, proyecto_id: int, resultado: str | None = None,
         .offset((page - 1) * per_page)
         .limit(per_page)
     ).all()
-    return filas, total
+    return filas, total, page
 
 
 def conteo_resultados(db: Session, proyecto_id: int) -> dict[str, int]:

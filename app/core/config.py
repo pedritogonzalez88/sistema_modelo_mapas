@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="EET_", env_file=".env", extra="ignore")
 
     app_name: str = "Validador EET"
-    database_url: str = "postgresql+psycopg://eet:eet@localhost:5433/eet"
+    database_url: str = "postgresql+psycopg://eet:eet@localhost:5432/eet"
     upload_dir: str = "./uploads"
     srid: int = 4326  # WGS84; ajustar al sistema de referencia de la malla oficial
     regla_version: str = "tabla7-v1"

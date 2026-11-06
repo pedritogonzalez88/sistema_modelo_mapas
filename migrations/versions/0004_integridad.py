@@ -15,6 +15,7 @@ reescribe datos.
 """
 from typing import Sequence, Union
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -25,7 +26,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Agrega unicidad de claves naturales y CHECK de clases 1–9."""
+    """Agrega unicidad de claves naturales y CHECK de clases 1-9.
+
+    Si las restricciones ya existen (base creada con ``init_db()``), no se
+    duplican.
+    """
+    inspector = sa.inspect(op.get_bind())
+    nombres = {restriccion["name"]
+               for restriccion in inspector.get_unique_constraints(
+                   "interpretaciones")}
+    if "uq_interpretaciones_entrega_punto_anio_letra" in nombres:
+        return
     op.create_unique_constraint(
         "uq_interpretaciones_entrega_punto_anio_letra",
         "interpretaciones",

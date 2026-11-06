@@ -86,6 +86,82 @@ def test_las_respuestas_llevan_request_id(client):
     assert len(generado) == 32
 
 
+def test_validacion_html_devuelve_html(client):
+    respuesta = client.get("/cruces", params={"page": "no-es-numero"})
+    assert respuesta.status_code == 422
+    assert "text/html" in respuesta.headers["content-type"]
+    assert "<!DOCTYPE html>" in respuesta.text
+    assert "no son válidos" in respuesta.text
+
+
+def test_validacion_json_devuelve_json(client):
+    respuesta = client.get(
+        "/cruces", params={"page": "no-es-numero"},
+        headers={"Accept": "application/json"})
+    assert respuesta.status_code == 422
+    assert "application/json" in respuesta.headers["content-type"]
+    assert isinstance(respuesta.json()["detail"], list)
+
+
+def test_pagina_fuera_de_rango_se_ajusta(client):
+    respuesta = client.get(
+        "/cruces", params={"page": 9999},
+        headers={"Accept": "application/json"})
+    assert respuesta.status_code == 200
+    datos = respuesta.json()
+    assert datos["page"] == datos["pages"]
+
+
+def test_exportacion_xlsx_sanea_formulas(client):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+    from sqlalchemy import delete
+
+    from app.core.database import SessionLocal
+    from app.models import PuntoMalla, ResultadoCruce
+    from app.services import persist
+
+    punto = 987654
+    with SessionLocal() as db:
+        proyecto = persist.get_default_proyecto(db)
+        db.execute(delete(ResultadoCruce).where(
+            ResultadoCruce.proyecto_id == proyecto.id,
+            ResultadoCruce.punto_id == punto))
+        db.execute(delete(PuntoMalla).where(
+            PuntoMalla.proyecto_id == proyecto.id,
+            PuntoMalla.punto_id == punto))
+        db.add(PuntoMalla(
+            proyecto_id=proyecto.id, punto_id=punto, estrato="=1+1",
+            es_reserva=False, activo=True))
+        db.add(ResultadoCruce(
+            proyecto_id=proyecto.id, punto_id=punto, anio=2024,
+            a=1, b=1, c=1, resultado="unanimidad", clase_consolidada=1,
+            regla_version="test"))
+        db.commit()
+    try:
+        respuesta = client.get("/exportar/consolidado.xlsx")
+        assert respuesta.status_code == 200
+        libro = load_workbook(BytesIO(respuesta.content), data_only=False)
+        try:
+            hoja = libro["Consolidado"]
+            fila = next(f for f in hoja.iter_rows(min_row=2)
+                        if f[0].value == punto)
+            assert fila[2].value == "'=1+1"
+        finally:
+            libro.close()
+    finally:
+        with SessionLocal() as db:
+            proyecto = persist.get_default_proyecto(db)
+            db.execute(delete(ResultadoCruce).where(
+                ResultadoCruce.proyecto_id == proyecto.id,
+                ResultadoCruce.punto_id == punto))
+            db.execute(delete(PuntoMalla).where(
+                PuntoMalla.proyecto_id == proyecto.id,
+                PuntoMalla.punto_id == punto))
+            db.commit()
+
+
 def test_cruce_inexistente_es_404_html(client):
     respuesta = client.get("/cruces/999999/2000")
     assert respuesta.status_code == 404

@@ -40,7 +40,7 @@ import os
 import sys
 from datetime import datetime
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import audit, mailer
@@ -295,26 +295,29 @@ def _password_temporal(username: str, email: str) -> str:
 
 
 def _aplicar_semilla(db: Session, plan: list[tuple[dict, Usuario | None]],
-                     con_password: bool) -> list[dict]:
+                     con_password: bool, reactivar: bool = False) -> list[dict]:
     """Crea o actualiza las cuentas del plan y audita cada cambio.
 
     Conserva lo que no administra esta semilla: contraseña y TOTP existentes
-    (salvo ``--con-password``), códigos de respaldo, bloqueos, último acceso y
-    cualquier otro dato de auditoría del titular.
+    (salvo ``--con-password``), códigos de respaldo, bloqueos, último acceso,
+    estado activo/inactivo (salvo ``--reactivar``) y cualquier otro dato de
+    auditoría del titular. Al cambiar la contraseña revoca las sesiones y los
+    tokens pendientes de esa cuenta.
     """
     resultados: list[dict] = []
     for datos, fila in plan:
         creado = fila is None
         if fila is None:
-            fila = Usuario(auth_provider="local")
+            fila = Usuario(auth_provider="local", is_active=True)
             db.add(fila)
+        elif reactivar:
+            fila.is_active = True
 
         fila.nombre = datos["nombre"]
         fila.username = datos["username"]
         fila.email = datos["email"].casefold()
         fila.rol = datos["rol"]
         fila.letra_terna = datos["letra_terna"]
-        fila.is_active = True
         fila.mfa_policy = mfa_policy_para_rol(datos["rol"])
 
         password = None
@@ -324,14 +327,27 @@ def _aplicar_semilla(db: Session, plan: list[tuple[dict, Usuario | None]],
             fila.password_changed_at = utcnow()
             fila.must_change_password = True
 
-        db.flush()  # id disponible para la auditoría y la tabla de salida
+        db.flush()  # id disponible para la auditoría y las revocaciones
+        if con_password:
+            ahora = utcnow()
+            db.execute(update(Sesion).where(
+                Sesion.usuario_id == fila.id,
+                Sesion.revoked_at.is_(None),
+            ).values(revoked_at=ahora))
+            db.execute(update(AuthToken).where(
+                AuthToken.usuario_id == fila.id,
+                AuthToken.used_at.is_(None),
+            ).values(used_at=ahora))
+
         audit.registrar(
             db, audit.ACTOR_CLI,
             "user_created" if creado else "user_updated",
             entidad="usuario", entidad_id=fila.id,
             detalle={"rol": fila.rol, "username": fila.username,
                      "mfa_policy": fila.mfa_policy,
-                     "temporal_generada": bool(con_password)},
+                     "temporal_generada": bool(con_password),
+                     "reactivado": bool(reactivar and not creado),
+                     "sesiones_revocadas": bool(con_password)},
         )
         resultados.append({"id": fila.id, "nombre": fila.nombre,
                            "username": fila.username, "rol": fila.rol,
@@ -369,7 +385,9 @@ def _cmd_seed_usuarios(args: argparse.Namespace) -> int:
     try:
         with SessionLocal() as db:
             plan = _plan_semilla(db)
-            resultados = _aplicar_semilla(db, plan, con_password)
+            resultados = _aplicar_semilla(
+                db, plan, con_password,
+                reactivar=bool(getattr(args, "reactivar", False)))
     except _ConflictoSemilla as exc:
         print(f"Error: {exc}")
         print("No se modificó ninguna cuenta.")
@@ -683,7 +701,11 @@ def _parser() -> argparse.ArgumentParser:
     semilla.add_argument(
         "--con-password", action="store_true", dest="con_password",
         help="Genera una contraseña temporal nueva para cada cuenta (también "
-             "si ya tenía una) y la muestra una sola vez.")
+             "si ya tenía una), revoca sus sesiones y la muestra una sola vez.")
+    semilla.add_argument(
+        "--reactivar", action="store_true",
+        help="Reactiva cuentas semilla deshabilitadas. Sin esta bandera se "
+             "conserva el estado activo/inactivo actual.")
     semilla.set_defaults(func=_cmd_seed_usuarios)
 
     limpiar = sub.add_parser("limpiar-sesiones",

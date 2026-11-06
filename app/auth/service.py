@@ -906,8 +906,15 @@ def consumir_codigo_respaldo(db: Session, usuario: Usuario, codigo: str) -> bool
             elegido = fila
     if elegido is None:
         return False
-    elegido.used_at = utcnow()
-    return True
+    # UPDATE condicional: si otra petición consumió el código primero, rowcount
+    # es 0 y esta no lo acepta. Evita carreras de doble uso.
+    resultado = db.execute(
+        update(RecoveryCode)
+        .where(RecoveryCode.id == elegido.id,
+               RecoveryCode.used_at.is_(None))
+        .values(used_at=utcnow())
+    )
+    return resultado.rowcount == 1
 
 
 def _verificar_codigo(db: Session, usuario: Usuario, codigo: str) -> str | None:
@@ -919,8 +926,16 @@ def _verificar_codigo(db: Session, usuario: Usuario, codigo: str) -> str | None:
             paso = verificar_totp(secreto, codigo, fila.last_used_step,
                                   settings.mfa_window)
             if paso is not None:
-                fila.last_used_step = paso
-                return "totp"
+                # UPDATE condicional: solo el primer uso del paso gana.
+                resultado = db.execute(
+                    update(MfaTotp)
+                    .where(MfaTotp.usuario_id == usuario.id,
+                           or_(MfaTotp.last_used_step.is_(None),
+                               MfaTotp.last_used_step < paso))
+                    .values(last_used_step=paso)
+                )
+                if resultado.rowcount == 1:
+                    return "totp"
     if consumir_codigo_respaldo(db, usuario, codigo):
         return "respaldo"
     return None
@@ -928,23 +943,22 @@ def _verificar_codigo(db: Session, usuario: Usuario, codigo: str) -> str | None:
 
 # --- Challenge de segundo factor ----------------------------------------------
 def crear_desafio(db: Session, usuario: Usuario, ip: str | None = None) -> str:
-    """Crea el challenge pendiente y devuelve el token en claro.
+    """Crea un challenge nuevo y devuelve el token en claro.
 
-    Solo se guarda el ``sha256``. Un desafío nuevo invalida los anteriores del
-    mismo usuario: así no se acumulan tokens vivos si el usuario reintenta el
-    login desde otra pestaña.
+    Solo se guarda el ``sha256``. Los challenges anteriores **no** se invalidan:
+    un atacante con la contraseña podría crear uno nuevo para dejar fuera al
+    titular legítimo (DoS de la cookie MFA). Cada challenge vence a los 5
+    minutos y los vencidos se purgan al crear el siguiente.
     """
     if usuario is None or usuario.id is None:
         raise ValueError("El challenge requiere un usuario persistido.")
     ahora = utcnow()
     db.execute(
-        update(AuthToken)
-        .where(
+        delete(AuthToken).where(
             AuthToken.usuario_id == usuario.id,
             AuthToken.purpose == "mfa",
-            AuthToken.used_at.is_(None),
+            AuthToken.expires_at < ahora,
         )
-        .values(used_at=ahora)
     )
     token = new_token(32)
     db.add(AuthToken(
@@ -994,6 +1008,17 @@ def verificar_desafio(db: Session, desafio: AuthToken | None, codigo: str, *,
     ahora = utcnow()
     if desafio is None:
         return ResultadoMfa(motivo="ausente")
+    # Bloquea el challenge durante la validación: dos peticiones concurrentes
+    # no pueden consumir el mismo código ni sobreescribir los intentos.
+    bloqueado = db.scalar(
+        select(AuthToken)
+        .where(AuthToken.id == desafio.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if bloqueado is None:
+        return ResultadoMfa(motivo="invalido")
+    desafio = bloqueado
     if desafio.used_at is not None or desafio.expires_at is None \
             or desafio.expires_at <= ahora:
         return ResultadoMfa(motivo="invalido")
@@ -1319,6 +1344,16 @@ def verificar_desafio_email(db: Session, desafio: AuthToken | None, codigo: str,
     ahora = utcnow()
     if desafio is None:
         return ResultadoMfa(motivo="ausente")
+    # Mismo bloqueo que en el TOTP: evita consumir dos veces el challenge.
+    bloqueado = db.scalar(
+        select(AuthToken)
+        .where(AuthToken.id == desafio.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if bloqueado is None:
+        return ResultadoMfa(motivo="invalido")
+    desafio = bloqueado
     if desafio.used_at is not None or desafio.expires_at is None \
             or desafio.expires_at <= ahora:
         return ResultadoMfa(motivo="invalido")
@@ -2355,16 +2390,10 @@ def listar_auditoria(db: Session, *, accion: str | None = None,
 
 
 def _celda_csv(valor) -> str:
-    """Sanea una celda para Excel: evita la inyección de fórmulas.
+    """Sanea una celda para Excel/CSV: evita la inyección de fórmulas."""
+    from app.core.excel import celda_segura
 
-    Un valor que empieza con ``= + - @`` o un carácter de control haría que
-    Excel lo evalúe como fórmula. Se antepone un apóstrofo, que Excel muestra
-    como texto y descarta al copiar.
-    """
-    texto = "" if valor is None else str(valor)
-    if texto[:1] in ("=", "+", "-", "@", "\t", "\r"):
-        return "'" + texto
-    return texto
+    return str(celda_segura(valor))
 
 
 def exportar_auditoria(db: Session, *, accion: str | None = None,

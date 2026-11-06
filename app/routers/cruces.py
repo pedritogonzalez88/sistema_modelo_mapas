@@ -70,9 +70,9 @@ def listar(request: Request, resultado: str | None = None,
     filtro_punto = _entero(punto)
     filtro_anio = _entero(anio)
 
-    filas, total = persist.listar_cruces(db, proyecto.id, filtro_resultado,
-                                         filtro_punto, filtro_anio, page=page,
-                                         per_page=per_page)
+    filas, total, page = persist.listar_cruces(
+        db, proyecto.id, filtro_resultado, filtro_punto, filtro_anio,
+        page=page, per_page=per_page)
     paginas = max(1, ceil(total / per_page))
     # Los clientes que piden JSON (Accept: application/json) reciben la misma
     # página de cruces serializada; el HTML sigue siendo la respuesta por

@@ -8,7 +8,7 @@ la plantilla oculta el resto.
 """
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_permiso
@@ -25,7 +25,7 @@ _LIMITE_PROPIAS = 20
 
 
 def _entregas_propias(db: Session, proyecto_id: int, letra: str | None) -> list[dict]:
-    """Entregas de la letra del asistente (vacío si no tiene letra asignada)."""
+    """Últimas entregas de la letra del asistente para la tabla."""
     if not letra:
         return []
     filas = db.scalars(
@@ -40,6 +40,25 @@ def _entregas_propias(db: Session, proyecto_id: int, letra: str | None) -> list[
             for e in filas]
 
 
+def _resumen_propio(db: Session, proyecto_id: int,
+                    letra: str | None) -> dict[str, int]:
+    """Totales reales del asistente, no solo los de la tabla de 20 filas."""
+    if not letra:
+        return {"total": 0, "pendientes": 0, "aceptadas": 0}
+    filas = db.execute(
+        select(Entrega.estado, func.count())
+        .where(Entrega.proyecto_id == proyecto_id,
+               Entrega.asistente_letra == letra)
+        .group_by(Entrega.estado)
+    ).all()
+    conteo = {estado: int(cantidad or 0) for estado, cantidad in filas}
+    return {
+        "total": sum(conteo.values()),
+        "pendientes": conteo.get("pendiente", 0),
+        "aceptadas": conteo.get("aceptada", 0),
+    }
+
+
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
     proyecto = persist.get_default_proyecto(db)
@@ -49,8 +68,9 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     # Alcance de datos del asistente: se filtra aquí, sin tocar el servicio
     # ``persist.resumen_dashboard`` (que sigue siendo el del proyecto completo).
     if usuario is not None and getattr(usuario, "rol", "") == "asistente":
-        datos["entregas"] = _entregas_propias(
-            db, proyecto.id, getattr(usuario, "letra_terna", None))
+        letra = getattr(usuario, "letra_terna", None)
+        datos["entregas"] = _entregas_propias(db, proyecto.id, letra)
+        datos["entregas_resumen"] = _resumen_propio(db, proyecto.id, letra)
 
     return templates.TemplateResponse(request, "dashboard.html",
                                       {"proyecto": proyecto, **datos})

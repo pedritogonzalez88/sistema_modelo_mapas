@@ -30,6 +30,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Agrega el contador de intentos del challenge de MFA."""
+    columnas = {
+        columna["name"]
+        for columna in sa.inspect(op.get_bind()).get_columns("auth_tokens")
+    }
+    if "mfa_attempts" in columnas:
+        return
     op.add_column(
         'auth_tokens',
         sa.Column('mfa_attempts', sa.Integer(), server_default=sa.text('0'),

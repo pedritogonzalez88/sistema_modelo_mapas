@@ -27,7 +27,7 @@ def db(monkeypatch):
     Base.metadata.create_all(
         engine,
         tables=[Base.metadata.tables[n] for n in
-                ("usuarios", "auditoria", "mfa_email_codes")],
+                ("usuarios", "auditoria", "mfa_email_codes", "auth_tokens")],
     )
     monkeypatch.setattr(service.settings, "auth_pepper", "pepper-de-pruebas")
     with Session(engine) as sesion:
@@ -44,6 +44,22 @@ def _usuario(db: Session, *, username: str, rol: str = "consulta",
     db.commit()
     db.refresh(fila)
     return fila
+
+
+def test_crear_desafio_no_invalida_el_challenge_anterior(db):
+    """Un login nuevo no debe tumbar el challenge legítimo ya emitido (A-5)."""
+    from app.models import AuthToken
+
+    usuario = _usuario(db, username="dos-desafios")
+    token_uno = service.crear_desafio(db, usuario)
+    token_dos = service.crear_desafio(db, usuario)
+
+    filas = db.scalars(select(AuthToken).where(
+        AuthToken.usuario_id == usuario.id,
+        AuthToken.purpose == "mfa")).all()
+    assert len([fila for fila in filas if fila.used_at is None]) == 2
+    assert service.cargar_desafio(db, token_uno) is not None
+    assert service.cargar_desafio(db, token_dos) is not None
 
 
 # --- A-5: topes de envío dentro de emitir_codigo_email ------------------------

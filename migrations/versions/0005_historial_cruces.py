@@ -19,6 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    if "resultados_cruce_historial" in set(
+            sa.inspect(op.get_bind()).get_table_names()):
+        return
     op.create_table(
         "resultados_cruce_historial",
         sa.Column("id", sa.Integer(), nullable=False),
