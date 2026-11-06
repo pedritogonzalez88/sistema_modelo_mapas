@@ -18,7 +18,7 @@ def main() -> int:
         for error in exc.errors():
             print(f"CONFIG_ERROR: {error.get('msg', 'configuración inválida')}")
         return 1
-    except Exception as exc:  # noqa: BLE001 - no imprimir valores sensibles
+    except Exception as exc:
         print(f"CONFIG_ERROR: {type(exc).__name__}")
         return 1
     print("CONFIG_OK")

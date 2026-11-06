@@ -94,7 +94,7 @@ ser **“hacer confiable el despliegue actual de un solo proyecto y un solo host
 | Datos | PostgreSQL/PostGIS, modelo largo de interpretaciones, Alembic. |
 | Web | Server-rendered con Jinja2, componentes reutilizables, accesibilidad auditada. |
 | Seguridad | Sesiones con hash, CSRF, TOTP, códigos de respaldo, LDAP, auditoría. |
-| Calidad | 603 pruebas, ~82% de cobertura, lint de correctitud, import-linter y mypy en dominio/core. |
+| Calidad | 605 pruebas, ~82% de cobertura, ruff limpio, import-linter y mypy en dominio/core/services. |
 | Operación local | Docker Compose, healthcheck, watchdog, arranque reproducible. |
 
 ### 3.2 Debilidades y riesgos
@@ -346,7 +346,7 @@ Implementado:
   build de imagen.
 - [x] Backup `scripts/backup.ps1` con `--verify`; restauración probada
   (8 usuarios y 60 cruces recuperados en una base temporal).
-- [x] Suite final: **319 unitarias + 284 integración = 603 pruebas**.
+- [x] Suite final: **319 unitarias + 286 integración = 605 pruebas**.
 
 Pendiente de la Fase 0:
 
@@ -393,7 +393,7 @@ Implementado:
   configurar staging.
 - [x] **B9 — contenedor**: non-root, read-only, `cap_drop`, límites y
   `no-new-privileges`, verificado con la imagen real.
-- [x] Suite: **319 unitarias + 284 integración = 603 pruebas**.
+- [x] Suite: **319 unitarias + 286 integración = 605 pruebas**.
 
 Pendiente de la Fase 1:
 

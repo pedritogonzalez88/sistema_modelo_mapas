@@ -26,6 +26,7 @@ from app.core.security import (
 )
 from app.models import AuthToken, MfaEmailCode, Sesion, Usuario
 
+
 def _texto_reset(usuario: Usuario, enlace: str) -> tuple[str, str]:
     """Cuerpo del correo de restablecimiento (contiene el enlace de un uso)."""
     nombre = _nombre_correo(usuario)

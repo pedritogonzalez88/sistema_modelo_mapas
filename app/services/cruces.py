@@ -16,13 +16,14 @@ from app.models import (
 )
 from app.services.analysis import analisis_seccion5
 from app.services.common import (
-    ERROR_MAPA_NO_CARGADO,
-    StoreError,
     _CLASES,
     _ESTADOS_CERRADOS,
+    ERROR_MAPA_NO_CARGADO,
+    StoreError,
     clase_a_db,
     clase_a_dominio,
 )
+
 
 def _ultima_interpretacion(db: Session, proyecto_id: int, punto: int, anio: int, letra: str):
     return db.scalar(
@@ -79,7 +80,8 @@ def recalcular_cruce(db: Session, proyecto_id: int, punto: int, anio: int,
         # debe desaparecer porque después llegue otra entrega semanal.
         cruce.clase_consolidada = consol
         cruce.regla_version = settings.regla_version
-    elif cruce.clase_consolidada is None and ficha.clase_definitiva is not None:
+    elif (cruce.clase_consolidada is None and ficha is not None
+          and ficha.clase_definitiva is not None):
         # Caso defensivo: ficha cerrada sin consolidado previo (datos migrados).
         cruce.clase_consolidada = ficha.clase_definitiva
         cruce.regla_version = "qaqc-consenso"
@@ -100,15 +102,14 @@ def recalcular_cruce(db: Session, proyecto_id: int, punto: int, anio: int,
     # distintas) o SC, siempre con la terna completa. La mayoría 2/3 se
     # consolida sin ficha y la terna incompleta no es un desacuerdo (protocolo
     # 4.2 y 6.3); la regla vive en el dominio para no divergir de Store.
-    if requiere_ficha_qaqc(valores.values()):
-        if ficha is None:
-            db.add(FichaQAQC(
-                proyecto_id=proyecto_id, punto_id=punto, anio=anio,
-                estado=EstadoQAQC.DETECTADO.value,
-                valores_iniciales={k: (v.value if isinstance(v, ClaseCobertura) else v)
-                                   for k, v in valores.items()},
-            ))
-            db.flush()
+    if requiere_ficha_qaqc(valores.values()) and ficha is None:
+        db.add(FichaQAQC(
+            proyecto_id=proyecto_id, punto_id=punto, anio=anio,
+            estado=EstadoQAQC.DETECTADO.value,
+            valores_iniciales={k: (v.value if isinstance(v, ClaseCobertura) else v)
+                               for k, v in valores.items()},
+        ))
+        db.flush()
     return cruce
 
 def _muestra_con_mapa(db: Session, proyecto_id: int) -> list:
@@ -124,7 +125,8 @@ def _muestra_con_mapa(db: Session, proyecto_id: int) -> list:
               & (ResultadoCruce.anio == ClaseMapa.anio))
         .where(ClaseMapa.proyecto_id == proyecto_id,
                ResultadoCruce.clase_consolidada.is_not(None))).all()
-    return [(_CLASES[mapa - 1], _CLASES[cons - 1]) for mapa, cons in filas]
+    return [(_CLASES[mapa - 1], _CLASES[cons - 1])
+            for mapa, cons in filas if mapa is not None and cons is not None]
 
 
 def matriz_consenso(db: Session, proyecto_id: int) -> dict:
@@ -198,13 +200,13 @@ def listar_cruces(db: Session, proyecto_id: int, resultado: str | None = None,
         .scalar_subquery()
     )
 
-    filas = db.execute(
+    filas = list(db.execute(
         select(ResultadoCruce, ficha_id.label("ficha_id"))
         .where(*cond)
         .order_by(ResultadoCruce.punto_id, ResultadoCruce.anio)
         .offset((page - 1) * per_page)
         .limit(per_page)
-    ).all()
+    ).all())
     return filas, total, page
 
 
@@ -230,17 +232,20 @@ def detalle_cruce(db: Session, proyecto_id: int, punto: int, anio: int) -> dict 
         ResultadoCruce.punto_id == punto, ResultadoCruce.anio == anio))
     if cruce is None:
         return None
-    origen = []
+    origen: list[dict[str, object]] = []
     for letra in ("A", "B", "C"):
         i = _ultima_interpretacion(db, proyecto_id, punto, anio, letra)
         if i is None:
             origen.append({"letra": letra, "clase": None, "entrega": None})
         else:
             e = db.get(Entrega, i.entrega_id)
+            entrega = (None if e is None else {
+                "id": e.id, "semana": e.semana,
+                "version": e.version, "sha": e.sha256[:10],
+            })
             origen.append({"letra": letra,
                            "clase": (i.clase if not i.es_sc else "SC"),
-                           "entrega": {"id": e.id, "semana": e.semana,
-                                       "version": e.version, "sha": e.sha256[:10]}})
+                           "entrega": entrega})
     ficha = db.scalar(select(FichaQAQC).where(
         FichaQAQC.proyecto_id == proyecto_id,
         FichaQAQC.punto_id == punto, FichaQAQC.anio == anio))

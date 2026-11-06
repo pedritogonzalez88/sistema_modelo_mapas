@@ -7,6 +7,7 @@ from app.domain.qaqc import EstadoQAQC, EventoQAQC, transicion
 from app.models import Auditoria, FichaQAQC, ResultadoCruce
 from app.services.common import _ESTADOS_CERRADOS, _para_json
 
+
 def actualizar_ficha(db: Session, ficha_id: int, datos: dict, actor: str = "supervision"):
     ficha = db.get(FichaQAQC, ficha_id)
     if ficha is None:

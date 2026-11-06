@@ -4,8 +4,8 @@ import pytest
 from app.domain.classes import (
     ALIASES_SC,
     MAPA_ETIQUETAS,
-    ClaseCobertura,
     SIN_CONSENSO,
+    ClaseCobertura,
     es_valido,
     normalizar_etiqueta,
 )

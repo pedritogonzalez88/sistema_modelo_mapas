@@ -124,7 +124,7 @@ def test_new_token_exige_entropia_minima():
 def test_sha256_hex_es_estable():
     import hashlib
 
-    esperado = hashlib.sha256("hola".encode("utf-8")).hexdigest()
+    esperado = hashlib.sha256(b"hola").hexdigest()
 
     assert security.sha256_hex("hola") == esperado
     assert security.sha256_hex("hola") == security.sha256_hex("hola")

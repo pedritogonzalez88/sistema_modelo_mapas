@@ -11,7 +11,6 @@ El directorio se simula con :class:`DirectorioFake`, inyectado en
 from __future__ import annotations
 
 import json
-import socket
 import uuid
 from types import SimpleNamespace
 
@@ -58,7 +57,7 @@ class EntradaFake:
 class ConexionFake:
     """Conexión con la superficie que usa ``LdapProvider``."""
 
-    def __init__(self, directorio: "DirectorioFake", usuario, password, **kwargs):
+    def __init__(self, directorio: DirectorioFake, usuario, password, **kwargs):
         self.directorio = directorio
         self.usuario = usuario
         self.password = password
@@ -533,7 +532,7 @@ def test_role_source_manual_no_se_sobrescribe(ldap_activo, usuarios_ldap):
 @pytest.mark.integration
 @pytest.mark.parametrize("error", [
     LDAPException("el DC no responde"),
-    socket.timeout("tiempo agotado"),
+    TimeoutError("tiempo agotado"),
     OSError("red inalcanzable"),
 ])
 def test_error_de_conexion_falla_controlado_y_audita(ldap_activo,

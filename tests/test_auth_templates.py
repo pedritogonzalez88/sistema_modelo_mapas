@@ -13,8 +13,8 @@ import re
 from pathlib import Path
 
 PLANTILLAS = Path(__file__).resolve().parents[1] / "app" / "templates"
-PATRON_FORM = re.compile(r"<form\b([^>]*)>(.*?)</form>", re.S | re.I)
-PATRON_METODO = re.compile(r'method\s*=\s*"([^"]+)"', re.I)
+PATRON_FORM = re.compile(r"<form\b([^>]*)>(.*?)</form>", re.DOTALL | re.IGNORECASE)
+PATRON_METODO = re.compile(r'method\s*=\s*"([^"]+)"', re.IGNORECASE)
 MARCADORES_CSRF = ("csrf_token", "csrf_input()")
 
 # 25 formularios de la aplicación + las pantallas de acceso (Fase A1/A3) y los

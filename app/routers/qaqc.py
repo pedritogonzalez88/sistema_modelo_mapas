@@ -154,9 +154,9 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
         datos: dict = {}
         if "debate" in form:
             datos["debate"] = form["debate"] or None
-        if "dictamen" in form and form["dictamen"]:
+        if form.get("dictamen"):
             datos["dictamen"] = form["dictamen"]
-        if "clase_definitiva" in form and form["clase_definitiva"]:
+        if form.get("clase_definitiva"):
             try:
                 clase = int(form["clase_definitiva"])
             except (TypeError, ValueError):
@@ -170,7 +170,7 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
         if "causa_descarte" in form:
             # Se envía tal cual (también vacío) para que elegir "sin causa" la borre.
             datos["causa_descarte"] = form["causa_descarte"]
-        if "fecha_sesion" in form and form["fecha_sesion"]:
+        if form.get("fecha_sesion"):
             try:
                 datos["fecha_sesion"] = date.fromisoformat(form["fecha_sesion"])
             except (TypeError, ValueError):

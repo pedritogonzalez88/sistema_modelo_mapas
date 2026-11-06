@@ -26,7 +26,7 @@ import argparse
 import ipaddress
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptography import x509
@@ -57,7 +57,7 @@ def _ca(dias: int) -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
     """CA autofirmada con `keyCertSign`; sirve para firmar el servidor."""
     clave = _clave_privada()
     nombre = _nombre("EET Staging Local CA")
-    ahora = datetime.now(timezone.utc)
+    ahora = datetime.now(UTC)
     certificado = (
         x509.CertificateBuilder()
         .subject_name(nombre)
@@ -94,7 +94,7 @@ def _servidor(ca: x509.Certificate, clave_ca: rsa.RSAPrivateKey,
               dias: int) -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
     """Certificado de servidor para `localhost` y `127.0.0.1`."""
     clave = _clave_privada()
-    ahora = datetime.now(timezone.utc)
+    ahora = datetime.now(UTC)
     certificado = (
         x509.CertificateBuilder()
         .subject_name(_nombre("localhost"))
@@ -159,7 +159,7 @@ def _vigente(ruta: Path) -> bool:
         certificado = x509.load_pem_x509_certificate(ruta.read_bytes())
     except (OSError, ValueError):
         return False
-    limite = datetime.now(timezone.utc) + timedelta(days=_MARGEN_DIAS)
+    limite = datetime.now(UTC) + timedelta(days=_MARGEN_DIAS)
     return certificado.not_valid_after_utc > limite
 
 

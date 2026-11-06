@@ -184,8 +184,13 @@ Clean Architecture estricta:
 - **Reglas de arquitectura**: `import-linter` con tres contratos:
   dominio sin infraestructura, servicios sin capa web y core sin capas
   superiores. Los tres pasan.
-- **Tipado estático inicial**: `mypy` sobre `app/domain` y `app/core`, con
-  `check_untyped_defs`; pasa sin errores. Se puede ampliar por módulos.
+- **Tipado estático**: `mypy` sobre `app/domain`, `app/core` y `app/services`,
+  con `check_untyped_defs`; **22 archivos sin errores**.
+- **Ruff limpio**: se corrigieron imports, sintaxis moderna y estilos; quedan
+  reglas ignoradas justificadas (`B008` de FastAPI, `BLE001`, `DTZ003`,
+  `ISC004`).
+- **Pruebas de concurrencia**: dos hilos compiten por el mismo código de
+  respaldo y por el mismo TOTP; solo uno gana en PostgreSQL.
 
 Pendiente de las recomendaciones: adoptar contratos Pydantic para formularios;
 ampliar mypy a `services`/`auth`; añadir pruebas de concurrencia reales y
@@ -197,11 +202,11 @@ resolver la deuda de estilo de ruff.
 
 1. [x] Aislar `Store` en pruebas.
 2. [x] Eliminar `app/schemas` sin uso.
-3. [ ] Activar `ruff` completo en modo advisory y arreglar `I001`, `UP007`,
-   `ISC004`, `DTZ003`.
+3. [x] Ruff completo limpio; reglas no aplicables quedan justificadas en
+   `pyproject.toml`.
 4. [x] Añadir `pytest-cov` con umbral 80% y reporte en CI.
-5. [~] Añadir pruebas de `persist` (confirmación, reemplazos, malla); faltan
-   más casos de routers `qaqc`/`reemplazos`.
+5. [~] Añadir pruebas de `persist` y concurrencia; todavía se puede ampliar la
+   cobertura de routers `qaqc`/`reemplazos`.
 
 ### Medio plazo (refactor)
 
@@ -210,14 +215,14 @@ resolver la deuda de estilo de ruff.
    utilidades compartidas, con fachada de compatibilidad.
 3. [ ] Introducir `Protocol` para `Mailer`, `Clock` y repositorios si se quiere
    testabilidad pura.
-4. [x] Añadir `mypy` gradual en `domain` y `core`.
+4. [x] Añadir `mypy` gradual en `domain`, `core` y `services`.
 5. [x] Añadir `import-linter` para dependencias prohibidas.
 
 ### Largo plazo (si el sistema crece)
 
 - Separar el slice `auth` en un paquete con capa de aplicación propia.
 - Evaluar worker de correo/importación en background.
-- Añadir pruebas de concurrencia reales para MFA, reset y confirmación.
+- [x] Añadir pruebas de concurrencia reales para códigos de respaldo y TOTP.
 
 ## Conclusión
 

@@ -25,7 +25,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -79,7 +79,7 @@ def _dias_certificado(ruta: Path) -> int:
 
     certificado = x509.load_pem_x509_certificate(ruta.read_bytes())
     expira = certificado.not_valid_after_utc
-    return (expira - datetime.now(timezone.utc)).days
+    return (expira - datetime.now(UTC)).days
 
 
 def _enviar_telegram(token: str, chat_id: str, texto: str) -> bool:
@@ -166,7 +166,7 @@ def main() -> int:
                 dias = _dias_certificado(ruta_cert)
                 _agregar(checks, dias >= args.min_cert_days, "certificado TLS",
                          f"vence en {dias} días (mínimo {args.min_cert_days})")
-            except Exception as exc:  # noqa: BLE001 - el detalle es local
+            except Exception as exc:
                 _agregar(checks, False, "certificado TLS", type(exc).__name__)
 
     fallos = [c for c in checks if not c[0]]

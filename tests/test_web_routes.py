@@ -63,7 +63,7 @@ def test_ready_comprueba_la_base(client):
 
 
 def test_ready_devuelve_503_si_la_base_no_responde(client, monkeypatch):
-    import app.main as main
+    from app import main
 
     class MotorCaido:
         def connect(self):

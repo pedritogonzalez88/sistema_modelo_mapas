@@ -1,9 +1,9 @@
 """Proveedor LDAP/Active Directory y su diagnóstico."""
-import socket
 import ssl
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterator
+from typing import Any
 
 import ldap3
 from ldap3.core.exceptions import LDAPException
@@ -22,6 +22,7 @@ from app.auth.providers_common import (
 from app.core.config import Settings, settings
 from app.models import Usuario
 from app.seed_data import mfa_policy_para_rol
+
 
 def _primero(valor: Any) -> Any:
     """Primer valor de un atributo LDAP (ldap3 devuelve listas)."""
@@ -181,7 +182,7 @@ class LdapProvider:
             return
         try:
             conn.unbind()
-        except Exception:
+        except Exception:  # noqa: S110 - cerrar no debe enmascarar el error
             pass
 
     @contextmanager
@@ -261,7 +262,7 @@ class LdapProvider:
                 entidad_id=getattr(usuario, "id", None), detalle=detalle or {},
             )
             db.flush()
-        except Exception:  # la auditoría nunca debe tumbar el login
+        except Exception:  # noqa: S110 - la auditoría no debe tumbar el login
             pass
 
     # --- Autenticación ----------------------------------------------------------
@@ -322,14 +323,14 @@ class LdapProvider:
                 # Segundo bind: es la única validación real de la contraseña.
                 try:
                     conn_usuario = self._conectar(dn, password or "")
-                except (LDAPException, socket.timeout, OSError, _BindFallido):
+                except (TimeoutError, LDAPException, OSError, _BindFallido):
                     self._auditar(db, None, "ldap_fail",
                                   {"motivo": "credenciales"})
                     return ResultadoLdap(motivo="credenciales")
 
                 grupos = self._grupos(conn, entrada, dn)
                 atributos = _atributos_entrada(entrada)
-        except (LDAPException, _ErrorLdap, socket.timeout, OSError) as exc:
+        except (TimeoutError, LDAPException, _ErrorLdap, OSError) as exc:
             self._auditar(db, None, "ldap_error",
                           {"motivo": "conexion", "codigo": _codigo_error(exc)})
             return ResultadoLdap(motivo="error",
@@ -346,7 +347,7 @@ class LdapProvider:
 
         try:
             return self._sincronizar(db, login, dn, atributos, grupos, rol)
-        except (LDAPException, _ErrorLdap, socket.timeout, OSError) as exc:
+        except (TimeoutError, LDAPException, _ErrorLdap, OSError) as exc:
             self._auditar(db, None, "ldap_error",
                           {"motivo": "sincronizacion",
                            "codigo": _codigo_error(exc)})
@@ -500,8 +501,7 @@ class LdapProvider:
             pasos.append(PasoDiagnostico(
                 "Conexión y bind de servicio", True,
                 f"{cfg.ldap_url} ({modo})"))
-        except (LDAPException, _ErrorLdap, socket.timeout, OSError,
-                _BindFallido) as exc:
+        except (TimeoutError, LDAPException, _ErrorLdap, OSError, _BindFallido) as exc:
             pasos.append(PasoDiagnostico(
                 "Conexión y bind de servicio", False, _codigo_error(exc)))
             return DiagnosticoLdap(habilitado=True, ok=False, pasos=pasos)
@@ -531,7 +531,7 @@ class LdapProvider:
                     entradas = self._buscar(
                         conn, construir_filtro(login, cfg),
                         self._atributos_busqueda(), size_limit=2)
-                except (LDAPException, _ErrorLdap, socket.timeout, OSError) as exc:
+                except (TimeoutError, LDAPException, _ErrorLdap, OSError) as exc:
                     pasos.append(PasoDiagnostico(
                         f"Búsqueda del usuario {login}", False,
                         _codigo_error(exc)))
@@ -560,7 +560,7 @@ class LdapProvider:
             return DiagnosticoLdap(
                 habilitado=True, ok=all(paso.ok for paso in pasos),
                 pasos=pasos, grupos=nombres, usuario=info_usuario)
-        except (LDAPException, _ErrorLdap, socket.timeout, OSError) as exc:
+        except (TimeoutError, LDAPException, _ErrorLdap, OSError) as exc:
             pasos.append(PasoDiagnostico(
                 "Búsqueda en la base", False, _codigo_error(exc)))
             return DiagnosticoLdap(habilitado=True, ok=False, pasos=pasos,

@@ -65,7 +65,7 @@ def main() -> int:
                         f"{usuarios.status_code} (se esperaba 200)")
                 else:
                     print(f"OK {args.admin_user}: login y administración")
-        except Exception as exc:  # noqa: BLE001 - smoke: se reporta y sigue
+        except Exception as exc:
             fallos.append(f"{args.admin_user}: {exc}")
 
     with httpx.Client(base_url=args.base_url, follow_redirects=False,
@@ -85,7 +85,7 @@ def main() -> int:
                         f"{usuarios.status_code} (se esperaba 403)")
                 else:
                     print(f"OK {args.consulta_user}: login y 403 esperado")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             fallos.append(f"{args.consulta_user}: {exc}")
 
     for fallo in fallos:

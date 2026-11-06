@@ -52,8 +52,7 @@ def roles_db():
     """
     from app.core.database import SessionLocal
     from app.core.security import hash_password
-    from app.models import (Auditoria, Entrega, FichaQAQC, LoginAttempt, Sesion,
-                            Usuario)
+    from app.models import Auditoria, Entrega, FichaQAQC, LoginAttempt, Sesion, Usuario
     from app.services import persist
 
     usuarios: list[int] = []

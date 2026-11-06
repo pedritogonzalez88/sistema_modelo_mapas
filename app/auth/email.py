@@ -27,6 +27,7 @@ from app.core.config import settings
 from app.core.security import constant_time_eq, hmac_code, utcnow
 from app.models import AuthToken, MfaEmailCode, Usuario
 
+
 def generar_codigo_email() -> str:
     """Código numérico de 6 dígitos con ceros a la izquierda."""
     return f"{secrets.randbelow(1_000_000):06d}"
@@ -58,7 +59,7 @@ def puede_enviar_codigo(db: Session, usuario: Usuario) -> tuple[bool, str, int]:
     if ultimo is not None:
         restante = COOLDOWN_ENVIO_CORREO - (ahora - ultimo)
         if restante.total_seconds() > 0:
-            return False, "cooldown", max(1, int(ceil(restante.total_seconds())))
+            return False, "cooldown", max(1, ceil(restante.total_seconds()))
     desde = ahora - timedelta(hours=1)
     total = db.scalar(
         select(func.count()).select_from(MfaEmailCode).where(

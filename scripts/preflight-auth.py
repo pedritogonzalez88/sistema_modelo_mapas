@@ -30,7 +30,7 @@ import json
 import os
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -239,7 +239,7 @@ def _checks_bd() -> list[Resultado]:
             res.append(Resultado(
                 "alembic", FAIL,
                 f"revisión {actual} distinta de head ({', '.join(cabezas)})"))
-    except Exception as exc:  # noqa: BLE001 - el preflight informa y continúa
+    except Exception as exc:
         res.append(Resultado("alembic", FAIL, f"error al leer revisiones: "
                                               f"{type(exc).__name__}"))
 
@@ -361,7 +361,7 @@ def main(argv: list[str] | None = None) -> int:
     from app.core.config import settings
 
     if not args.json:
-        instante = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        instante = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
         print(f"Preflight de autenticación — {instante}")
         print(f"Entorno: {settings.environment} · auth_enabled="
               f"{str(settings.auth_enabled).lower()} · base de datos: "

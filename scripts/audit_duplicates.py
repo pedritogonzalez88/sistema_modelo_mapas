@@ -14,9 +14,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import text  # noqa: E402
+from sqlalchemy import text
 
-from app.core.database import SessionLocal  # noqa: E402
+from app.core.database import SessionLocal
 
 RANGOS: tuple[tuple[str, str], ...] = (
     (

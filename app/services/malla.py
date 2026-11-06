@@ -9,6 +9,7 @@ from app.models import Auditoria, ClaseMapa, PuntoMalla
 from app.services.common import SRID_MALLA
 from app.services.importer import abrir_libro
 
+
 def _malla_de(db: Session, proyecto_id: int, punto: int) -> PuntoMalla | None:
     return db.scalar(select(PuntoMalla).where(
         PuntoMalla.proyecto_id == proyecto_id, PuntoMalla.punto_id == punto))

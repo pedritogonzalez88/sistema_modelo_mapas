@@ -221,7 +221,7 @@ def test_csp_con_nonce_coincide_con_los_scripts_inline(cliente):
                       "object-src 'none'", "connect-src 'self'"):
         assert directiva in csp
     # El nonce no habilita scripts inline arbitrarios fuera de él.
-    script_src = [parte for parte in csp.split(";") if "script-src" in parte][0]
+    script_src = next(parte for parte in csp.split(";") if "script-src" in parte)
     assert "'unsafe-inline'" not in script_src
     # Única excepción documentada: estilos por los style="width:%" de la dona.
     assert "style-src 'self' 'unsafe-inline'" in csp
@@ -285,19 +285,19 @@ def _prod(**cambios):
     """Settings válido para ``prod``; cada prueba rompe solo una condición."""
     from app.core.config import Settings
 
-    base = dict(
-        environment="prod",
-        auth_enabled=True,
-        cookie_secure=True,
-        public_base_url="https://eet.aep.gov.py",
-        email_backend="smtp",
-        smtp_host="smtp.aep.gov.py",
-        smtp_user="no-reply@aep.gov.py",
-        expose_docs=False,
-        secret_key="s" * 40,
-        auth_pepper="p" * 20,
-        session_cookie="__Host-eet_session",
-    )
+    base = {
+        "environment": "prod",
+        "auth_enabled": True,
+        "cookie_secure": True,
+        "public_base_url": "https://eet.aep.gov.py",
+        "email_backend": "smtp",
+        "smtp_host": "smtp.aep.gov.py",
+        "smtp_user": "no-reply@aep.gov.py",
+        "expose_docs": False,
+        "secret_key": "s" * 40,
+        "auth_pepper": "p" * 20,
+        "session_cookie": "__Host-eet_session",
+    }
     base.update(cambios)
     return Settings(**base)
 
@@ -372,9 +372,9 @@ def test_trusted_proxy_ips_invalida_falla():
 # --- 3. Rate limiting por IP ----------------------------------------------------
 def test_login_bloquea_por_ip_sin_revelar_cuenta(auth_activa, fabrica, monkeypatch):
     """Con el techo de IP agotado, el login ni busca el usuario."""
+    from app.auth.service import autenticar
     from app.core.config import settings
     from app.core.database import SessionLocal
-    from app.auth.service import autenticar
 
     monkeypatch.setattr(settings, "login_ip_max_15min", 3)
     usuario = fabrica()

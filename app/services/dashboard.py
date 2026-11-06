@@ -13,6 +13,7 @@ from app.models import (
 from app.services.common import _ESTADOS_CERRADOS
 from app.services.malla import estado_mapa
 
+
 def resumen_dashboard(db: Session, proyecto_id: int) -> dict:
     filas = db.execute(select(ResultadoCruce.resultado, func.count())
                        .where(ResultadoCruce.proyecto_id == proyecto_id)

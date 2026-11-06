@@ -1,18 +1,18 @@
-# ruff: noqa: F405
 """Autenticación: fachada de compatibilidad.
 
 La implementación vive en `common`, `sessions`, `mfa`, `email`, `reset` y
 `users`. Se mantiene `app.auth.service` para no romper imports existentes.
 """
-from app.auth.common import *  # noqa: F401,F403
-from app.auth.email import *  # noqa: F401,F403
-from app.auth.mfa import *  # noqa: F401,F403
-from app.auth.reset import *  # noqa: F401,F403
-from app.auth.sessions import *  # noqa: F401,F403
-from app.auth.users import *  # noqa: F401,F403
+from app.auth.common import *
+from app.auth.email import *
+from app.auth.mfa import *
+from app.auth.reset import *
+from app.auth.sessions import *
+from app.auth.users import *
 
 __all__ = [
     "CODIGOS_RESPALDO",
+    "LETRAS_TERNA",
     "MAX_ENVIOS_CORREO_HORA",
     "MAX_ENVIOS_CORREO_POR_IP_HORA",
     "MAX_FALLOS_MFA_POR_IP",
@@ -21,32 +21,31 @@ __all__ = [
     "MAX_INTENTOS_MFA",
     "MAX_RESET_POR_IP_HORA",
     "MAX_RESET_POR_USUARIO_HORA",
-    "LETRAS_TERNA",
-    "MFA_POR_ROL",
-    "MFA_POR_DEFECTO",
     "MFA_ETIQUETAS",
+    "MFA_POR_DEFECTO",
+    "MFA_POR_ROL",
     "PAGINA_AUDITORIA",
     "PAGINA_USUARIOS",
     "POLITICAS_MFA",
     "RESPUESTA_RECUPERACION",
     "ROLES_USUARIO",
-    "ResultadoAlta",
-    "ResultadoLogin",
-    "ResultadoMfa",
-    "EstadoMfa",
-    "PaginaAuditoria",
-    "PaginaUsuarios",
     "VIGENCIA_CODIGO_CORREO",
     "VIGENCIA_DESAFIO",
     "VIGENCIA_RESET",
+    "EstadoMfa",
+    "PaginaAuditoria",
+    "PaginaUsuarios",
+    "ResultadoAlta",
+    "ResultadoLogin",
+    "ResultadoMfa",
     "autenticar",
     "cambiar_estado_usuario",
     "cambiar_password",
     "cambiar_rol_usuario",
     "cargar_desafio",
     "cargar_sesion",
-    "codigos_restantes",
     "codigo_email_vigente",
+    "codigos_restantes",
     "confirmar_enrolamiento",
     "consumir_codigo_respaldo",
     "crear_desafio",
@@ -77,9 +76,9 @@ __all__ = [
     "revocar_sesion_de",
     "revocar_todas",
     "secreto_totp",
-    "solicitar_reset",
     "sesion_para_csrf",
     "sesiones_activas",
+    "solicitar_reset",
     "token_csrf_de_sesion",
     "validar_token_reset",
     "verificar_desafio",

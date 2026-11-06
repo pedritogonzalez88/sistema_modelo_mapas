@@ -32,6 +32,7 @@ from app.core.security import (
 )
 from app.models import AuthToken, MfaTotp, RecoveryCode, Sesion, Usuario
 
+
 def _fila_totp(db: Session, usuario_id: int) -> MfaTotp | None:
     """Fila de secreto TOTP del usuario (confirmada o pendiente)."""
     return db.get(MfaTotp, usuario_id)

@@ -20,12 +20,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from email_validator import EmailNotValidError, validate_email  # noqa: E402
-from sqlalchemy import func, select  # noqa: E402
+from email_validator import EmailNotValidError, validate_email
+from sqlalchemy import func, select
 
-from app.core.database import SessionLocal  # noqa: E402
-from app.core.security import hash_password, utcnow, validar_password  # noqa: E402
-from app.models import Usuario  # noqa: E402
+from app.core.database import SessionLocal
+from app.core.security import hash_password, utcnow, validar_password
+from app.models import Usuario
 
 _PATRON_USUARIO = re.compile(r"^[A-Za-z0-9._-]{3,100}$")
 

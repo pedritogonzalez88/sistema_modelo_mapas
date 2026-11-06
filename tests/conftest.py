@@ -64,10 +64,11 @@ def fabrica_usuarios():
     ``password`` y ``rol``. El teardown borra sesiones, auditoría e intentos
     asociados: la base queda como estaba.
     """
+    from sqlalchemy import func, select
+
     from app.core.database import SessionLocal
     from app.core.security import hash_password
     from app.models import Auditoria, LoginAttempt, Sesion, Usuario
-    from sqlalchemy import func, select
 
     creados: list[int] = []
 

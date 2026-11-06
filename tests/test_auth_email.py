@@ -40,10 +40,11 @@ def carpeta_correo(tmp_path, monkeypatch):
     También limpia las filas de ``email_outbox`` creadas durante la prueba
     (algunas no pasan por la fábrica de usuarios).
     """
+    from sqlalchemy import delete, func, select
+
     from app.core.config import settings
     from app.core.database import SessionLocal
     from app.models import EmailOutbox
-    from sqlalchemy import delete, func, select
 
     destino = tmp_path / "mail"
     monkeypatch.setattr(settings, "email_backend", "file")
@@ -73,9 +74,9 @@ def fabrica(carpeta_correo):
     from app.models import (
         Auditoria,
         AuthToken,
+        EmailOutbox,
         LoginAttempt,
         MfaEmailCode,
-        EmailOutbox,
         MfaTotp,
         Sesion,
         Usuario,

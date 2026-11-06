@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import csrf
-from app.auth.dependencies import require_permiso, requiere_red_interna
+from app.auth.dependencies import requiere_red_interna, require_permiso
 from app.auth.permissions import ROL_ETIQUETAS
 from app.auth.router_common import _agente, _ip, _sin_cache
 from app.auth.service import (

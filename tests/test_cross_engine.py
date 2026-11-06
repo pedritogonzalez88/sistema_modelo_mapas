@@ -1,5 +1,5 @@
 """Pruebas para app.domain.cross_engine."""
-from app.domain.classes import ClaseCobertura, SIN_CONSENSO
+from app.domain.classes import SIN_CONSENSO, ClaseCobertura
 from app.domain.cross_engine import (
     Cruce,
     TipoResultado,

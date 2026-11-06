@@ -93,7 +93,7 @@ def test_recifrar_cuerpo_ignora_los_no_cifrados():
 
 
 def test_parser_expone_los_comandos_de_operacion():
-    from app.cli import main, _parser
+    from app.cli import _parser, main
 
     args = _parser().parse_args(["reenviar-correo"])
     assert args.limit == 20
@@ -127,7 +127,7 @@ class _SesionGuionada:
 
 
 def _ejecutar_re_cifrar(monkeypatch, cofre, *tandas):
-    import app.cli as cli
+    from app import cli
 
     sesion = _SesionGuionada(tandas)
     monkeypatch.setattr(cli, "SessionLocal", lambda: sesion)
@@ -172,7 +172,7 @@ def test_re_cifrar_sale_1_si_una_clave_no_esta(monkeypatch, capsys):
 
 
 def test_re_cifrar_sin_claves_sale_2(monkeypatch, capsys):
-    import app.cli as cli
+    from app import cli
 
     def _sin_claves():
         raise RuntimeError("No hay claves de cifrado configuradas.")

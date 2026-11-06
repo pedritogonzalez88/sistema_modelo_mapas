@@ -49,8 +49,16 @@ def panel(auth_activa, monkeypatch):
     """
     from app.core.database import SessionLocal
     from app.core.security import hash_password
-    from app.models import (Auditoria, AuthToken, LoginAttempt, MfaEmailCode,
-                            MfaTotp, RecoveryCode, Sesion, Usuario)
+    from app.models import (
+        Auditoria,
+        AuthToken,
+        LoginAttempt,
+        MfaEmailCode,
+        MfaTotp,
+        RecoveryCode,
+        Sesion,
+        Usuario,
+    )
 
     monkeypatch.setattr(auth_activa, "admin_internal_only", False)
 

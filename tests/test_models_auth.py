@@ -104,7 +104,7 @@ def test_usuario_unico_por_indice_funcional_en_minusculas():
     # La expresión del índice debe ser lower(<columna>): unicidad sin CITEXT.
     for nombre, columna in (("uq_usuarios_username_lower", "username"),
                             ("uq_usuarios_email_lower", "email")):
-        expresion = str(list(indices[nombre].expressions)[0]).lower()
+        expresion = str(next(iter(indices[nombre].expressions))).lower()
         assert "lower" in expresion
         assert columna in expresion
 

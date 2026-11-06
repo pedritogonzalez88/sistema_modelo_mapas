@@ -3,12 +3,12 @@ import pytest
 from app.domain.classes import ClaseCobertura
 from app.domain.cross_engine import TipoResultado
 from app.services.importer import (
-    importar_excel,
+    ERROR_ETIQUETA_INVALIDA,
     ERROR_EVALUADORA_DESCONOCIDA,
     ERROR_FORMULA_SIN_CACHE,
     ERROR_HOJA_NO_RECONOCIDA,
     ERROR_ID_PUNTO_INVALIDO,
-    ERROR_ETIQUETA_INVALIDA,
+    importar_excel,
 )
 from tests.support.legacy_store import Store
 

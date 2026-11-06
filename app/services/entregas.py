@@ -11,13 +11,14 @@ from app.core.config import settings
 from app.models import Auditoria, Entrega, Interpretacion, PuntoMalla
 from app.services.bootstrap import get_default_proyecto
 from app.services.common import (
-    ErrorEntrega,
     SRID_MALLA,
+    ErrorEntrega,
     clase_a_db,
 )
 from app.services.cruces import recalcular_cruce
 from app.services.importer import ResultadoImportacion, importar_excel
 from app.services.reemplazos import _procesar_movimientos
+
 
 def crear_entrega_pendiente(db: Session, letra: str, semana: str, tipo: str,
                             contenido: bytes, actor: str = "cargador",
@@ -140,15 +141,15 @@ def confirmar_entrega(db: Session, entrega_id: int, actor: str = "cargador") -> 
                 n_guardadas += 1
 
         # 2. Malla oficial: registrar o contrastar coordenadas (nunca desplazar)
-        observaciones = []
-        filas_malla = []
+        observaciones: list[str] = []
+        filas_malla: list = []
         if parsed.puntos_meta:
-            filas_malla = db.execute(
+            filas_malla = list(db.execute(
                 select(PuntoMalla, func.ST_X(PuntoMalla.geom),
                        func.ST_Y(PuntoMalla.geom))
                 .where(PuntoMalla.proyecto_id == entrega.proyecto_id,
                        PuntoMalla.punto_id.in_(parsed.puntos_meta))
-            ).all()
+            ).all())
         malla_por_punto = {
             malla.punto_id: (malla, actual_x, actual_y)
             for malla, actual_x, actual_y in filas_malla

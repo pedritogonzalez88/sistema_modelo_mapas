@@ -10,7 +10,7 @@ sobre la base existente se aplica con ``alembic stamp 0001`` para no recrear
 nada. El ``downgrade`` elimina únicamente las tablas de negocio (la extensión
 PostGIS se deja instalada: es infraestructura del contenedor).
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import geoalchemy2
 import sqlalchemy as sa
@@ -19,9 +19,9 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '0001'
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

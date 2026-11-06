@@ -38,6 +38,7 @@ import argparse
 import getpass
 import os
 import sys
+
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
@@ -46,7 +47,13 @@ from app.auth.providers import ROLES_PRIORIDAD, LdapProvider
 from app.auth.service import generar_password_temporal, limpiar_expiradas
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.core.security import SecretBox, hash_password, secret_box, utcnow, validar_password
+from app.core.security import (
+    SecretBox,
+    hash_password,
+    secret_box,
+    utcnow,
+    validar_password,
+)
 from app.models import (
     AuthToken,
     EmailOutbox,

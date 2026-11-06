@@ -157,11 +157,12 @@ class Settings(BaseSettings):
                 f"(grupo LDAP -> rol): {exc.msg} en la posición {exc.pos}."
             ) from exc
         if not isinstance(datos, dict):
-            raise ValueError("EET_LDAP_ROLE_MAP debe ser un objeto JSON (grupo -> rol).")
+            raise ValueError(  # noqa: TRY004 - validación de configuración
+                "EET_LDAP_ROLE_MAP debe ser un objeto JSON (grupo -> rol).")
         mapa = {}
         for grupo, rol in datos.items():
             if not isinstance(grupo, str) or not isinstance(rol, str):
-                raise ValueError(
+                raise ValueError(  # noqa: TRY004 - validación de configuración
                     "EET_LDAP_ROLE_MAP exige claves y valores de texto "
                     "(grupo LDAP -> rol)."
                 )
@@ -284,10 +285,8 @@ class Settings(BaseSettings):
                     f"vacío (denegar). Válidos: {', '.join(_ROLES_AUTH)}."
                 )
         # Valida el formato del mapa de roles y de las redes internas al inicio.
-        self.ldap_role_map_dict
-        self.internal_networks
-        self.trusted_proxy_networks
-        self.fernet_key_list
+        _ = (self.ldap_role_map_dict, self.internal_networks,
+             self.trusted_proxy_networks, self.fernet_key_list)
         return self
 
     def _problemas_produccion(self) -> list[str]:

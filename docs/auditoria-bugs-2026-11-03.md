@@ -641,7 +641,7 @@ en lugar de en esas skills.
 Validación:
 
 ```text
-319 unitarias + 284 integración = 603 passed
+319 unitarias + 286 integración = 605 passed
 cobertura (pytest-cov)          = 82 %
 ruff F,E9,B904                  = OK
 alembic upgrade desde init_db   = 0005 (head), check limpio

@@ -33,7 +33,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 COOKIE_SESION = "__Host-eet_session"
 COOKIE_SESION_DESARROLLO = "eet_session"
@@ -80,7 +80,7 @@ def _checks_http(cliente, http_base: str) -> list[Resultado]:
     """Redirección 80 -> 443 emitida por el proxy."""
     try:
         respuesta = cliente.get(f"{http_base}/")
-    except Exception as exc:  # noqa: BLE001 - se informa el tipo, no la traza
+    except Exception as exc:
         return [Resultado("http_redirect_301", FAIL,
                           f"{http_base} inaccesible ({type(exc).__name__})")]
     destino = respuesta.headers.get("location", "")
@@ -252,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
 
     import httpx
 
-    instante = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    instante = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     print(f"Smoke del staging — {instante}")
     print(f"Proxy: {base} · TLS: {'sin validar (ensayo)' if args.insecure else 'validado'}")
     print()

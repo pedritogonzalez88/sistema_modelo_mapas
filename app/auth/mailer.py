@@ -40,7 +40,7 @@ import json
 import logging
 import smtplib
 import ssl
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email import policy
 from email.message import EmailMessage
 from secrets import token_hex
@@ -76,7 +76,7 @@ def _utcnow() -> datetime:
     zona y se le quita ``tzinfo``. ``datetime.utcnow()`` está deprecado desde
     Python 3.12 y emitía un ``DeprecationWarning`` por cada correo emitido.
     """
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 # --- Saneado de cabeceras ------------------------------------------------------

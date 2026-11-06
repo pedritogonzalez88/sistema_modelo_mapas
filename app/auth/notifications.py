@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.security import utcnow
 from app.models import Usuario
 
+
 def _nombre_correo(usuario: Usuario | None) -> str:
     """Nombre para saludar en el correo, sin exponer datos de más."""
     nombre = (getattr(usuario, "nombre", "") or "").strip()

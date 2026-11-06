@@ -40,9 +40,9 @@ __all__ = [
     "get_current_session",
     "get_current_user",
     "negar_acceso",
+    "requiere_red_interna",
     "require_permiso",
     "require_roles",
-    "requiere_red_interna",
 ]
 
 _MENSAJE_SIN_SESION = "Sesión requerida."

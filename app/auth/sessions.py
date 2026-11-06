@@ -11,12 +11,12 @@ from sqlalchemy.orm import Session
 
 from app.auth import audit
 from app.auth.common import (
-    VENTANA_RATE_LIMIT,
     _INTERVALO_TOQUE,
+    VENTANA_RATE_LIMIT,
+    ResultadoLogin,
     _esperar_retardo_ldap,
     _ip_corta,
     _registrar_intento,
-    ResultadoLogin,
     ip_bloqueada,
 )
 from app.auth.notifications import _notificar_password_cambiada
@@ -36,6 +36,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models import Sesion, Usuario
+
 
 def proveedor(usuario: Usuario | None = None) -> AuthProvider:
     """Proveedor que corresponde al intento de login (Fase A5).
@@ -63,7 +64,7 @@ def token_csrf_de_sesion(token_hash: str) -> str:
     pruebas) y el token cambia al rotar la sesión.
     """
     clave = (settings.secret_key or settings.auth_pepper or "eet-csrf").encode("utf-8")
-    mensaje = f"csrf:{token_hash}".encode("utf-8")
+    mensaje = f"csrf:{token_hash}".encode()
     return hmac.new(clave, mensaje, hashlib.sha256).hexdigest()
 
 

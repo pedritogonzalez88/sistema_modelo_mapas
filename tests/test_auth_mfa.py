@@ -536,9 +536,9 @@ def test_revocar_otra_sesion_la_cierra(cliente, fabrica):
     assert respuesta.status_code == 303
     assert respuesta.headers["location"] == "/auth/seguridad?ok=session_revoked"
 
-    revocada = [s for s in _sesiones(usuario.id) if s.id == ajena_id][0]
+    revocada = next(s for s in _sesiones(usuario.id) if s.id == ajena_id)
     assert revocada.revoked_at is not None
-    assert [s for s in _sesiones(usuario.id) if s.id == propia.id][0].revoked_at is None
+    assert next(s for s in _sesiones(usuario.id) if s.id == propia.id).revoked_at is None
     assert _auditoria(usuario.id, "session_revoked") == 1
 
     # La sesión revocada desaparece del listado.
@@ -559,7 +559,7 @@ def test_no_se_puede_revocar_la_sesion_actual(cliente, fabrica):
     assert respuesta.headers["location"] == "/auth/seguridad?error=sesion_actual"
     # La sesión sigue viva: se cierra con «Salir», no desde el listado.
     assert cliente.get("/", follow_redirects=False).status_code == 200
-    assert [s for s in _sesiones(usuario.id) if s.id == propia.id][0].revoked_at is None
+    assert next(s for s in _sesiones(usuario.id) if s.id == propia.id).revoked_at is None
 
 
 def test_no_se_puede_revocar_la_sesion_de_otro_usuario(cliente, fabrica):
@@ -574,7 +574,7 @@ def test_no_se_puede_revocar_la_sesion_de_otro_usuario(cliente, fabrica):
                              follow_redirects=False)
     assert respuesta.status_code == 303
     assert respuesta.headers["location"] == "/auth/seguridad?error=sesion_no_encontrada"
-    assert [s for s in _sesiones(otro.id) if s.id == ajena_id][0].revoked_at is None
+    assert next(s for s in _sesiones(otro.id) if s.id == ajena_id).revoked_at is None
 
 
 # --- 8. Enrolamiento: QR, clave manual y códigos de un solo uso ----------------

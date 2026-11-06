@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models import Auditoria, Proyecto, Usuario
 from app.seed_data import USUARIOS_SEMILLA, mfa_policy_para_rol
 
+
 def get_default_proyecto(db: Session) -> Proyecto:
     proyecto = db.scalars(select(Proyecto).order_by(Proyecto.id)).first()
     if proyecto is None:

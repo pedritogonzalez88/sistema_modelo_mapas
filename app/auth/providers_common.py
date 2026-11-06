@@ -1,5 +1,6 @@
 """Proveedor local, contrato y utilidades de mapeo LDAP."""
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 import ldap3
 from ldap3.utils.conv import escape_filter_chars

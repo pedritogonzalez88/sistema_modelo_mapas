@@ -19,7 +19,7 @@ import hmac
 import secrets
 import time
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Final
 
 import pyotp
@@ -170,7 +170,7 @@ def utcnow() -> datetime:
     consciente de zona y le quita ``tzinfo`` para no cambiar la semántica de las
     columnas: siguen siendo naive con hora UTC, como todo el resto del esquema.
     """
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def new_token(nbytes: int = 32) -> str:
@@ -193,7 +193,7 @@ def hmac_code(code: str, user_id: int | str, pepper: str) -> str:
     """
     if not pepper:
         raise ValueError("Se requiere el pepper para calcular el HMAC del código.")
-    mensaje = f"{user_id}:{code}".encode("utf-8")
+    mensaje = f"{user_id}:{code}".encode()
     return hmac.new(pepper.encode("utf-8"), mensaje, hashlib.sha256).hexdigest()
 
 
@@ -213,8 +213,7 @@ def _clave_fernet(material: str) -> Fernet:
     ``EET_SECRET_KEY`` puede ser cualquier cadena larga y aleatoria.
     """
     texto = (material or "").strip()
-    if texto.startswith("base64:"):
-        texto = texto[len("base64:"):]
+    texto = texto.removeprefix("base64:")
     if not texto:
         raise ValueError("Las claves de cifrado no pueden estar vacías.")
     candidata = texto.encode("ascii", "ignore")

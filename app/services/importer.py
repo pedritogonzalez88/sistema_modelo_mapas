@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.exceptions import InvalidFileException
 
-from ..domain.classes import ALIASES_SC, ClaseCobertura, MAPA_ETIQUETAS, SIN_CONSENSO
+from ..domain.classes import ALIASES_SC, MAPA_ETIQUETAS, SIN_CONSENSO, ClaseCobertura
 
 ERROR_ETIQUETA_INVALIDA = "ETIQUETA_INVALIDA"
 ERROR_ID_EV_NO_RESUELTO = "ID_EV_NO_RESUELTO"
@@ -204,12 +204,12 @@ def _a_float(valor):
 
 
 def _procesar_libro(libro, libro_formulas=None):
-    datos = {}
-    errores = []
-    puntos_meta = {}
-    movimientos = {}
+    datos: dict[tuple[int, int], dict[str, ClaseCobertura | str | None]] = {}
+    errores: list[dict] = []
+    puntos_meta: dict[int, dict] = {}
+    movimientos: dict[int, dict] = {}
     registros = 0
-    hojas_formulas = {}
+    hojas_formulas: dict = {}
     if libro_formulas is not None:
         hojas_formulas = {hoja.title: hoja for hoja in libro_formulas.worksheets}
 
@@ -221,7 +221,7 @@ def _procesar_libro(libro, libro_formulas=None):
         encabezado = next(filas, None)
         if filas_formulas is not None:
             next(filas_formulas, None)
-        if _fila_vacia(encabezado):
+        if encabezado is None or _fila_vacia(encabezado):
             continue
 
         idx_ev = None
@@ -229,7 +229,7 @@ def _procesar_libro(libro, libro_formulas=None):
         idx_x = None
         idx_y = None
         idx_nota = None
-        anios = {}
+        anios: dict[int, int] = {}
         for indice, celda in enumerate(encabezado):
             texto = "" if celda is None else str(celda).strip()
             if idx_ev is None and _RE_ID_EV.match(texto):

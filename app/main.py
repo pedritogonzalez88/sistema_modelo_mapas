@@ -26,7 +26,16 @@ from app.auth.middleware import AuthGateMiddleware, SecurityHeadersMiddleware
 from app.auth.router import router as auth_router
 from app.core.config import settings
 from app.core.database import SessionLocal, engine, init_db
-from app.routers import cruces, dashboard, entregas, exportar, malla, mapa, qaqc, reemplazos
+from app.routers import (
+    cruces,
+    dashboard,
+    entregas,
+    exportar,
+    malla,
+    mapa,
+    qaqc,
+    reemplazos,
+)
 from app.services import persist
 from app.web import templates
 
@@ -173,7 +182,7 @@ def create_app() -> FastAPI:
         try:
             with engine.connect() as conexion:
                 conexion.execute(text("SELECT 1"))
-        except Exception:  # noqa: BLE001 - solo se informa el estado
+        except Exception:
             # Sin traza ni cadena de conexión: podría contener credenciales.
             logger.error("readiness: la base de datos no responde")
             return JSONResponse(

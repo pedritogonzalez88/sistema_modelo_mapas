@@ -17,6 +17,7 @@ redirecciones al login.
 from __future__ import annotations
 
 import secrets
+from typing import ClassVar
 from urllib.parse import quote
 
 from starlette.concurrency import run_in_threadpool
@@ -31,9 +32,9 @@ from app.core.database import SessionLocal
 from app.models import Usuario
 
 __all__ = [
-    "AuthGateMiddleware",
     "COOKIE_MFA_DESARROLLO",
     "COOKIE_SESION_DESARROLLO",
+    "AuthGateMiddleware",
     "SecurityHeadersMiddleware",
     "aplicar_cookie_mfa",
     "aplicar_cookie_sesion",
@@ -256,7 +257,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     surte efecto y, en desarrollo local, impediría volver a entrar por http.
     """
 
-    CABECERAS = {
+    CABECERAS: ClassVar[dict[str, str]] = {
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
         "X-Frame-Options": "DENY",

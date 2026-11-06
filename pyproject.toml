@@ -39,9 +39,20 @@ pythonpath = ["."]
 markers = ["integration: requiere PostgreSQL (docker compose up -d)"]
 addopts = "-m 'not integration'"
 
+[tool.ruff.lint]
+# B008: Depends() en defaults es el patrón idiomático de FastAPI.
+# BLE001: los except amplios están en integraciones que deben degradar.
+# DTZ003/ISC004: timestamps naive del esquema y concatenación de texto.
+ignore = ["B008", "BLE001", "DTZ003", "ISC004"]
+
+[tool.ruff.lint.per-file-ignores]
+# Fachadas de compatibilidad con re-exports explícitos.
+"app/auth/service.py" = ["F401", "F403", "F405"]
+"app/auth/providers.py" = ["F401", "F403", "F405"]
+
 [tool.mypy]
 python_version = "3.12"
-files = ["app/domain", "app/core"]
+files = ["app/domain", "app/core", "app/services"]
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_redundant_casts = true

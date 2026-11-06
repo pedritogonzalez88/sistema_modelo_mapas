@@ -8,8 +8,8 @@ comparan el conjunto de campos contra el contrato que consumen los routers.
 Se valida por inclusión: los campos ocultos de control (``*_present``,
 ``nuevo_estado``) y los filtros de listado son extras aceptados.
 """
-from pathlib import Path
 import re
+from pathlib import Path
 
 import pytest
 from jinja2 import Environment, FileSystemLoader, select_autoescape

@@ -22,8 +22,8 @@ jobs:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --dev
-      - name: Ruff (errores reales)
-        run: uv run ruff check app scripts tests --select F,E9
+      - name: Ruff
+        run: uv run ruff check app scripts tests migrations
       - name: Compilación
         run: uv run python -m compileall -q app scripts migrations
       - name: Reglas de arquitectura

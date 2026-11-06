@@ -6,6 +6,7 @@ from app.models import Auditoria, PuntoMalla, Reemplazo
 from app.services.importer import CAUSAS_RESERVA
 from app.services.malla import _malla_de
 
+
 def _procesar_movimientos(db: Session, proyecto_id: int, movimientos: dict,
                           actor: str) -> list:
     """Registra los codigos R/A de Notas como eventos de reemplazo (4.5-4.9).
@@ -13,7 +14,7 @@ def _procesar_movimientos(db: Session, proyecto_id: int, movimientos: dict,
     Dos pasadas (primero R, luego A) con flush intermedio para que la
     activacion encuentre el expediente creado por el reemplazo.
     """
-    observaciones = []
+    observaciones: list[str] = []
     items_r = [(p, m) for p, m in movimientos.items() if m["accion"] == "R"]
     items_a = [(p, m) for p, m in movimientos.items() if m["accion"] == "A"]
     for punto, mov in items_r:

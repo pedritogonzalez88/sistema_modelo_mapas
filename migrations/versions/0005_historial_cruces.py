@@ -7,15 +7,15 @@ Create Date: 2026-11-03
 ``resultados_cruce`` sigue siendo el estado vigente. Esta tabla conserva cada
 versión calculada con su entrega de origen, regla, actor y fecha.
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0005"
-down_revision: Union[str, Sequence[str], None] = "0004"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "0004"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
