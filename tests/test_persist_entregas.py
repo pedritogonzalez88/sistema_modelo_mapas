@@ -1,11 +1,11 @@
-"""Regresiones de persistencia de entregas y cruces.
+﻿"""Regresiones de persistencia de entregas y cruces.
 
 Estas pruebas no necesitan PostgreSQL: crean en SQLite solo las tablas que
 intervienen en ``confirmar_entrega`` y ``recalcular_cruce`` (sin la columna
-``geometry`` de ``puntos_malla``). Así la lógica de versiones, ausencias y
+``geometry`` de ``puntos_malla``). AsÃ­ la lÃ³gica de versiones, ausencias y
 fichas QA/QC queda cubierta en cualquier equipo, sin Docker.
 
-Las pruebas que sí requieren PostGIS (coordenadas, mallas) siguen en la suite
+Las pruebas que sÃ­ requieren PostGIS (coordenadas, mallas) siguen en la suite
 ``integration``.
 """
 from datetime import datetime
@@ -14,6 +14,7 @@ import pytest
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import Base
 from app.domain.classes import ClaseCobertura
 from app.domain.qaqc import EstadoQAQC
@@ -28,6 +29,7 @@ from app.models import (
     ResultadoCruce,
     ResultadoCruceHistorial,
 )
+from app.services import entregas as entregas_service
 from app.services import persist
 from app.services.importer import ResultadoImportacion
 
@@ -47,7 +49,7 @@ _TABLAS = (
 
 @pytest.fixture
 def db():
-    """Sesión SQLite en memoria con el subconjunto de tablas necesario."""
+    """SesiÃ³n SQLite en memoria con el subconjunto de tablas necesario."""
     engine = create_engine("sqlite://")
     Base.metadata.create_all(
         engine, tables=[Base.metadata.tables[nombre] for nombre in _TABLAS])
@@ -98,7 +100,7 @@ def test_confirmar_rechaza_entrega_con_errores(db, tmp_path, monkeypatch):
         datos={(1, 2020): {"A": ClaseCobertura.BOSQUE_NATURAL}},
         errores=[{"tipo": "ETIQUETA_INVALIDA", "mensaje": "Clase 99"}],
     )
-    monkeypatch.setattr(persist, "importar_excel", lambda _contenido: parsed)
+    monkeypatch.setattr(entregas_service, "importar_excel", lambda _contenido: parsed)
 
     with pytest.raises(persist.ErrorEntrega, match="error"):
         persist.confirmar_entrega(db, entrega.id)
@@ -108,7 +110,7 @@ def test_confirmar_rechaza_entrega_con_errores(db, tmp_path, monkeypatch):
     assert db.scalar(select(func.count()).select_from(Interpretacion)) == 0
 
 
-# --- C-2: una celda vacía es una ausencia explícita ---------------------------
+# --- C-2: una celda vacÃ­a es una ausencia explÃ­cita ---------------------------
 def test_confirmar_persiste_ausencia_y_borra_valor_anterior(db, tmp_path,
                                                             monkeypatch):
     archivo = tmp_path / "entrega.xlsx"
@@ -117,17 +119,17 @@ def test_confirmar_persiste_ausencia_y_borra_valor_anterior(db, tmp_path,
     # Primera entrega: la evaluadora A informa clase 1.
     primera = _entrega(db, estado="pendiente", archivo=str(archivo),
                        semana="05", version=1)
-    monkeypatch.setattr(persist, "importar_excel", lambda _contenido: ResultadoImportacion(
+    monkeypatch.setattr(entregas_service, "importar_excel", lambda _contenido: ResultadoImportacion(
         datos={(1, 2020): {"A": ClaseCobertura.BOSQUE_NATURAL}},
     ))
     persist.confirmar_entrega(db, primera.id)
     assert persist._ultima_interpretacion(db, _proyecto(db).id, 1, 2020, "A").clase == 1
 
-    # Corrección: la celda A queda vacía. Debe ganar la ausencia, no el valor
+    # CorrecciÃ³n: la celda A queda vacÃ­a. Debe ganar la ausencia, no el valor
     # de la entrega anterior.
     correccion = _entrega(db, estado="pendiente", archivo=str(archivo),
                           semana="05", version=2)
-    monkeypatch.setattr(persist, "importar_excel", lambda _contenido: ResultadoImportacion(
+    monkeypatch.setattr(entregas_service, "importar_excel", lambda _contenido: ResultadoImportacion(
         datos={(1, 2020): {"A": None}},
     ))
     stats = persist.confirmar_entrega(db, correccion.id)
@@ -140,13 +142,13 @@ def test_confirmar_persiste_ausencia_y_borra_valor_anterior(db, tmp_path,
     assert cruce is not None and cruce.a is None
 
 
-# --- A-1: manda la entrega más reciente, no la versión de otra semana ---------
+# --- A-1: manda la entrega mÃ¡s reciente, no la versiÃ³n de otra semana ---------
 def test_ultima_interpretacion_no_compara_versiones_de_semanas_distintas(db):
     # Semana 05 corregida dos veces (v2), recibida antes.
     vieja = _entrega(db, semana="05", version=2,
                      recibida_en=datetime(2026, 1, 10, 9, 0))
     _interpretacion(db, vieja, clase=1)
-    # Semana 06 recién entregada (v1), recibida después.
+    # Semana 06 reciÃ©n entregada (v1), recibida despuÃ©s.
     nueva = _entrega(db, semana="06", version=1,
                      recibida_en=datetime(2026, 1, 20, 9, 0))
     _interpretacion(db, nueva, clase=6)
@@ -187,12 +189,12 @@ def test_recalcular_preserva_consenso_cerrado(db):
     actualizado = db.scalar(select(ResultadoCruce))
     assert actualizado.clase_consolidada == 7
     assert actualizado.regla_version == "qaqc-consenso"
-    assert actualizado.a == 2  # los valores crudos sí se actualizan
+    assert actualizado.a == 2  # los valores crudos sÃ­ se actualizan
 
 
 # --- A-3: la ficha se abre solo para discrepancia absoluta o SC --------------
 @pytest.mark.parametrize("valores", [
-    {"A": 1, "B": 1, "C": 2},   # mayoría 2/3: se consolida sin ficha
+    {"A": 1, "B": 1, "C": 2},   # mayorÃ­a 2/3: se consolida sin ficha
     {"A": 1},                   # terna incompleta: no es un desacuerdo
 ])
 def test_recalcular_no_crea_ficha_para_mayoria_ni_incompleto(db, valores):
@@ -295,12 +297,12 @@ def test_confirmar_entrega_revierte_si_falla_el_recalculo(db, tmp_path, monkeypa
     archivo.write_bytes(b'contenido')
     entrega = _entrega(db, estado='pendiente', archivo=str(archivo))
     parsed = ResultadoImportacion(datos={(1, 2020): {'A': ClaseCobertura.BOSQUE_NATURAL}})
-    monkeypatch.setattr(persist, 'importar_excel', lambda _contenido: parsed)
+    monkeypatch.setattr(entregas_service, 'importar_excel', lambda _contenido: parsed)
 
     def falla(*args, **kwargs):
         raise RuntimeError('fallo simulado')
 
-    monkeypatch.setattr(persist, 'recalcular_cruce', falla)
+    monkeypatch.setattr(entregas_service, 'recalcular_cruce', falla)
 
     with pytest.raises(RuntimeError):
         persist.confirmar_entrega(db, entrega.id)
@@ -311,7 +313,7 @@ def test_confirmar_entrega_revierte_si_falla_el_recalculo(db, tmp_path, monkeypa
 
 
 def test_crear_entrega_invalida_no_deja_archivo_huerfano(db, tmp_path, monkeypatch):
-    monkeypatch.setattr(persist.settings, 'upload_dir', str(tmp_path))
+    monkeypatch.setattr(settings, 'upload_dir', str(tmp_path))
 
     with pytest.raises(ValueError, match='xlsx'):
         persist.crear_entrega_pendiente(db, 'A', '2026-W01', 'avance', b'no es un xlsx')
@@ -320,7 +322,7 @@ def test_crear_entrega_invalida_no_deja_archivo_huerfano(db, tmp_path, monkeypat
 
 
 def test_crear_entrega_valida_letra_tipo_y_una_sola_evaluadora(db, monkeypatch):
-    monkeypatch.setattr(persist, "importar_excel", lambda _contenido: ResultadoImportacion(
+    monkeypatch.setattr(entregas_service, "importar_excel", lambda _contenido: ResultadoImportacion(
         datos={(1, 2020): {"A": ClaseCobertura.BOSQUE_NATURAL,
                            "B": ClaseCobertura.PASTIZALES}},
     ))
@@ -361,8 +363,8 @@ def test_transicionar_reemplazo_no_salta_la_autorizacion(db):
 
 
 def test_crear_entrega_audita_actor_y_cargador(db, tmp_path, monkeypatch):
-    monkeypatch.setattr(persist.settings, 'upload_dir', str(tmp_path))
-    monkeypatch.setattr(persist, 'importar_excel', lambda _contenido: ResultadoImportacion(
+    monkeypatch.setattr(settings, 'upload_dir', str(tmp_path))
+    monkeypatch.setattr(entregas_service, 'importar_excel', lambda _contenido: ResultadoImportacion(
         datos={(1, 2020): {'A': ClaseCobertura.BOSQUE_NATURAL}},
     ))
 
@@ -375,3 +377,5 @@ def test_crear_entrega_audita_actor_y_cargador(db, tmp_path, monkeypatch):
     assert fila is not None
     assert fila.actor == 'usuario:42'
     assert entrega.cargada_por_id == 42
+
+

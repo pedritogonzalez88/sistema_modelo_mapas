@@ -5,14 +5,15 @@
 El proyecto es un **monolito por capas pragmático** (FastAPI + SQLAlchemy +
 Jinja2), no una Clean Architecture estricta. La dirección de dependencias es
 correcta en lo esencial: el dominio no conoce infraestructura, los servicios no
-conocen routers y `core` no depende de la capa web. Sin embargo, hay **módulos
-demasiado grandes** y una ruta legacy (`Store`) que duplica responsabilidades.
+conocen routers y `core` no depende de la capa web. Se eliminaron la ruta
+legacy `Store` de la aplicación y los esquemas sin uso; el riesgo restante es
+que `auth/service.py` y `auth/router.py` siguen siendo grandes.
 
 | Dimensión | Evaluación |
 |---|---|
 | Dirección de dependencias | **Buena** (domain → core/models; services → domain/models; routers → services/auth) |
 | Pureza del dominio | **Muy buena** (`app/domain` sin imports de FastAPI, SQLAlchemy ni settings) |
-| Separación de responsabilidades | **Media** (`auth/service.py` y `services/persist.py` concentran demasiado) |
+| Separación de responsabilidades | **Media-alta** (`persist` ya está dividido; `auth/service.py` sigue concentrando MFA/correo/reset) |
 | Seguridad | **Buena** (CSRF, CSP, MFA, rate limiting, auditoría, cookies `__Host-`) |
 | Pruebas | **Buena** (603 pruebas, ~81% cobertura; huecos en flujos complejos) |
 | Tipado estático | **Baja** (sin mypy/pyright; muchos `dict`/`Any`) |
@@ -26,10 +27,9 @@ app/
   core/        configuración, seguridad criptográfica, base de datos
   domain/      reglas puras: clases, cruce, QA/QC, transiciones
   models/      ORM SQLAlchemy
-  services/    persistencia y casos de uso (persist, importer, analysis, store legacy)
+  services/    persistencia y casos de uso (entregas, cruces, malla, qaqc, dashboard, importer, analysis)
   auth/        slice vertical: login, MFA, sesiones, usuarios, LDAP, correo, auditoría
   routers/     capa HTTP (FastAPI)
-  schemas/     contratos Pydantic (mayormente sin uso)
   templates/   Jinja2
   static/      CSS/JS
 ```
@@ -60,26 +60,31 @@ middlewares y routers. `auth` es un slice vertical que no depende de
 
 | Archivo | Líneas | Problema |
 |---|---:|---|
-| `app/auth/service.py` | 2139 | Login, sesiones, MFA, correo, recuperación, usuarios, LDAP, auditoría y exportación |
-| `app/services/persist.py` | 983 | Entregas, cruces, malla, mapa, QA/QC, dashboard, seed y paginación |
+| `app/auth/service.py` | 1577 | Login, sesiones, MFA, correo y recuperación |
 | `app/auth/router.py` | 812 | Formularios, POST y flujos de autenticación |
-| `app/cli.py` | 660 | Muchos comandos de operación |
 | `app/auth/providers.py` | 658 | LDAP y sincronización |
+| `app/auth/users.py` | 604 | Administración de usuarios, roles y auditoría |
+| `app/cli.py` | 660 | Muchos comandos de operación |
 
-Riesgo: cambios locales con efectos laterales, tests lentos, revisiones
-difíciles y alta probabilidad de duplicación.
+`app/services/persist.py` quedó reducido a una **fachada de 87 líneas**; la
+implementación vive en módulos de 37–217 líneas. `app/services/store.py` se
+movió a `tests/support/legacy_store.py` y `app/schemas` se eliminó por no tener
+uso.
 
-### 2. Ruta legacy `Store`
+Riesgo restante: `auth/service.py` y `auth/router.py` siguen concentrando
+demasiadas responsabilidades; es el siguiente objetivo de refactor.
 
-`app/services/store.py` (220 líneas) mantiene una segunda implementación del
-motor de cruces/QA-QC. Solo la usan pruebas; la aplicación usa
-`services/persist.py` y `domain/*`. Es deuda de diseño: dos fuentes de verdad.
+### 2. Ruta legacy `Store` — resuelto
 
-### 3. `app/schemas` sin uso
+`app/services/store.py` se movió a `tests/support/legacy_store.py`. La
+aplicación ya no tiene una segunda implementación del motor; las pruebas legacy
+la usan de forma explícita y aislada.
 
-`EntregaCreate`, `EntregaOut`, `FichaUpdate`, `QaqcEvento` y `DashboardOut` no
-se usan en routers (0% cobertura). Los formularios validan a mano en routers y
-servicios. O se adoptan como contratos, o se eliminan.
+### 3. `app/schemas` sin uso — resuelto
+
+Se eliminó el paquete vacío. Los formularios se validan en servicios/routers;
+si se añaden endpoints JSON formales, conviene reintroducir contratos Pydantic
+con uso real.
 
 ### 4. Cobertura desigual
 
@@ -88,15 +93,18 @@ Cobertura global ~81%, pero:
 | Módulo | Cobertura |
 |---|---:|
 | `app/domain/*` | 98–100% |
-| `app/auth/service.py` | 89% |
+| `app/auth/service.py` | 88% |
+| `app/auth/users.py` | 89% |
 | `app/auth/router.py` | 88% |
 | `app/services/importer.py` | 90% |
-| `app/services/persist.py` | 56% |
+| `app/services/cruces.py` | 77% |
+| `app/services/entregas.py` | 74% |
+| `app/services/malla.py` | 54% |
+| `app/services/qaqc.py` | 56% |
+| `app/services/reemplazos.py` | 38% |
 | `app/routers/qaqc.py` | 50% |
 | `app/routers/reemplazos.py` | 51% |
-| `app/services/store.py` | 50% |
 | `app/cli.py` | 56% |
-| `app/schemas/__init__.py` | 0% |
 
 Los flujos de mayor valor (confirmación, QA/QC, reemplazos, CLI) son justamente
 los que menos cobertura tienen.
@@ -147,6 +155,13 @@ Clean Architecture estricta:
 - **`app/schemas` eliminado**: no tenía imports ni uso; los contratos de
   entrada se validan en servicios/routers. Se puede reintroducir cuando haya
   endpoints JSON formales.
+- **`persist.py` dividido**: la implementación quedó en `bootstrap.py`,
+  `entregas.py`, `cruces.py`, `malla.py`, `reemplazos.py`, `qaqc.py`,
+  `dashboard.py` y `common.py`. `persist.py` es una fachada de compatibilidad
+  de 87 líneas.
+- **Administración de usuarios extraída**: `auth/service.py` bajó de 2139 a
+  1577 líneas; usuarios, roles, contraseñas y auditoría viven en
+  `auth/users.py` (604 líneas).
 - **Cobertura en CI**: `pytest-cov` con umbral 80% y configuración en
   `pyproject.toml`. El job de integración ejecuta unitarias + integración y
   falla por debajo del umbral. Cobertura actual: **82%**.
@@ -156,33 +171,32 @@ Clean Architecture estricta:
 - **Tipado estático inicial**: `mypy` sobre `app/domain` y `app/core`, con
   `check_untyped_defs`; pasa sin errores. Se puede ampliar por módulos.
 
-Pendiente de las recomendaciones: dividir `persist.py` y `auth/service.py`,
-adoptar contratos Pydantic para formularios, ampliar mypy al resto y añadir
-pruebas de concurrencia reales.
+Pendiente de las recomendaciones: dividir el resto de `auth/service.py`
+(MFA, correo, reset y sesiones) y `auth/router.py`; adoptar contratos Pydantic
+para formularios; ampliar mypy al resto y añadir pruebas de concurrencia
+reales.
 
 ## Plan de mejora recomendado
 
 ### Corto plazo (bajo riesgo)
 
-1. Eliminar o aislar `Store`; migrar sus pruebas a `domain`/`persist`.
-2. Adoptar o borrar `app/schemas`; validar formularios con Pydantic donde aporte.
-3. Activar `ruff` completo en modo advisory y arreglar `I001`, `UP007`,
+1. [x] Aislar `Store` en pruebas.
+2. [x] Eliminar `app/schemas` sin uso.
+3. [ ] Activar `ruff` completo en modo advisory y arreglar `I001`, `UP007`,
    `ISC004`, `DTZ003`.
-4. Añadir `pytest-cov` con umbral mínimo (por ejemplo 80%) y reporte en CI.
-5. Añadir pruebas de `persist.py` (confirmación, reemplazos, malla) y de los
-   routers `qaqc`/`reemplazos`.
+4. [x] Añadir `pytest-cov` con umbral 80% y reporte en CI.
+5. [~] Añadir pruebas de `persist` (confirmación, reemplazos, malla); faltan
+   más casos de routers `qaqc`/`reemplazos`.
 
 ### Medio plazo (refactor)
 
-1. Dividir `persist.py` en `entregas.py`, `cruces.py`, `malla.py`, `qaqc.py`,
-   `dashboard.py` y `bootstrap.py`.
-2. Dividir `auth/service.py` en `login.py`, `mfa.py`, `usuarios.py`,
-   `tokens.py` y `auditoria.py`.
-3. Introducir `Protocol` para `Mailer`, `Clock` y repositorios si se quiere
+1. [x] Dividir `persist.py` en módulos cohesivos con fachada de compatibilidad.
+2. [~] Dividir `auth/service.py`: usuarios/roles/auditoría ya están en
+   `auth/users.py`; faltan MFA, correo, reset y sesiones.
+3. [ ] Introducir `Protocol` para `Mailer`, `Clock` y repositorios si se quiere
    testabilidad pura.
-4. Añadir `mypy`/`pyright` gradual (primero `domain` y `core`).
-5. Añadir `import-linter` para prohibir dependencias domain→infra y
-   services→routers.
+4. [x] Añadir `mypy` gradual en `domain` y `core`.
+5. [x] Añadir `import-linter` para dependencias prohibidas.
 
 ### Largo plazo (si el sistema crece)
 
@@ -194,9 +208,8 @@ pruebas de concurrencia reales.
 
 El proyecto **no es un desastre arquitectónico**: el dominio está limpio, la
 dirección de dependencias es sana y la seguridad está por encima de la media
-para una aplicación de este tamaño. El problema principal es de **modularidad**:
-dos archivos concentran la mayor parte de la lógica y hay una implementación
-legacy duplicada. Con la división de `persist.py` y `auth/service.py`, la
-eliminación de `Store`/schemas muertos y un mínimo de tipado/cobertura en los
-flujos críticos, la base actual puede considerarse una arquitectura limpia
-pragmática y sostenible.
+para una aplicación de este tamaño. El problema principal era de
+**modularidad**, y ya se corrigió en `services/`. Queda concentrar el refactor
+en `auth/service.py` y `auth/router.py`, y subir la cobertura de los flujos de
+QA/QC y reemplazos. Con esos pasos, la base actual puede considerarse una
+arquitectura limpia pragmática y sostenible.
