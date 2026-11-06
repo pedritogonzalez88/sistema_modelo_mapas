@@ -13,12 +13,16 @@ $ErrorActionPreference = 'Stop'
 
 $keep = Join-Path $PSScriptRoot 'keep-local.ps1'
 $keepWsl = Join-Path $PSScriptRoot 'keep-wsl-alive.ps1'
-if (-not (Test-Path $keep) -or -not (Test-Path $keepWsl)) {
-    throw "Faltan keep-local.ps1 o keep-wsl-alive.ps1 en $PSScriptRoot"
+$launcher = Join-Path $PSScriptRoot 'run-hidden.vbs'
+if (-not (Test-Path $keep) -or -not (Test-Path $keepWsl) -or -not (Test-Path $launcher)) {
+    throw "Faltan keep-local.ps1, keep-wsl-alive.ps1 o run-hidden.vbs en $PSScriptRoot"
 }
 
-$accion = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$keep`""
+# Se lanza a través de run-hidden.vbs: wscript es una app GUI y arranca
+# PowerShell con SW_HIDE desde el inicio, así Windows Terminal no muestra
+# ninguna ventana (el -WindowStyle Hidden solo llega tarde y deja un flash).
+$accion = New-ScheduledTaskAction -Execute 'wscript.exe' `
+    -Argument "//B //Nologo `"$launcher`" keep-local"
 
 $triggerLogon = New-ScheduledTaskTrigger -AtLogOn `
     -User "$env:USERDOMAIN\$env:USERNAME"
@@ -42,8 +46,8 @@ $principal = New-ScheduledTaskPrincipal `
 
 # Tarea 1: mantiene una sesión WSL viva (sleep infinity) para que la VM no se
 # apague al terminar el proceso que lanzó Docker.
-$accionKeep = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$keepWsl`""
+$accionKeep = New-ScheduledTaskAction -Execute 'wscript.exe' `
+    -Argument "//B //Nologo `"$launcher`" keep-wsl-alive"
 $triggerKeep = New-ScheduledTaskTrigger -AtLogOn `
     -User "$env:USERDOMAIN\$env:USERNAME"
 $configKeep = New-ScheduledTaskSettingsSet `
