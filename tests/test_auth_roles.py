@@ -377,14 +377,13 @@ def test_supervision_lee_todo_y_dictamina(cliente, auth_activa, roles_db):
             assert cliente.get(ruta).status_code == 200, ruta
 
         token = _csrf_de_sesion(cliente)
-        # Un evento inválido no es un problema de permisos: la ficha responde
-        # con su propio flujo (error de transición), nunca con 403.
+        # Una ficha inexistente es 404, no un 403 ni una transición inválida.
         respuesta = cliente.post(
             "/qaqc/999999/evento",
             data={"csrf_token": token, "evento": "Evento inexistente"},
             follow_redirects=False)
-        assert respuesta.status_code in (303, 400)
-        assert respuesta.status_code != 403
+        assert respuesta.status_code == 404
+        assert "text/html" in respuesta.headers["content-type"]
 
 
 # --- Consulta ------------------------------------------------------------------

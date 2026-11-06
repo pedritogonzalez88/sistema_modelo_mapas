@@ -13,6 +13,9 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 FLASH_OK = {
     "entrega_creada":     ("Entrega recibida. Revise la vista previa antes de confirmar.", "info"),
     "entrega_confirmada": ("Entrega confirmada y cruces recalculados.", "ok"),
+    "entrega_confirmada_observaciones": (
+        "Entrega confirmada. Revise las observaciones de malla/reserva en el detalle de la entrega.",
+        "warn"),
     "entrega_rechazada":  ("Entrega rechazada. El archivo se conserva como evidencia.", "warn"),
     "ficha_guardada":     ("Dictamen guardado.", "ok"),
     "ficha_transicion":   ("Estado de la ficha actualizado.", "ok"),

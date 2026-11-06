@@ -188,7 +188,9 @@ def confirm(request: Request, entrega_id: int, db: Session = Depends(get_db)):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     _ = stats
-    return RedirectResponse("/cruces?ok=entrega_confirmada", status_code=303)
+    codigo = ("entrega_confirmada_observaciones"
+              if stats.get("observaciones") else "entrega_confirmada")
+    return RedirectResponse(f"/cruces?ok={codigo}", status_code=303)
 
 
 @router.post("/{entrega_id}/reject",
@@ -196,9 +198,13 @@ def confirm(request: Request, entrega_id: int, db: Session = Depends(get_db)):
                            Depends(require_permiso("entregas.gestionar"))])
 def reject(request: Request, entrega_id: int, motivo: str = Form(""),
            db: Session = Depends(get_db)):
+    motivo_limpio = (motivo or "").strip()
+    if not motivo_limpio:
+        raise HTTPException(status_code=400,
+                            detail="El motivo de rechazo es obligatorio.")
     try:
         persist.rechazar_entrega(
-            db, entrega_id, motivo or "Sin motivo registrado.",
+            db, entrega_id, motivo_limpio,
             actor=actor_de_request(request))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -8,11 +8,12 @@ from pathlib import Path
 import re
 
 from geoalchemy2 import WKTElement
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.security import utcnow
 from app.domain.classes import SIN_CONSENSO, ClaseCobertura
 from app.domain.cross_engine import TipoResultado, resolver_tabla7
 from app.domain.qaqc import (
@@ -42,6 +43,10 @@ from app.services.importer import (
     abrir_libro,
     importar_excel,
 )
+
+# La columna ``puntos_malla.geom`` está declarada Geometry(..., srid=4326).
+# No usar ``Proyecto.srid`` para insertar: si difiere, PostGIS rechaza el WKT.
+SRID_MALLA = 4326
 
 _CLASES = list(ClaseCobertura)
 _ESTADOS_CERRADOS = {"Resuelto por consenso", "Reemplazo completado"}
@@ -149,6 +154,16 @@ def seed(db: Session) -> None:
 def crear_entrega_pendiente(db: Session, letra: str, semana: str, tipo: str,
                             contenido: bytes, actor: str = "cargador",
                             cargado_por_id: int | None = None):
+    letra = (letra or "").strip().upper()
+    if letra not in {"A", "B", "C"}:
+        raise ValueError("La evaluadora debe ser A, B o C.")
+    tipo = (tipo or "").strip().lower()
+    if tipo not in {"avance", "acumulado", "correccion"}:
+        raise ValueError("El tipo debe ser avance, acumulado o corrección.")
+    semana = (semana or "").strip()
+    if not semana or len(semana) > 20:
+        raise ValueError("La semana es obligatoria (máximo 20 caracteres).")
+
     digest = sha256(contenido).hexdigest()
     duplicada = db.scalar(select(Entrega).where(
         Entrega.sha256 == digest, Entrega.asistente_letra == letra))
@@ -165,6 +180,15 @@ def crear_entrega_pendiente(db: Session, letra: str, semana: str, tipo: str,
     # Parsear antes de escribir: un archivo inválido no deja huérfanos en
     # uploads/ ni una fila de entrega a medias.
     parsed: ResultadoImportacion = importar_excel(contenido)
+    letras = {clave for valores in parsed.datos.values() for clave in valores}
+    ajenas = sorted(letras - {letra})
+    if ajenas:
+        raise ValueError(
+            "El archivo contiene evaluadoras "
+            + ", ".join(ajenas)
+            + f"; esta entrega es de la evaluadora {letra}. "
+            "Cargue una entrega por letra."
+        )
 
     ruta = settings.upload_path / f"{digest}.xlsx"
     creada = False
@@ -219,7 +243,6 @@ def confirmar_entrega(db: Session, entrega_id: int, actor: str = "cargador") -> 
             codigo="validacion_pendiente",
         )
     letra = entrega.asistente_letra
-    srid = db.get(Proyecto, entrega.proyecto_id).srid
 
     # Todo se escribe en una sola transacción: si falla el recálculo o un
     # movimiento de reserva, la entrega sigue pendiente y no quedan datos
@@ -250,24 +273,39 @@ def confirmar_entrega(db: Session, entrega_id: int, actor: str = "cargador") -> 
 
         # 2. Malla oficial: registrar o contrastar coordenadas (nunca desplazar)
         observaciones = []
+        filas_malla = []
+        if parsed.puntos_meta:
+            filas_malla = db.execute(
+                select(PuntoMalla, func.ST_X(PuntoMalla.geom),
+                       func.ST_Y(PuntoMalla.geom))
+                .where(PuntoMalla.proyecto_id == entrega.proyecto_id,
+                       PuntoMalla.punto_id.in_(parsed.puntos_meta))
+            ).all()
+        malla_por_punto = {
+            malla.punto_id: (malla, actual_x, actual_y)
+            for malla, actual_x, actual_y in filas_malla
+        }
         for punto, meta in parsed.puntos_meta.items():
             x, y = meta.get("x"), meta.get("y")
-            malla = db.scalar(select(PuntoMalla).where(
-                PuntoMalla.proyecto_id == entrega.proyecto_id,
-                PuntoMalla.punto_id == punto))
+            malla, actual_x, actual_y = malla_por_punto.get(
+                punto, (None, None, None))
             if malla is None:
                 geom = None
                 if x is not None and y is not None:
-                    geom = WKTElement(f"POINT({x} {y})", srid=srid)
+                    geom = WKTElement(f"POINT({x} {y})", srid=SRID_MALLA)
                 db.add(PuntoMalla(proyecto_id=entrega.proyecto_id,
                                   punto_id=punto, geom=geom,
                                   origen="importacion"))
-            elif x is not None and y is not None and malla.geom is not None:
-                actual = db.scalar(func.ST_AsText(malla.geom))
-                if actual != f"POINT({x} {y})":
+            elif x is not None and y is not None:
+                if malla.geom is None:
+                    # B-18: completa una geometría que llegó nula.
+                    malla.geom = WKTElement(f"POINT({x} {y})", srid=SRID_MALLA)
+                elif (actual_x is None or actual_y is None
+                      or abs(float(actual_x) - float(x)) > 1e-9
+                      or abs(float(actual_y) - float(y)) > 1e-9):
                     observaciones.append(
                         f"Punto {punto}: coordenadas {x},{y} difieren de la "
-                        f"malla ({actual}).")
+                        f"malla ({actual_x}, {actual_y}).")
 
         entrega.estado = "aceptada"
         # Publica interpretaciones y estado antes de recalcular; sigue dentro
@@ -342,16 +380,15 @@ def _registrar_reemplazo_r(db, proyecto_id, punto, mov, actor, observaciones):
     reserva = mov["ref"]
     m_res = _malla_de(db, proyecto_id, reserva)
     if m_res is None:
-        m_res = PuntoMalla(proyecto_id=proyecto_id, punto_id=reserva,
-                           origen="reserva-declarada", es_reserva=True)
-        db.add(m_res)
         observaciones.append(
-            f"Punto {punto}: la reserva {reserva} no estaba en la malla; "
-            "se registro como reserva declarada (verificar disenio).")
-    elif not m_res.es_reserva:
+            f"Punto {punto}: la reserva {reserva} no está en la malla; "
+            "no se registra el reemplazo. Cargue primero la malla oficial.")
+        return
+    if not m_res.es_reserva:
         observaciones.append(
             f"Punto {punto}: el punto {reserva} no figura como reserva "
-            "en la malla (ad-hoc prohibido por 4.7).")
+            "en la malla (ad-hoc prohibido por 4.7); no se registra.")
+        return
     m_ori = _malla_de(db, proyecto_id, punto)
     if (m_ori is not None and m_res is not None and m_ori.estrato
             and m_res.estrato and m_ori.estrato != m_res.estrato):
@@ -397,7 +434,8 @@ def proponer_reserva(db: Session, proyecto_id: int, punto_origen: int,
     usadas = select(Reemplazo.punto_reserva).where(
         Reemplazo.proyecto_id == proyecto_id,
         Reemplazo.punto_reserva.is_not(None),
-        Reemplazo.estado.in_(("autorizado", "completado")))
+        Reemplazo.estado.in_(("propuesto", "autorizado", "completado")),
+        Reemplazo.punto_origen != punto_origen)
     q = select(PuntoMalla).where(
         PuntoMalla.proyecto_id == proyecto_id, PuntoMalla.es_reserva.is_(True),
         PuntoMalla.activo.is_(True), PuntoMalla.punto_id.not_in(usadas))
@@ -426,11 +464,17 @@ def proponer_reserva(db: Session, proyecto_id: int, punto_origen: int,
 
 def transicionar_reemplazo(db: Session, reemplazo_id: int, nuevo_estado: str,
                            actor: str = "supervision") -> Reemplazo:
-    orden = {"propuesto": 0, "autorizado": 1, "completado": 2}
+    permitidas = {
+        "propuesto": {"autorizado"},
+        "autorizado": {"completado"},
+        "completado": set(),
+    }
     rep = db.get(Reemplazo, reemplazo_id)
     if rep is None:
         raise ValueError("Reemplazo inexistente.")
-    if nuevo_estado not in orden or orden[nuevo_estado] <= orden[rep.estado]:
+    if rep.estado not in permitidas:
+        raise ValueError(f"Estado actual inválido: '{rep.estado}'.")
+    if nuevo_estado not in permitidas[rep.estado]:
         raise ValueError(f"No se puede pasar de '{rep.estado}' a '{nuevo_estado}'.")
     if nuevo_estado in ("autorizado", "completado") and not rep.punto_reserva:
         raise ValueError("Asigne primero un punto de reserva.")
@@ -625,8 +669,6 @@ def cargar_malla(db: Session, proyecto_id: int, filas: list[dict],
     peso?, x?, y?, es_reserva?. Los puntos ad-hoc estan prohibidos (4.7):
     toda reserva debe ingresar por esta via antes de usarse.
     """
-    proyecto = db.get(Proyecto, proyecto_id)
-    srid = proyecto.srid if proyecto else settings.srid
     creados = actualizados = 0
     for f in filas:
         punto = int(f["punto_id"])
@@ -648,7 +690,7 @@ def cargar_malla(db: Session, proyecto_id: int, filas: list[dict],
             m.es_reserva = bool(f["es_reserva"])
         x, y = f.get("x"), f.get("y")
         if x is not None and y is not None:
-            m.geom = WKTElement(f"POINT({x} {y})", srid=srid)
+            m.geom = WKTElement(f"POINT({x} {y})", srid=SRID_MALLA)
     db.add(Auditoria(actor=actor, accion="malla_actualizada", entidad="malla",
                      detalle={"creados": creados, "actualizados": actualizados}))
     db.commit()
@@ -656,11 +698,30 @@ def cargar_malla(db: Session, proyecto_id: int, filas: list[dict],
 
 
 def _parsear_mapa_xlsx(contenido: bytes) -> list[dict]:
-    """Formato ancho: ID_PUNTO + A1990..A2024 con clases 1-9 (mapas MADES)."""
+    """Formato ancho: ID_PUNTO + A1990..A2024 con clases 1-9 (mapas MADES).
+
+    Recorre todas las hojas y elige la primera con ID_PUNTO y columnas
+    anuales; no depende de cuál sea la hoja activa ni de mayúsculas.
+    """
     libro = abrir_libro(contenido)
     try:
-        ws = libro.active
-        filas = list(ws.iter_rows(values_only=True))
+        filas = []
+        for hoja in libro.worksheets:
+            candidatas = list(hoja.iter_rows(values_only=True))
+            if not candidatas:
+                continue
+            encabezado = [("" if c is None else str(c).strip())
+                          for c in candidatas[0]]
+            tiene_punto = any(
+                c.lower().replace("_", "").replace(" ", "") == "idpunto"
+                for c in encabezado)
+            tiene_anios = any(re.match(r"^a\d{4}$", c, re.IGNORECASE)
+                              for c in encabezado)
+            if tiene_punto and tiene_anios:
+                filas = candidatas
+                break
+        if not filas:
+            filas = list(libro.active.iter_rows(values_only=True))
     finally:
         libro.close()
     if not filas:
@@ -672,7 +733,7 @@ def _parsear_mapa_xlsx(contenido: bytes) -> list[dict]:
         raise ValueError("Falta la columna ID_PUNTO.")
     anios = {}
     for i, c in enumerate(enc):
-        m = re.match(r"^A(\d{4})$", c)
+        m = re.match(r"^A(\d{4})$", c, re.IGNORECASE)
         if m:
             anios[i] = int(m.group(1))
     if not anios:
@@ -732,6 +793,7 @@ def cargar_mapa(db: Session, proyecto_id: int, contenido: bytes, nombre: str,
         registros = _parsear_mapa_xlsx(contenido)
         fuente = "UTCUTS-XLSX"
     n = 0
+    claves = set()
     for r in registros:
         ex = db.scalar(select(ClaseMapa).where(
             ClaseMapa.proyecto_id == proyecto_id, ClaseMapa.punto_id == r["punto_id"],
@@ -744,6 +806,13 @@ def cargar_mapa(db: Session, proyecto_id: int, contenido: bytes, nombre: str,
             ex.clase = r["clase"]
             ex.fuente = fuente
             n += 1
+        claves.add((r["punto_id"], r["anio"]))
+    # B-17: un mapa corregido reemplaza al anterior; las combinaciones que ya
+    # no vienen en el archivo no deben seguir contando en la matriz.
+    if claves:
+        db.execute(delete(ClaseMapa).where(
+            ClaseMapa.proyecto_id == proyecto_id,
+            tuple_(ClaseMapa.punto_id, ClaseMapa.anio).not_in(claves)))
     db.add(Auditoria(actor=actor, accion="mapa_cargado", entidad="mapa",
                      detalle={"registros": n, "fuente": fuente}))
     db.commit()
@@ -803,10 +872,21 @@ def resumen_dashboard(db: Session, proyecto_id: int) -> dict:
     conteo = {r: n for r, n in filas}
     completas = (conteo.get("unanimidad", 0) + conteo.get("mayoria", 0)
                  + conteo.get("discrepancia", 0))
+    # B-19: una corrección crea otra interpretación para el mismo
+    # punto/año/letra. Se cuenta solo la última aceptada de cada combinación.
+    ultimas = (
+        select(Interpretacion.punto_id, Interpretacion.anio,
+               Interpretacion.asistente_letra,
+               func.max(Interpretacion.id).label("ultimo"))
+        .join(Entrega, Entrega.id == Interpretacion.entrega_id)
+        .where(Interpretacion.proyecto_id == proyecto_id,
+               Entrega.estado == "aceptada")
+        .group_by(Interpretacion.punto_id, Interpretacion.anio,
+                  Interpretacion.asistente_letra)
+        .subquery()
+    )
     total_eval = db.scalar(
-        select(func.count()).select_from(Interpretacion)
-        .join(Entrega, Entrega.id == Interpretacion.entrega_id).where(
-            Interpretacion.proyecto_id == proyecto_id, Entrega.estado == "aceptada")) or 0
+        select(func.count()).select_from(ultimas)) or 0
     total_puntos = db.scalar(select(func.count(func.distinct(ResultadoCruce.punto_id))).where(
         ResultadoCruce.proyecto_id == proyecto_id)) or 0
     pendientes = db.scalar(select(func.count()).select_from(FichaQAQC).where(
@@ -980,8 +1060,6 @@ def actualizar_ficha(db: Session, ficha_id: int, datos: dict, actor: str = "supe
 
 
 def transicionar_ficha(db: Session, ficha_id: int, evento_nombre: str, actor: str = "supervision"):
-    from datetime import datetime
-
     ficha = db.get(FichaQAQC, ficha_id)
     if ficha is None:
         raise ValueError("Ficha inexistente.")
@@ -999,7 +1077,7 @@ def transicionar_ficha(db: Session, ficha_id: int, evento_nombre: str, actor: st
             raise ValueError("Para aprobar por consenso se exige clase definitiva 1-9.")
     ficha.estado = nuevo.value
     if nuevo.value in _ESTADOS_CERRADOS:
-        ficha.cerrada_en = datetime.utcnow()
+        ficha.cerrada_en = utcnow()
     # El dictamen actualiza el consenso (trazable: no toca interpretaciones)
     cruce = db.scalar(select(ResultadoCruce).where(
         ResultadoCruce.proyecto_id == ficha.proyecto_id,

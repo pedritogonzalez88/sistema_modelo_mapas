@@ -441,22 +441,25 @@ def revocar_todas(db: Session, usuario_id: int, excepto_id=None) -> int:
     return int(resultado.rowcount or 0)
 
 
-def limpiar_expiradas(db: Session, dias: int = 30) -> int:
+def limpiar_expiradas(db: Session, dias: int = 30,
+                      usuario_id: int | None = None) -> int:
     """Borra sesiones muertas hace más de ``dias`` (tarea de mantenimiento).
 
     Elimina expiradas, revocadas e inactivas antiguas. Nunca toca una sesión
     viva: el umbral se mide contra el momento en que dejó de ser válida.
+    ``usuario_id`` limita la limpieza a una cuenta (pruebas y operación).
     """
-    limite = utcnow() - timedelta(days=max(0, int(dias)))
-    resultado = db.execute(
-        delete(Sesion).where(
-            or_(
-                Sesion.expires_at < limite,
-                Sesion.revoked_at < limite,
-                Sesion.last_seen_at < limite,
-            )
-        )
-    )
+    dias = max(0, int(dias))
+    limite = utcnow() - timedelta(days=dias)
+    temporales = [Sesion.expires_at < limite, Sesion.revoked_at < limite]
+    if dias > 0:
+        # Con --dias 0 solo se purgan sesiones ya expiradas/revocadas; no se
+        # debe borrar una sesión viva por su último acceso.
+        temporales.append(Sesion.last_seen_at < limite)
+    consulta = delete(Sesion).where(or_(*temporales))
+    if usuario_id is not None:
+        consulta = consulta.where(Sesion.usuario_id == usuario_id)
+    resultado = db.execute(consulta)
     db.commit()
     return int(resultado.rowcount or 0)
 
@@ -1407,8 +1410,8 @@ def verificar_desafio_email(db: Session, desafio: AuthToken | None, codigo: str,
             and constant_time_eq(fila.code_hash, esperado):
         fila.consumed_at = ahora
         desafio.used_at = ahora
-        if usuario.mfa_enrolled_at is None:
-            usuario.mfa_enrolled_at = ahora
+        # ``mfa_enrolled_at`` queda reservado a TOTP: el gate de enrolamiento
+        # no debe confundir un código por correo con un autenticador enrolado.
         audit.registrar(
             db, audit.actor_de(usuario), "email_otp_ok", entidad="usuario",
             entidad_id=usuario.id,

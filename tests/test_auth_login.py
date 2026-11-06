@@ -168,7 +168,8 @@ def test_cinco_fallos_bloquean_la_cuenta(cliente, fabrica_usuarios):
     # Con la contraseña correcta sigue bloqueada hasta que expire el plazo.
     respuesta = _login(cliente, usuario)
     assert respuesta.status_code == 200
-    assert "Demasiados intentos fallidos" in respuesta.text
+    # Mismo mensaje que credenciales inválidas: no revela la cuenta (M-23).
+    assert "Usuario o contraseña incorrectos." in respuesta.text
     assert COOKIE_SESION not in cliente.cookies
 
 

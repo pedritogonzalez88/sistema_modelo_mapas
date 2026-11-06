@@ -286,7 +286,8 @@ def test_login_con_politica_email_envia_codigo_y_abre_sesion(cliente, fabrica,
     from app.models import Usuario
 
     with SessionLocal() as db:
-        assert db.get(Usuario, usuario.id).mfa_enrolled_at is not None
+        # El código por correo no marca el enrolamiento TOTP (M-25).
+        assert db.get(Usuario, usuario.id).mfa_enrolled_at is None
     assert _auditoria(usuario.id, "email_otp_ok") == 1
     assert _codigos_bd(usuario.id)[-1].consumed_at is not None
     assert cliente.get("/", follow_redirects=False).status_code == 200

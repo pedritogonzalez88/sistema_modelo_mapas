@@ -40,8 +40,8 @@ _RE_HOJA_AUXILIAR = re.compile(
 )
 # Protocolo 4.6 / Tabla 5: "R558, N" = punto reemplazado por la reserva 558
 # por causa N|B|T; "A12" = reserva activada que rescata al punto 12.
-_RE_NOTA_R = re.compile(r"^R\s*(\d+)\s*,\s*([NBT])$", re.IGNORECASE)
-_RE_NOTA_A = re.compile(r"^A\s*(\d+)$", re.IGNORECASE)
+_RE_NOTA_R = re.compile(r"^R\s*[-: ]?\s*(\d+)\s*[,;]?\s*([NBT])$", re.IGNORECASE)
+_RE_NOTA_A = re.compile(r"^A\s*[-: ]?\s*(\d+)$", re.IGNORECASE)
 CAUSAS_RESERVA = {"N": "Nubosidad persistente", "B": "Bandeado del sensor",
                   "T": "Transición oculta"}
 

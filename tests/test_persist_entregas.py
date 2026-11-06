@@ -19,10 +19,12 @@ from app.domain.classes import ClaseCobertura
 from app.domain.qaqc import EstadoQAQC
 from app.models import (
     Auditoria,
+    ClaseMapa,
     Entrega,
     FichaQAQC,
     Interpretacion,
     Proyecto,
+    Reemplazo,
     ResultadoCruce,
     ResultadoCruceHistorial,
 )
@@ -37,6 +39,8 @@ _TABLAS = (
     "resultados_cruce",
     "resultados_cruce_historial",
     "fichas_qaqc",
+    "reemplazos",
+    "clases_mapa",
     "auditoria",
 )
 
@@ -313,6 +317,47 @@ def test_crear_entrega_invalida_no_deja_archivo_huerfano(db, tmp_path, monkeypat
         persist.crear_entrega_pendiente(db, 'A', '2026-W01', 'avance', b'no es un xlsx')
 
     assert list(tmp_path.glob('*.xlsx')) == []
+
+
+def test_crear_entrega_valida_letra_tipo_y_una_sola_evaluadora(db, monkeypatch):
+    monkeypatch.setattr(persist, "importar_excel", lambda _contenido: ResultadoImportacion(
+        datos={(1, 2020): {"A": ClaseCobertura.BOSQUE_NATURAL,
+                           "B": ClaseCobertura.PASTIZALES}},
+    ))
+
+    with pytest.raises(ValueError, match="A, B o C"):
+        persist.crear_entrega_pendiente(db, "D", "2026-W01", "avance", b"x")
+    with pytest.raises(ValueError, match="tipo"):
+        persist.crear_entrega_pendiente(db, "A", "2026-W01", "otro", b"x")
+    with pytest.raises(ValueError, match="evaluadoras"):
+        persist.crear_entrega_pendiente(db, "A", "2026-W01", "avance", b"x")
+
+
+def test_cargar_mapa_reemplaza_clases_obsoletas(db):
+    proyecto = _proyecto(db)
+    persist.cargar_mapa(
+        db, proyecto.id, b"punto,anio,clase\n1,2024,1\n2,2024,2\n", "mapa.csv")
+    persist.cargar_mapa(
+        db, proyecto.id, b"punto,anio,clase\n1,2024,3\n", "mapa.csv")
+
+    filas = db.scalars(select(ClaseMapa).where(
+        ClaseMapa.proyecto_id == proyecto.id)).all()
+    assert [(f.punto_id, f.anio, f.clase) for f in filas] == [(1, 2024, 3)]
+
+
+def test_transicionar_reemplazo_no_salta_la_autorizacion(db):
+    proyecto = _proyecto(db)
+    rep = Reemplazo(proyecto_id=proyecto.id, punto_origen=1,
+                    punto_reserva=2, estado="propuesto")
+    db.add(rep)
+    db.commit()
+    db.refresh(rep)
+
+    with pytest.raises(ValueError, match="No se puede pasar"):
+        persist.transicionar_reemplazo(db, rep.id, "completado")
+
+    persist.transicionar_reemplazo(db, rep.id, "autorizado")
+    persist.transicionar_reemplazo(db, rep.id, "completado")
 
 
 def test_crear_entrega_audita_actor_y_cargador(db, tmp_path, monkeypatch):

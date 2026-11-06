@@ -382,6 +382,34 @@ def test_las_hojas_auxiliares_no_generan_error(crear_libro):
     assert res.datos[(101, 1990)] == {"A": ClaseCobertura.BOSQUE_NATURAL}
 
 
+@pytest.mark.parametrize("nota, accion, ref, causa", [
+    ("R558, N", "R", 558, "N"),
+    ("R-558, N", "R", 558, "N"),
+    ("R558 N", "R", 558, "N"),
+    ("R 558; B", "R", 558, "B"),
+    ("A12", "A", 12, None),
+    ("A-12", "A", 12, None),
+])
+def test_variantes_de_notas_de_reserva(nota, accion, ref, causa):
+    from app.services.importer import _parsear_movimiento
+
+    assert _parsear_movimiento(nota) == {
+        "accion": accion, "ref": ref, "causa": causa}
+
+
+def test_el_mapa_xlsx_busca_la_hoja_correcta_y_no_distingue_mayusculas(crear_libro):
+    from app.services.persist import _parsear_mapa_xlsx
+
+    contenido = crear_libro([
+        {"titulo": "Portada", "encabezado": ["Notas"], "filas": [["hola"]]},
+        {"titulo": "Mapa", "encabezado": ["id_punto", "a2024"],
+         "filas": [[101, 1]]},
+    ])
+
+    assert _parsear_mapa_xlsx(contenido) == [
+        {"punto_id": 101, "anio": 2024, "clase": 1}]
+
+
 def test_un_libro_sin_filas_de_cruce_se_reporta(crear_libro):
     contenido = crear_libro([{
         "titulo": "Evaluador_A",

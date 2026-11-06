@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from math import ceil
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
@@ -10,6 +10,7 @@ from app.auth.audit import actor_de_request
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import require_permiso
 from app.core.database import get_db
+from app.core.security import utcnow
 from app.domain.classes import ClaseCobertura
 from app.domain.qaqc import EstadoQAQC, eventos_disponibles
 from app.models import FichaQAQC
@@ -106,7 +107,7 @@ def listar(request: Request, estado: str | None = None,
     )
     fichas = db.scalars(rows).all()
 
-    hoy = datetime.now()
+    hoy = utcnow()
     filas = [
         # Se acota a 0: el reloj de la app y el de PostgreSQL pueden diferir en
         # husos horarios y no tiene sentido mostrar "hace -1 días".
@@ -214,6 +215,8 @@ async def actualizar(request: Request, ficha_id: int, db: Session = Depends(get_
                                                 Depends(require_permiso("qaqc.decidir"))])
 def evento(request: Request, ficha_id: int, evento: str = Form(...),
            db: Session = Depends(get_db)):
+    if db.get(FichaQAQC, ficha_id) is None:
+        raise HTTPException(status_code=404, detail="Ficha inexistente.")
     try:
         persist.transicionar_ficha(db, ficha_id, evento,
                                    actor=actor_de_request(request))

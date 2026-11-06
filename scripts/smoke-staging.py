@@ -271,14 +271,20 @@ def main(argv: list[str] | None = None) -> int:
 
     fallos = [item for item in resultados if item.estado == FAIL]
     omitidos = [item for item in resultados if item.estado == SKIP]
+    login_omitido = any(
+        item.nombre == "login_post" and item.estado == SKIP
+        for item in resultados)
     print()
     print(f"Resumen: {len(resultados) - len(fallos) - len(omitidos)} PASS · "
           f"{len(omitidos)} SKIP · {len(fallos)} FAIL")
-    if fallos:
-        print("Hay fallos: el entorno no está listo.")
-    else:
-        print("Smoke en verde: TLS, proxy, cabeceras y cookie de sesión correctos.")
-    return 0 if not fallos else 1
+    if fallos or login_omitido:
+        print("Hay fallos o verificaciones omitidas: el entorno no está listo.")
+        if login_omitido:
+            print("Defina --usuario/--password o EET_SMOKE_* para verificar "
+                  "la sesión real.")
+        return 1
+    print("Smoke en verde: TLS, proxy, cabeceras y cookie de sesión correctos.")
+    return 0
 
 
 if __name__ == "__main__":  # pragma: no cover - punto de entrada

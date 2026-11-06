@@ -184,6 +184,60 @@ def test_re_cifrar_sin_claves_sale_2(monkeypatch, capsys):
 
 
 # --- Integración: comandos completos -------------------------------------------
+def test_recifrar_blob_actual_corrupto_es_fallo():
+    from app.cli import _recifrar_blob
+
+    _, nuevo = _cajas()
+    assert _recifrar_blob(nuevo, b"esto-no-es-un-token", nuevo.key_id)[0] == "fallo"
+
+
+@pytest.mark.integration
+def test_limpiar_sesiones_dias_cero_conserva_las_vivas():
+    from datetime import timedelta
+
+    from sqlalchemy import delete
+
+    from app.auth.service import limpiar_expiradas
+    from app.core.database import SessionLocal
+    from app.core.security import utcnow
+    from app.models import Sesion, Usuario
+
+    sufijo = uuid.uuid4().hex[:8]
+    with SessionLocal() as db:
+        usuario = Usuario(
+            nombre="Sesiones prueba", username=f"ses-{sufijo}",
+            email=f"ses-{sufijo}@ejemplo.test", rol="consulta",
+            auth_provider="local", is_active=True,
+        )
+        db.add(usuario)
+        db.flush()
+        usuario_id = usuario.id
+        ahora = utcnow()
+        db.add_all([
+            Sesion(token_hash=uuid.uuid4().hex * 2, usuario_id=usuario_id,
+                   expires_at=ahora + timedelta(days=1),
+                   last_seen_at=ahora - timedelta(days=10)),
+            Sesion(token_hash=uuid.uuid4().hex * 2, usuario_id=usuario_id,
+                   expires_at=ahora - timedelta(days=1)),
+        ])
+        db.commit()
+
+    try:
+        with SessionLocal() as db:
+            assert limpiar_expiradas(
+                db, dias=0, usuario_id=usuario_id) == 1
+        with SessionLocal() as db:
+            from sqlalchemy import func, select
+            vivas = db.scalar(select(func.count()).select_from(Sesion).where(
+                Sesion.usuario_id == usuario_id)) or 0
+            assert vivas == 1
+    finally:
+        with SessionLocal() as db:
+            db.execute(delete(Sesion).where(Sesion.usuario_id == usuario_id))
+            db.execute(delete(Usuario).where(Usuario.id == usuario_id))
+            db.commit()
+
+
 @pytest.mark.integration
 def test_re_cifrar_migra_filas_reales(monkeypatch, capsys):
     """Un secreto TOTP y un cuerpo ``enc:v1`` pasan a ``v2`` en la base."""

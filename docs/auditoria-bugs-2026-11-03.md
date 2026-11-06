@@ -616,17 +616,45 @@ en lugar de en esas skills.
 | M-31 / M-33 | Staging publica PostgreSQL solo en `127.0.0.1:5434` y usa un volumen de uploads propio. |
 | M-32 | Migraciones `0001`–`0005` idempotentes para bases creadas con `init_db()` sin `alembic_version`. Verificado en base temporal. |
 | M-40 | El panel del asistente calcula totales/pendientes/aceptadas con agregados, no con las últimas 20 filas. |
+| M-3 | Las observaciones de malla/reserva se muestran como flash al confirmar. |
+| M-4 | Una reserva inexistente o no marcada como reserva ya no se crea sola; se reporta y no se registra el reemplazo. |
+| M-5 | `proponer_reserva` excluye reservas ya propuestas por otro origen. |
+| M-6 | Transiciones explícitas `propuesto → autorizado → completado`; estado corrupto devuelve error, no 500. |
+| M-9 / M-10 | Geometría siempre en SRID 4326; comparación numérica de coordenadas y sin N+1 en la malla. |
+| M-14 / B-14 | Se validan letra, tipo, semana y que el archivo no mezcle evaluadoras. |
+| M-20 | El motivo de rechazo es obligatorio también en POST directo. |
+| M-23 | Bloqueo de login devuelve el mismo mensaje genérico que credenciales inválidas. |
+| M-25 | El código por correo ya no marca `mfa_enrolled_at`; el gate TOTP no se salta. |
+| M-34 / M-35 | `smoke-staging` falla si no verifica login; `preflight-auth` reporta esquema ausente como FAIL. |
+| M-36 | `limpiar-sesiones --dias 0` solo elimina expiradas/revocadas y admite filtro por usuario. |
+| M-38 | `re-cifrar` verifica que el blob con `key_id` vigente realmente descifra. |
+| B-2 / B-3 | Se usa `utcnow()` en CLI, persistencia y routers. |
+| B-7 | El preview ya no expone `archivo_path` del servidor. |
+| B-9 | Ficha inexistente devuelve 404. |
+| B-13 | Cancelar un `confirm()` ya no deja el botón bloqueado. |
+| B-15 / B-16 | Variantes de notas de reserva y mapas XLSX en hojas no activas/mayúsculas. |
+| B-17 | Un mapa corregido elimina clases obsoletas. |
+| B-18 | Una geometría nula se completa con coordenadas posteriores. |
+| B-19 | “Evaluaciones aceptadas” cuenta la última interpretación por punto/año/letra. |
 | B-4 | Sin `B904` pendientes; `raise ... from` en los dos casos restantes. |
 
 Validación:
 
 ```text
-307 unitarias + 283 integración = 590 passed
+319 unitarias + 284 integración = 603 passed
+cobertura (coverage.py)         = 81 %
 ruff F,E9,B904                  = OK
 alembic upgrade desde init_db   = 0005 (head), check limpio
 nginx staging/prod/external     = nginx -t OK
 docker compose staging          = config OK
 ```
+
+Deuda restante (no bloqueante): M-1 (workflow único ficha/reemplazo), M-15
+(plausibilidad Tabla 6 en ruta de BD), M-22 (envío de reset síncrono), M-26
+(código muerto menor), M-28 (política de admin expuesto), B-5 (imports
+anidados), B-6 (ruta legacy `Store`), B-8 (CTAs de roles de solo lectura),
+B-10 (IDOR latente multiproyecto), B-11 (defaults solo ORM), B-12 (aislamiento
+de algunas pruebas) y B-20 (`normalizar_etiqueta` devuelve texto crudo).
 
 Los cambios locales del lanzador oculto del watchdog (`scripts/run-hidden.vbs`,
 `register-autostart.ps1`) no forman parte de esta corrección.

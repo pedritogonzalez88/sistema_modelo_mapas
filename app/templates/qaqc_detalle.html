@@ -483,7 +483,10 @@
     document.addEventListener("submit", function (ev) {
       var form = ev.target;
       var aviso = form && form.getAttribute ? form.getAttribute("data-confirm") : null;
-      if (aviso && !window.confirm(aviso)) ev.preventDefault();
+      if (aviso && !window.confirm(aviso)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
     });
   })();
 </script>

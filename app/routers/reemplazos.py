@@ -5,8 +5,6 @@ Autorización (Fase A2): leer exige ``reemplazos.ver``; reportar/proponer,
 ``reemplazos.autorizar`` (solo supervisión). El árbol de transiciones sigue
 siendo el del servicio: aquí solo se decide **quién** puede intentarlo.
 """
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -15,6 +13,7 @@ from app.auth.audit import actor_de_request
 from app.auth.csrf import csrf_protect
 from app.auth.dependencies import exigir_permiso, require_permiso
 from app.core.database import get_db
+from app.core.security import utcnow
 from app.services import persist
 from app.services.importer import CAUSAS_RESERVA
 from app.web import templates
@@ -33,7 +32,7 @@ def listar(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "reemplazos.html", {
         "proyecto": proyecto, "filas": filas, "causas": CAUSAS_RESERVA,
         "estados": list(persist.ESTADOS_REEMPLAZO),
-        "now": datetime.now(),
+        "now": utcnow(),
     })
 
 

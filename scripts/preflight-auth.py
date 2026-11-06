@@ -243,27 +243,35 @@ def _checks_bd() -> list[Resultado]:
         res.append(Resultado("alembic", FAIL, f"error al leer revisiones: "
                                               f"{type(exc).__name__}"))
 
-    with SessionLocal() as db:
-        admins = db.scalar(
-            select(func.count()).select_from(Usuario).where(
-                Usuario.rol == "admin", Usuario.is_active.is_(True))) or 0
-        res.append(Resultado(
-            "admin_activo", PASS if admins else FAIL,
-            f"{admins} administrador(es) activo(s)"))
+    ldap = 0
+    try:
+        with SessionLocal() as db:
+            admins = db.scalar(
+                select(func.count()).select_from(Usuario).where(
+                    Usuario.rol == "admin", Usuario.is_active.is_(True))) or 0
+            res.append(Resultado(
+                "admin_activo", PASS if admins else FAIL,
+                f"{admins} administrador(es) activo(s)"))
 
-        admins_totp = db.scalar(
-            select(func.count(func.distinct(MfaTotp.usuario_id)))
-            .select_from(MfaTotp)
-            .join(Usuario, Usuario.id == MfaTotp.usuario_id)
-            .where(Usuario.rol == "admin", Usuario.is_active.is_(True),
-                   MfaTotp.confirmed_at.is_not(None))) or 0
-        res.append(Resultado(
-            "admin_totp", PASS if admins_totp else FAIL,
-            f"{admins_totp} administrador(es) con TOTP confirmado"))
+            admins_totp = db.scalar(
+                select(func.count(func.distinct(MfaTotp.usuario_id)))
+                .select_from(MfaTotp)
+                .join(Usuario, Usuario.id == MfaTotp.usuario_id)
+                .where(Usuario.rol == "admin", Usuario.is_active.is_(True),
+                       MfaTotp.confirmed_at.is_not(None))) or 0
+            res.append(Resultado(
+                "admin_totp", PASS if admins_totp else FAIL,
+                f"{admins_totp} administrador(es) con TOTP confirmado"))
 
-        ldap = db.scalar(
-            select(func.count()).select_from(Usuario).where(
-                Usuario.auth_provider == "ldap")) or 0
+            ldap = db.scalar(
+                select(func.count()).select_from(Usuario).where(
+                    Usuario.auth_provider == "ldap")) or 0
+    except SQLAlchemyError as exc:
+        res.append(Resultado(
+            "esquema", FAIL,
+            f"no se pudieron consultar usuarios ({type(exc).__name__}); "
+            "aplique las migraciones antes del preflight"))
+        return res
 
     from app.core.config import settings
 

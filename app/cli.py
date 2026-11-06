@@ -38,8 +38,6 @@ import argparse
 import getpass
 import os
 import sys
-from datetime import datetime
-
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
@@ -139,7 +137,7 @@ def _crear_usuario(db: Session, *, nombre: str, username: str, email: str,
         letra_terna=letra,
         auth_provider="local",
         password_hash=hash_password(password),
-        password_changed_at=datetime.utcnow(),
+        password_changed_at=utcnow(),
         must_change_password=must_change,
         is_active=True,
         mfa_policy=mfa_policy or MFA_POR_ROL.get(rol, "any"),
@@ -515,6 +513,12 @@ def _recifrar_blob(caja: SecretBox, blob: bytes,
       (no se pierde la fila: se informa el conteo).
     """
     if key_id == caja.key_id:
+        # Verifica que el blob actual realmente descifra: un blob corrupto no
+        # debe pasar como "actual" solo porque su key_id coincide.
+        try:
+            caja.decrypt(blob, key_id)
+        except (RuntimeError, ValueError):
+            return "fallo", None, None
         return "actual", None, None
     try:
         claro = caja.decrypt(blob, key_id)
@@ -537,6 +541,10 @@ def _recifrar_cuerpo(caja: SecretBox, cuerpo: str) -> tuple[str, str | None]:
     if not separador or not identificador or not token:
         return "fallo", None
     if identificador == caja.key_id:
+        try:
+            caja.decrypt(token.encode("ascii"), identificador)
+        except (RuntimeError, ValueError, UnicodeEncodeError):
+            return "fallo", None
         return "actual", None
     try:
         claro = caja.decrypt(token.encode("ascii"), identificador)

@@ -408,7 +408,8 @@ def test_login_http_bloquea_tras_agotar_los_fallos_por_ip(cliente, fabrica,
 
     bloqueo = _login(cliente, usuario)  # clave correcta, IP ya bloqueada
     assert bloqueo.status_code == 200
-    assert "Demasiados intentos fallidos." in bloqueo.text
+    # Mismo mensaje que credenciales inválidas: no revela la cuenta (M-23).
+    assert "Usuario o contraseña incorrectos." in bloqueo.text
     assert COOKIE_SESION not in cliente.cookies
 
 

@@ -152,13 +152,10 @@ def login(request: Request, db: Session = Depends(get_db),
 
     resultado = autenticar(db, login, password, _ip(request), _agente(request))
     if not resultado.ok:
-        mensaje = _MENSAJE_GENERICO
-        if resultado.motivo == "bloqueado":
-            minutos = max(1, resultado.espera_min)
-            unidad = "minuto" if minutos == 1 else "minutos"
-            mensaje = (f"Demasiados intentos fallidos. "
-                       f"Intente nuevamente en {minutos} {unidad}.")
-        return _login_response(request, codigo=200, error=mensaje,
+        # Mismo mensaje para credenciales inválidas y cuenta bloqueada: evita
+        # distinguir qué usuarios existen. El tiempo de espera se registra en
+        # la auditoría, no se expone en la respuesta.
+        return _login_response(request, codigo=200, error=_MENSAJE_GENERICO,
                                espera_min=resultado.espera_min, login=login,
                                siguiente=siguiente)
 
