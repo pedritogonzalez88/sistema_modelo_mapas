@@ -6,7 +6,7 @@ se ejecutan con:
     uv run pytest -m integration tests/test_auth_ldap.py -q
 
 El directorio se simula con :class:`DirectorioFake`, inyectado en
-``providers._FABRICA_CONEXION``: nunca se abre un socket real.
+``providers_common._FABRICA_CONEXION``: nunca se abre un socket real.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from ldap3.core.exceptions import LDAPException
 from ldap3.utils.conv import escape_filter_chars
 from sqlalchemy import delete, func, select
 
-from app.auth import providers, service
+from app.auth import providers_common, service
 from app.auth.providers import (
     LdapProvider,
     construir_filtro,
@@ -189,7 +189,7 @@ def configurar_ldap(monkeypatch, directorio: DirectorioFake, **extra) -> None:
     valores.update(extra)
     for nombre, valor in valores.items():
         monkeypatch.setattr(settings, nombre, valor)
-    monkeypatch.setattr(providers, "_FABRICA_CONEXION", directorio.factory)
+    monkeypatch.setattr(providers_common, "_FABRICA_CONEXION", directorio.factory)
     monkeypatch.setattr(service, "RETARDO_MINIMO_LDAP", 0.0)
 
 
@@ -320,14 +320,14 @@ def test_proveedor_apagado_no_abre_conexion(monkeypatch):
         llamado.append(True)
         raise AssertionError("no debe abrir una conexión LDAP")
 
-    monkeypatch.setattr(providers, "_FABRICA_CONEXION", _prohibido)
+    monkeypatch.setattr(providers_common, "_FABRICA_CONEXION", _prohibido)
     assert LdapProvider().authenticate(None, "alguien", "clave") == (None, False)
     assert llamado == []
 
 
 def test_diagnostico_apagado_no_abre_conexion(monkeypatch):
     monkeypatch.setattr(settings, "ldap_enabled", False)
-    monkeypatch.setattr(providers, "_FABRICA_CONEXION",
+    monkeypatch.setattr(providers_common, "_FABRICA_CONEXION",
                         lambda *a, **k: pytest.fail("no debe conectar"))
     diagnostico = LdapProvider().diagnostico()
     assert diagnostico.habilitado is False
@@ -378,7 +378,7 @@ def test_cli_ldap_check_apagado(monkeypatch, capsys):
     from app.cli import main
 
     monkeypatch.setattr(settings, "ldap_enabled", False)
-    monkeypatch.setattr(providers, "_FABRICA_CONEXION",
+    monkeypatch.setattr(providers_common, "_FABRICA_CONEXION",
                         lambda *a, **k: pytest.fail("no debe conectar"))
     assert main(["ldap-check"]) == 0
     salida = capsys.readouterr().out
@@ -601,7 +601,7 @@ def test_auto_provision_sin_rol_no_crea(ldap_activo, usuarios_ldap,
 def test_ldap_apagado_falla_sin_conexion_y_audita(monkeypatch, usuarios_ldap):
     usuario = usuarios_ldap()
     monkeypatch.setattr(settings, "ldap_enabled", False)
-    monkeypatch.setattr(providers, "_FABRICA_CONEXION",
+    monkeypatch.setattr(providers_common, "_FABRICA_CONEXION",
                         lambda *a, **k: pytest.fail("no debe conectar"))
     corte = _corte_auditoria()
 
@@ -628,3 +628,4 @@ def test_el_filtro_de_busqueda_escapa_el_login(ldap_activo, usuarios_ldap,
     assert filtros
     assert escape_filter_chars("*)(uid=*") in filtros[0]
     assert "*)(uid=*" not in filtros[0]
+

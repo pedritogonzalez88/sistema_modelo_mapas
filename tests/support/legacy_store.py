@@ -86,7 +86,7 @@ class Store:
     def ejecutar_cruce(self, punto, anio, mapa_anterior=None):
         evaluadoras = self._datos.get((punto, anio))
         if evaluadoras is None:
-            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, aÃ±o {anio}.")
+            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, año {anio}.")
         if mapa_anterior is None:
             mapa_anterior = self._consenso_anterior(punto, anio)
         resultado = resolver_tabla7(evaluadoras.get("A"), evaluadoras.get("B"), evaluadoras.get("C"))
@@ -94,7 +94,7 @@ class Store:
         plausibilidad = resolver_plausibilidad(mapa_anterior, consenso) if consenso is not None else None
         self._resultados[(punto, anio)] = resultado
         # Misma regla que persist.recalcular_cruce: solo discrepancia absoluta
-        # o SC con terna completa abren ficha; mayorÃ­a e incompleto no.
+        # o SC con terna completa abren ficha; mayoría e incompleto no.
         if requiere_ficha_qaqc(evaluadoras.values()):
             self._qaqc[(punto, anio)] = ESTADO_INICIAL
         return Cruce(
@@ -133,13 +133,13 @@ class Store:
     def resolver_qaqc(self, punto, anio, evento):
         clave = (punto, anio)
         if clave not in self._resultados:
-            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, aÃ±o {anio}.")
+            raise StoreError(ERROR_PUNTO_INEXISTENTE, f"No existe el cruce del punto {punto}, año {anio}.")
         if clave not in self._qaqc:
-            raise StoreError(ERROR_SIN_FLUJO_QAQC, f"El cruce del punto {punto}, aÃ±o {anio} no requiere revisiÃ³n QAQC.")
+            raise StoreError(ERROR_SIN_FLUJO_QAQC, f"El cruce del punto {punto}, año {anio} no requiere revisión QAQC.")
         try:
             evento_obj = EventoQAQC(evento)
         except ValueError:
-            raise StoreError(ERROR_EVENTO_INVALIDO, f"El evento QAQC '{evento}' no es vÃ¡lido.") from None
+            raise StoreError(ERROR_EVENTO_INVALIDO, f"El evento QAQC '{evento}' no es válido.") from None
         estado = self._qaqc[clave]
         nuevo = transicion(estado, evento_obj)
         if nuevo is None:
@@ -179,7 +179,7 @@ class Store:
     def configurar_cartografia(self, area_total_ha, pesos=None):
         k = len(_CLASES)
         if area_total_ha is None or area_total_ha <= 0:
-            raise StoreError(ERROR_PESOS_INVALIDOS, "El Ã¡rea total debe ser un nÃºmero positivo.")
+            raise StoreError(ERROR_PESOS_INVALIDOS, "El área total debe ser un número positivo.")
         if pesos is None:
             pesos = [1.0 / k] * k
         else:
@@ -210,7 +210,7 @@ class Store:
 
     def seccion5(self):
         if self._area_total_ha is None or self._pesos_cartografia is None:
-            raise StoreError(ERROR_AREA_NO_CONFIGURADA, "El Ã¡rea total no estÃ¡ configurada.")
+            raise StoreError(ERROR_AREA_NO_CONFIGURADA, "El área total no está configurada.")
         muestra = []
         for (punto, anio), resultado in self._resultados.items():
             if not isinstance(resultado.consenso, ClaseCobertura):

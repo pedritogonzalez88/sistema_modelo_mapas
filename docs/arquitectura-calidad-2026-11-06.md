@@ -60,22 +60,22 @@ middlewares y routers. `auth` es un slice vertical que no depende de
 
 | Archivo | Líneas | Problema |
 |---|---:|---|
-| `app/auth/router.py` | 812 | Formularios, POST y flujos de autenticación |
-| `app/auth/providers.py` | 658 | LDAP y sincronización |
 | `app/auth/users.py` | 604 | Administración de usuarios, roles y auditoría |
+| `app/auth/router.py` | 575 | Formularios y flujos de autenticación |
+| `app/auth/ldap.py` | 497 | LDAP/AD y diagnóstico |
 | `app/auth/mfa.py` | 383 | TOTP, respaldos y challenges |
 | `app/auth/sessions.py` | 371 | Sesiones, login y cambio de contraseña |
 | `app/cli.py` | 660 | Muchos comandos de operación |
 
-`app/services/persist.py` quedó reducido a una **fachada de 87 líneas** y
-`app/auth/service.py` a una **fachada de 85 líneas**. La implementación de
-autenticación vive en `common`, `sessions`, `mfa`, `email`, `reset`, `users`,
-`notifications`, `mailer` y `providers`. `app/services/store.py` se movió a
+`app/services/persist.py` quedó reducido a una **fachada de 87 líneas**;
+`app/auth/service.py` es una **fachada de 85 líneas**; `app/auth/providers.py`
+es una **fachada de 21 líneas**. La implementación vive en módulos cohesivos de
+74–604 líneas. `app/services/store.py` se movió a
 `tests/support/legacy_store.py` y `app/schemas` se eliminó por no tener uso.
 
-Riesgo restante: `auth/router.py` (812 líneas) y `providers.py` (658) son los
-siguientes objetivos de refactor. El resto de módulos ya está por debajo de
-~400 líneas.
+Riesgo restante: ya no hay módulos por encima de ~650 líneas. Los siguientes
+refactors, opcionales, son dividir `auth/users.py`, `auth/router.py` y
+`auth/ldap.py` por áreas funcionales.
 
 ### 2. Ruta legacy `Store` — resuelto
 
@@ -102,6 +102,8 @@ Cobertura global ~81%, pero:
 | `app/auth/reset.py` | 97% |
 | `app/auth/users.py` | 89% |
 | `app/auth/router.py` | 88% |
+| `app/auth/routes_users.py` | 88% |
+| `app/auth/ldap.py` | 84% |
 | `app/services/importer.py` | 90% |
 | `app/services/cruces.py` | 77% |
 | `app/services/entregas.py` | 74% |
@@ -169,7 +171,13 @@ Clean Architecture estricta:
   85 líneas. La implementación vive en `auth/sessions.py` (371),
   `auth/mfa.py` (383), `auth/email.py` (285), `auth/reset.py` (252),
   `auth/users.py` (604), `auth/common.py` (136),
-  `auth/notifications.py` (74), `auth/mailer.py` y `auth/providers.py`.
+  `auth/notifications.py` (74) y `auth/mailer.py`.
+- **Routers de autenticación**: `auth/router.py` bajó de 812 a 575 líneas;
+  usuarios y auditoría viven en `auth/routes_users.py` (245), con utilidades
+  compartidas en `auth/router_common.py`.
+- **Proveedores divididos**: `auth/providers.py` es una fachada de 21 líneas;
+  el proveedor local y el mapeo están en `auth/providers_common.py` (145) y
+  LDAP/AD en `auth/ldap.py` (497).
 - **Cobertura en CI**: `pytest-cov` con umbral 80% y configuración en
   `pyproject.toml`. El job de integración ejecuta unitarias + integración y
   falla por debajo del umbral. Cobertura actual: **82%**.
@@ -179,9 +187,9 @@ Clean Architecture estricta:
 - **Tipado estático inicial**: `mypy` sobre `app/domain` y `app/core`, con
   `check_untyped_defs`; pasa sin errores. Se puede ampliar por módulos.
 
-Pendiente de las recomendaciones: dividir `auth/router.py` y `auth/providers.py`;
-adoptar contratos Pydantic para formularios; ampliar mypy al resto y añadir
-pruebas de concurrencia reales.
+Pendiente de las recomendaciones: adoptar contratos Pydantic para formularios;
+ampliar mypy a `services`/`auth`; añadir pruebas de concurrencia reales y
+resolver la deuda de estilo de ruff.
 
 ## Plan de mejora recomendado
 
@@ -216,7 +224,8 @@ pruebas de concurrencia reales.
 El proyecto **no es un desastre arquitectónico**: el dominio está limpio, la
 dirección de dependencias es sana y la seguridad está por encima de la media
 para una aplicación de este tamaño. El problema principal era de
-**modularidad**, y ya se corrigió en `services/`. Queda concentrar el refactor
-en `auth/service.py` y `auth/router.py`, y subir la cobertura de los flujos de
-QA/QC y reemplazos. Con esos pasos, la base actual puede considerarse una
-arquitectura limpia pragmática y sostenible.
+**modularidad**, y ya se corrigió en `services/` y `auth/`. Los siguientes
+pasos, opcionales, son dividir `auth/users.py`, `auth/router.py` y
+`auth/ldap.py`, subir la cobertura de QA/QC y reemplazos y adoptar contratos
+Pydantic. Con eso, la base actual puede considerarse una arquitectura limpia
+pragmática y sostenible.

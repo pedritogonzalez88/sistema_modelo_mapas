@@ -1,11 +1,11 @@
-﻿"""Regresiones de persistencia de entregas y cruces.
+"""Regresiones de persistencia de entregas y cruces.
 
 Estas pruebas no necesitan PostgreSQL: crean en SQLite solo las tablas que
 intervienen en ``confirmar_entrega`` y ``recalcular_cruce`` (sin la columna
-``geometry`` de ``puntos_malla``). AsÃ­ la lÃ³gica de versiones, ausencias y
+``geometry`` de ``puntos_malla``). Así la lógica de versiones, ausencias y
 fichas QA/QC queda cubierta en cualquier equipo, sin Docker.
 
-Las pruebas que sÃ­ requieren PostGIS (coordenadas, mallas) siguen en la suite
+Las pruebas que sí requieren PostGIS (coordenadas, mallas) siguen en la suite
 ``integration``.
 """
 from datetime import datetime
@@ -49,7 +49,7 @@ _TABLAS = (
 
 @pytest.fixture
 def db():
-    """SesiÃ³n SQLite en memoria con el subconjunto de tablas necesario."""
+    """Sesión SQLite en memoria con el subconjunto de tablas necesario."""
     engine = create_engine("sqlite://")
     Base.metadata.create_all(
         engine, tables=[Base.metadata.tables[nombre] for nombre in _TABLAS])
@@ -110,7 +110,7 @@ def test_confirmar_rechaza_entrega_con_errores(db, tmp_path, monkeypatch):
     assert db.scalar(select(func.count()).select_from(Interpretacion)) == 0
 
 
-# --- C-2: una celda vacÃ­a es una ausencia explÃ­cita ---------------------------
+# --- C-2: una celda vacía es una ausencia explícita ---------------------------
 def test_confirmar_persiste_ausencia_y_borra_valor_anterior(db, tmp_path,
                                                             monkeypatch):
     archivo = tmp_path / "entrega.xlsx"
@@ -125,7 +125,7 @@ def test_confirmar_persiste_ausencia_y_borra_valor_anterior(db, tmp_path,
     persist.confirmar_entrega(db, primera.id)
     assert persist._ultima_interpretacion(db, _proyecto(db).id, 1, 2020, "A").clase == 1
 
-    # CorrecciÃ³n: la celda A queda vacÃ­a. Debe ganar la ausencia, no el valor
+    # Corrección: la celda A queda vacía. Debe ganar la ausencia, no el valor
     # de la entrega anterior.
     correccion = _entrega(db, estado="pendiente", archivo=str(archivo),
                           semana="05", version=2)
@@ -142,13 +142,13 @@ def test_confirmar_persiste_ausencia_y_borra_valor_anterior(db, tmp_path,
     assert cruce is not None and cruce.a is None
 
 
-# --- A-1: manda la entrega mÃ¡s reciente, no la versiÃ³n de otra semana ---------
+# --- A-1: manda la entrega más reciente, no la versión de otra semana ---------
 def test_ultima_interpretacion_no_compara_versiones_de_semanas_distintas(db):
     # Semana 05 corregida dos veces (v2), recibida antes.
     vieja = _entrega(db, semana="05", version=2,
                      recibida_en=datetime(2026, 1, 10, 9, 0))
     _interpretacion(db, vieja, clase=1)
-    # Semana 06 reciÃ©n entregada (v1), recibida despuÃ©s.
+    # Semana 06 recién entregada (v1), recibida después.
     nueva = _entrega(db, semana="06", version=1,
                      recibida_en=datetime(2026, 1, 20, 9, 0))
     _interpretacion(db, nueva, clase=6)
@@ -189,12 +189,12 @@ def test_recalcular_preserva_consenso_cerrado(db):
     actualizado = db.scalar(select(ResultadoCruce))
     assert actualizado.clase_consolidada == 7
     assert actualizado.regla_version == "qaqc-consenso"
-    assert actualizado.a == 2  # los valores crudos sÃ­ se actualizan
+    assert actualizado.a == 2  # los valores crudos sí se actualizan
 
 
 # --- A-3: la ficha se abre solo para discrepancia absoluta o SC --------------
 @pytest.mark.parametrize("valores", [
-    {"A": 1, "B": 1, "C": 2},   # mayorÃ­a 2/3: se consolida sin ficha
+    {"A": 1, "B": 1, "C": 2},   # mayoría 2/3: se consolida sin ficha
     {"A": 1},                   # terna incompleta: no es un desacuerdo
 ])
 def test_recalcular_no_crea_ficha_para_mayoria_ni_incompleto(db, valores):
