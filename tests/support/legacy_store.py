@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from math import isfinite
 
-from ..domain.classes import ClaseCobertura
-from ..domain.cross_engine import Cruce, TipoResultado, resolver_tabla7
-from ..domain.qaqc import (
+from app.domain.classes import ClaseCobertura
+from app.domain.cross_engine import Cruce, TipoResultado, resolver_tabla7
+from app.domain.qaqc import (
     ESTADO_INICIAL,
     EstadoQAQC,
     EventoQAQC,
@@ -11,8 +11,8 @@ from ..domain.qaqc import (
     requiere_ficha_qaqc,
     transicion,
 )
-from ..domain.transition_rules import resolver_plausibilidad
-from .analysis import analisis_seccion5
+from app.domain.transition_rules import resolver_plausibilidad
+from app.services.analysis import analisis_seccion5
 
 ERROR_PUNTO_INEXISTENTE = "PUNTO_INEXISTENTE"
 ERROR_SIN_FLUJO_QAQC = "SIN_FLUJO_QAQC"

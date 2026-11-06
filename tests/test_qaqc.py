@@ -10,7 +10,7 @@ from app.domain.qaqc import (
     requiere_ficha_qaqc,
     transicion,
 )
-from app.services.store import Store
+from tests.support.legacy_store import Store
 
 
 def test_estado_inicial():

@@ -642,7 +642,7 @@ Validación:
 
 ```text
 319 unitarias + 284 integración = 603 passed
-cobertura (coverage.py)         = 81 %
+cobertura (pytest-cov)          = 82 %
 ruff F,E9,B904                  = OK
 alembic upgrade desde init_db   = 0005 (head), check limpio
 nginx staging/prod/external     = nginx -t OK
@@ -655,6 +655,7 @@ Deuda restante (no bloqueante): M-1 (workflow único ficha/reemplazo), M-15
 anidados), B-6 (ruta legacy `Store`), B-8 (CTAs de roles de solo lectura),
 B-10 (IDOR latente multiproyecto), B-11 (defaults solo ORM), B-12 (aislamiento
 de algunas pruebas) y B-20 (`normalizar_etiqueta` devuelve texto crudo).
+B-6 quedó aislado en `tests/support/legacy_store.py`, fuera de la aplicación.
 
 Los cambios locales del lanzador oculto del watchdog (`scripts/run-hidden.vbs`,
 `register-autostart.ps1`) no forman parte de esta corrección.

@@ -139,6 +139,27 @@ Clean Architecture estricta:
 - Contratos de entrada/salida consistentes (Pydantic).
 - Reglas de dependencia verificadas automáticamente.
 
+## Aplicado en esta iteración
+
+- **`Store` aislado**: `app/services/store.py` se movió a
+  `tests/support/legacy_store.py`. La aplicación ya no contiene la segunda
+  implementación del motor; solo las pruebas legacy la usan.
+- **`app/schemas` eliminado**: no tenía imports ni uso; los contratos de
+  entrada se validan en servicios/routers. Se puede reintroducir cuando haya
+  endpoints JSON formales.
+- **Cobertura en CI**: `pytest-cov` con umbral 80% y configuración en
+  `pyproject.toml`. El job de integración ejecuta unitarias + integración y
+  falla por debajo del umbral. Cobertura actual: **82%**.
+- **Reglas de arquitectura**: `import-linter` con tres contratos:
+  dominio sin infraestructura, servicios sin capa web y core sin capas
+  superiores. Los tres pasan.
+- **Tipado estático inicial**: `mypy` sobre `app/domain` y `app/core`, con
+  `check_untyped_defs`; pasa sin errores. Se puede ampliar por módulos.
+
+Pendiente de las recomendaciones: dividir `persist.py` y `auth/service.py`,
+adoptar contratos Pydantic para formularios, ampliar mypy al resto y añadir
+pruebas de concurrencia reales.
+
 ## Plan de mejora recomendado
 
 ### Corto plazo (bajo riesgo)

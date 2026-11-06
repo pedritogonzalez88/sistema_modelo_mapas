@@ -10,7 +10,7 @@ from app.services.importer import (
     ERROR_ID_PUNTO_INVALIDO,
     ERROR_ETIQUETA_INVALIDA,
 )
-from app.services.store import Store
+from tests.support.legacy_store import Store
 
 
 def test_importar_evaluadoras_tradicional(crear_libro):

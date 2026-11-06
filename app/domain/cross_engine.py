@@ -14,7 +14,7 @@ class TipoResultado(str, Enum):
 
 @dataclass
 class ResultadoTabla7:
-    consenso: ClaseCobertura | None
+    consenso: ClaseCobertura | str | None
     resultado: TipoResultado
     requiere_consenso_tecnico: bool
     requiere_revision: bool
@@ -26,7 +26,7 @@ class Cruce:
     id_punto: str
     anio: int
     evaluadoras: dict
-    consenso: ClaseCobertura | None
+    consenso: ClaseCobertura | str | None
     resultado: TipoResultado
     requiere_consenso_tecnico: bool
     requiere_revision: bool
@@ -34,7 +34,9 @@ class Cruce:
     plausibilidad: Plausibilidad | None
 
 
-def resolver_tabla7(a, b, c):
+def resolver_tabla7(a: ClaseCobertura | str | None,
+                    b: ClaseCobertura | str | None,
+                    c: ClaseCobertura | str | None) -> ResultadoTabla7:
     claves = [a, b, c]
     if any(v is None or v == SIN_CONSENSO for v in claves):
         return ResultadoTabla7(
@@ -43,7 +45,7 @@ def resolver_tabla7(a, b, c):
             requiere_consenso_tecnico=True,
             requiere_revision=True,
         )
-    valores = {}
+    valores: dict[ClaseCobertura | str | None, int] = {}
     for v in claves:
         valores[v] = valores.get(v, 0) + 1
     if len(valores) == 1:
@@ -54,7 +56,7 @@ def resolver_tabla7(a, b, c):
             requiere_revision=False,
         )
     if len(valores) == 2:
-        consenso = max(valores, key=valores.get)
+        consenso = max(valores, key=lambda clave: valores[clave])
         minorias = []
         for v in claves:
             if v != consenso and v not in minorias:

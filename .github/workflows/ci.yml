@@ -26,6 +26,10 @@ jobs:
         run: uv run ruff check app scripts tests --select F,E9
       - name: Compilación
         run: uv run python -m compileall -q app scripts migrations
+      - name: Reglas de arquitectura
+        run: uv run lint-imports
+      - name: Tipado (dominio y core)
+        run: uv run mypy
 
   unit:
     runs-on: ubuntu-latest
@@ -78,8 +82,12 @@ jobs:
           with SessionLocal() as db:
               persist.seed(db)
           PY
-      - name: Pruebas de integración
-        run: uv run pytest -m integration -o addopts= -q -p no:warnings
+      - name: Cobertura unitaria
+        run: uv run pytest -q -p no:warnings --cov=app --cov-report= --cov-fail-under=0
+      - name: Pruebas de integración con cobertura
+        run: >-
+          uv run pytest -m integration -o addopts= -q -p no:warnings
+          --cov=app --cov-append --cov-report=term-missing --cov-fail-under=80
 
   build:
     runs-on: ubuntu-latest

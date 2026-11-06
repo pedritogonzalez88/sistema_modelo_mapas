@@ -94,7 +94,7 @@ ser **“hacer confiable el despliegue actual de un solo proyecto y un solo host
 | Datos | PostgreSQL/PostGIS, modelo largo de interpretaciones, Alembic. |
 | Web | Server-rendered con Jinja2, componentes reutilizables, accesibilidad auditada. |
 | Seguridad | Sesiones con hash, CSRF, TOTP, códigos de respaldo, LDAP, auditoría. |
-| Calidad | 603 pruebas, ~81% de cobertura, lint de correctitud y documentación operativa. |
+| Calidad | 603 pruebas, ~82% de cobertura, lint de correctitud, import-linter y mypy en dominio/core. |
 | Operación local | Docker Compose, healthcheck, watchdog, arranque reproducible. |
 
 ### 3.2 Debilidades y riesgos

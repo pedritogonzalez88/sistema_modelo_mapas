@@ -28,6 +28,9 @@ dependencies = [
 dev = [
     "pytest",
     "httpx",
+    "pytest-cov>=7.1.0",
+    "import-linter>=2.16",
+    "mypy>=2.4.1",
 ]
 
 [tool.pytest.ini_options]
@@ -35,3 +38,50 @@ testpaths = ["tests"]
 pythonpath = ["."]
 markers = ["integration: requiere PostgreSQL (docker compose up -d)"]
 addopts = "-m 'not integration'"
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app/domain", "app/core"]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_redundant_casts = true
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/static/*", "app/templates/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 80
+
+[tool.importlinter]
+root_packages = ["app"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "El dominio no depende de infraestructura"
+type = "forbidden"
+source_modules = ["app.domain"]
+forbidden_modules = [
+    "app.core",
+    "app.models",
+    "app.services",
+    "app.routers",
+    "app.auth",
+    "fastapi",
+    "sqlalchemy",
+    "jinja2",
+]
+
+[[tool.importlinter.contracts]]
+name = "Los servicios no dependen de la capa web"
+type = "forbidden"
+source_modules = ["app.services"]
+forbidden_modules = ["app.routers", "app.web", "fastapi"]
+
+[[tool.importlinter.contracts]]
+name = "Core no depende de capas superiores"
+type = "forbidden"
+source_modules = ["app.core"]
+forbidden_modules = ["app.services", "app.routers", "app.auth", "app.web"]
