@@ -60,19 +60,22 @@ middlewares y routers. `auth` es un slice vertical que no depende de
 
 | Archivo | Líneas | Problema |
 |---|---:|---|
-| `app/auth/service.py` | 1577 | Login, sesiones, MFA, correo y recuperación |
 | `app/auth/router.py` | 812 | Formularios, POST y flujos de autenticación |
 | `app/auth/providers.py` | 658 | LDAP y sincronización |
 | `app/auth/users.py` | 604 | Administración de usuarios, roles y auditoría |
+| `app/auth/mfa.py` | 383 | TOTP, respaldos y challenges |
+| `app/auth/sessions.py` | 371 | Sesiones, login y cambio de contraseña |
 | `app/cli.py` | 660 | Muchos comandos de operación |
 
-`app/services/persist.py` quedó reducido a una **fachada de 87 líneas**; la
-implementación vive en módulos de 37–217 líneas. `app/services/store.py` se
-movió a `tests/support/legacy_store.py` y `app/schemas` se eliminó por no tener
-uso.
+`app/services/persist.py` quedó reducido a una **fachada de 87 líneas** y
+`app/auth/service.py` a una **fachada de 85 líneas**. La implementación de
+autenticación vive en `common`, `sessions`, `mfa`, `email`, `reset`, `users`,
+`notifications`, `mailer` y `providers`. `app/services/store.py` se movió a
+`tests/support/legacy_store.py` y `app/schemas` se eliminó por no tener uso.
 
-Riesgo restante: `auth/service.py` y `auth/router.py` siguen concentrando
-demasiadas responsabilidades; es el siguiente objetivo de refactor.
+Riesgo restante: `auth/router.py` (812 líneas) y `providers.py` (658) son los
+siguientes objetivos de refactor. El resto de módulos ya está por debajo de
+~400 líneas.
 
 ### 2. Ruta legacy `Store` — resuelto
 
@@ -93,7 +96,10 @@ Cobertura global ~81%, pero:
 | Módulo | Cobertura |
 |---|---:|
 | `app/domain/*` | 98–100% |
-| `app/auth/service.py` | 88% |
+| `app/auth/sessions.py` | 87% |
+| `app/auth/mfa.py` | 87% |
+| `app/auth/email.py` | 86% |
+| `app/auth/reset.py` | 97% |
 | `app/auth/users.py` | 89% |
 | `app/auth/router.py` | 88% |
 | `app/services/importer.py` | 90% |
@@ -159,9 +165,11 @@ Clean Architecture estricta:
   `entregas.py`, `cruces.py`, `malla.py`, `reemplazos.py`, `qaqc.py`,
   `dashboard.py` y `common.py`. `persist.py` es una fachada de compatibilidad
   de 87 líneas.
-- **Administración de usuarios extraída**: `auth/service.py` bajó de 2139 a
-  1577 líneas; usuarios, roles, contraseñas y auditoría viven en
-  `auth/users.py` (604 líneas).
+- **Autenticación dividida**: `auth/service.py` pasó de 2139 a una fachada de
+  85 líneas. La implementación vive en `auth/sessions.py` (371),
+  `auth/mfa.py` (383), `auth/email.py` (285), `auth/reset.py` (252),
+  `auth/users.py` (604), `auth/common.py` (136),
+  `auth/notifications.py` (74), `auth/mailer.py` y `auth/providers.py`.
 - **Cobertura en CI**: `pytest-cov` con umbral 80% y configuración en
   `pyproject.toml`. El job de integración ejecuta unitarias + integración y
   falla por debajo del umbral. Cobertura actual: **82%**.
@@ -171,10 +179,9 @@ Clean Architecture estricta:
 - **Tipado estático inicial**: `mypy` sobre `app/domain` y `app/core`, con
   `check_untyped_defs`; pasa sin errores. Se puede ampliar por módulos.
 
-Pendiente de las recomendaciones: dividir el resto de `auth/service.py`
-(MFA, correo, reset y sesiones) y `auth/router.py`; adoptar contratos Pydantic
-para formularios; ampliar mypy al resto y añadir pruebas de concurrencia
-reales.
+Pendiente de las recomendaciones: dividir `auth/router.py` y `auth/providers.py`;
+adoptar contratos Pydantic para formularios; ampliar mypy al resto y añadir
+pruebas de concurrencia reales.
 
 ## Plan de mejora recomendado
 
@@ -191,8 +198,8 @@ reales.
 ### Medio plazo (refactor)
 
 1. [x] Dividir `persist.py` en módulos cohesivos con fachada de compatibilidad.
-2. [~] Dividir `auth/service.py`: usuarios/roles/auditoría ya están en
-   `auth/users.py`; faltan MFA, correo, reset y sesiones.
+2. [x] Dividir `auth/service.py` en sesiones, MFA, correo, reset, usuarios y
+   utilidades compartidas, con fachada de compatibilidad.
 3. [ ] Introducir `Protocol` para `Mailer`, `Clock` y repositorios si se quiere
    testabilidad pura.
 4. [x] Añadir `mypy` gradual en `domain` y `core`.
