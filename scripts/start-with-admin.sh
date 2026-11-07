@@ -37,6 +37,17 @@ cd "$ROOT"
 if [[ "$PRODUCTION" == "1" ]]; then
     ENV_FILE="$ROOT/.env.production"
     COMPOSE_FILE="$ROOT/docker-compose.prod.yml"
+    if [[ ! -f "$ENV_FILE" ]]; then
+        echo ".env.production no existe; se va a generar."
+        read -r -p "Dominio publico (sin https://): " DOMINIO
+        read -r -p "Servidor SMTP: " SMTP_HOST
+        read -r -p "Usuario SMTP: " SMTP_USER
+        read -r -p "Correo del administrador inicial: " ADMIN_EMAIL
+        read -r -p "CIDR VPN/LAN administrativa (opcional): " VPN_CIDR
+        PREPARE_ARGS=(--dominio "$DOMINIO" --smtp-host "$SMTP_HOST" --smtp-user "$SMTP_USER" --admin-email "$ADMIN_EMAIL")
+        [[ -n "$VPN_CIDR" ]] && PREPARE_ARGS+=(--vpn-cidr "$VPN_CIDR")
+        bash "$ROOT/scripts/prepare-production.sh" "${PREPARE_ARGS[@]}"
+    fi
 else
     ENV_FILE="$ROOT/.env.local"
     COMPOSE_FILE="$ROOT/docker-compose.yml"
