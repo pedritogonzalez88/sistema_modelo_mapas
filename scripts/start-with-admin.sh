@@ -51,7 +51,15 @@ if [[ "$PRODUCTION" == "1" ]]; then
 
     # Garantizar POSTGRES_PASSWORD (algunos .env manuales no lo incluyen).
     if ! grep -qE '^POSTGRES_PASSWORD=.+' "$ENV_FILE"; then
-        DB_PASSWORD="$(openssl rand -hex 24)"
+        DB_PASSWORD="$(python3 -c "
+import secrets,string
+lower=string.ascii_lowercase; upper=string.ascii_uppercase; digits=string.digits; special='!#$%&*()-_=+'
+chars=[secrets.choice(lower),secrets.choice(upper),secrets.choice(digits),secrets.choice(special)]
+pool=lower+upper+digits+special
+chars += [secrets.choice(pool) for _ in range(28)]
+import random; random.SystemRandom().shuffle(chars)
+print(''.join(chars[:32]))
+")"
         printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD" >> "$ENV_FILE"
         # Sincronizar EET_DATABASE_URL si usa placeholder.
         if grep -qE '^EET_DATABASE_URL=.*POSTGRES_PASSWORD' "$ENV_FILE"; then

@@ -146,9 +146,47 @@ DOMINIO="${DOMINIO%/}"
 DOMINIO="$(printf '%s' "$DOMINIO" | tr -d '[:space:]')"
 [[ -n "$DOMINIO" ]] || die "El dominio no puede quedar vacío."
 
-SECRET_KEY="$(openssl rand -hex 48)"
-AUTH_PEPPER="$(openssl rand -hex 32)"
-DB_PASSWORD="$(openssl rand -hex 24)"
+# Generador de secretos con mayusculas, minusculas, digitos y simbolos.
+gen_secret() {
+    local n="$1"
+    python3 - "$n" <<'PYGEN'
+import secrets, string, sys
+n = int(sys.argv[1])
+lower = string.ascii_lowercase
+upper = string.ascii_uppercase
+digits = string.digits
+special = "!@#$%^&*()-_=+[]{}"
+chars = [secrets.choice(lower), secrets.choice(upper),
+         secrets.choice(digits), secrets.choice(special)]
+pool = lower + upper + digits + special
+chars += [secrets.choice(pool) for _ in range(max(0, n - 4))]
+secrets.SystemRandom().shuffle(chars)
+print("".join(chars[:n]))
+PYGEN
+}
+
+# Password para PostgreSQL: evita caracteres que rompen la URL de conexion.
+gen_db_password() {
+    local n="$1"
+    python3 - "$n" <<'PYGEN'
+import secrets, string, sys
+n = int(sys.argv[1])
+lower = string.ascii_lowercase
+upper = string.ascii_uppercase
+digits = string.digits
+special = "!#$%&*()-_=+"
+chars = [secrets.choice(lower), secrets.choice(upper),
+         secrets.choice(digits), secrets.choice(special)]
+pool = lower + upper + digits + special
+chars += [secrets.choice(pool) for _ in range(max(0, n - 4))]
+secrets.SystemRandom().shuffle(chars)
+print("".join(chars[:n]))
+PYGEN
+}
+
+SECRET_KEY="$(gen_secret 64)"
+AUTH_PEPPER="$(gen_secret 64)"
+DB_PASSWORD="$(gen_db_password 32)"
 
 if [[ -z "$EMAIL_FROM" ]]; then
     EMAIL_FROM="Validador EET <no-reply@$DOMINIO>"
