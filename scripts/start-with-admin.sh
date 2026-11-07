@@ -97,12 +97,14 @@ docker network rm eet-prod_internal eet-prod_edge >/dev/null 2>&1 || true
 INTENTO=0
 until docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d "${BUILD_ARG[@]}" --wait --wait-timeout 240; do
     INTENTO=$((INTENTO + 1))
+    echo "Intento $INTENTO fallido. Ultimos logs de app:" >&2
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=40 app >&2 || true
     if [[ "$INTENTO" -ge 3 ]]; then
         echo "ERROR: no se pudo levantar el stack tras $INTENTO intentos." >&2
         echo "Verifique DNS (cat /etc/resolv.conf) y conectividad a registry-1.docker.io." >&2
         exit 1
     fi
-    echo "Intento $INTENTO fallido; reintentando en 10s..." >&2
+    echo "Reintentando en 10s..." >&2
     sleep 10
 done
 
