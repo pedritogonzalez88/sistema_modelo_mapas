@@ -190,6 +190,20 @@ node scripts/modal-smoke.mjs
 Requiere Edge instalado; usa `demo.admin` por defecto y permite
 `EET_SMOKE_USER` / `EET_SMOKE_PASSWORD` para otras cuentas.
 
+## Arranque con administrador
+
+```powershell
+# Entorno local
+powershell -ExecutionPolicy Bypass -File scripts/start-with-admin.ps1
+
+# Produccion
+powershell -ExecutionPolicy Bypass -File scripts/start-with-admin.ps1 -Production
+```
+
+Levanta el stack (local o produccion) y crea un administrador inicial de forma
+idempotente a partir de `EET_SUPER_ADMIN_*` (solicita los datos si faltan). El
+primer login exige cambiar la contrasena y enrolar TOTP.
+
 ## Credenciales demo
 
 El script crea `demo.admin` (rol admin) y `demo.consulta` (rol consulta) con
