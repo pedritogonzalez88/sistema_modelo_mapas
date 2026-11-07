@@ -1,0 +1,100 @@
+# Producción con TLS terminado en un nginx EXTERNO.
+#
+# La app y PostgreSQL NO publican puertos públicos. La app queda en
+# 127.0.0.1:8000 (configurable) para que el nginx del host haga el proxy TLS.
+# Si el nginx externo corre en otro contenedor, use EET_HTTP_BIND=0.0.0.0 y
+# restrinja el puerto 8000 por firewall a ese contenedor/host.
+#
+# Uso:
+#   docker compose --env-file .env.production \
+#     -f docker-compose.http.yml up -d --build
+# Mismo nombre de proyecto que docker-compose.prod.yml para reutilizar la
+# base y los uploads si se cambia de modo. No levante ambos stacks a la vez.
+name: eet-prod
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: eet-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eet}
+      POSTGRES_USER: ${POSTGRES_USER:-eet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env.production}
+    volumes:
+      - eet-prod-pgdata:/var/lib/postgresql/data
+    shm_size: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eet} -d ${POSTGRES_DB:-eet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    stop_grace_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eet-app-prod
+    restart: unless-stopped
+    env_file:
+      - ./.env.production
+    environment:
+      EET_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-eet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-eet}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Solo accesible desde el host (nginx externo). Cambie a 0.0.0.0 solo si
+    # el proxy corre en otro contenedor y el firewall restringe el puerto.
+    ports:
+      - "${EET_HTTP_BIND:-127.0.0.1}:${EET_HTTP_PORT:-8000}:8000"
+    volumes:
+      - ./uploads:/app/uploads
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 1.5
+    pids_limit: 256
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          .venv/bin/python -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"
+      interval: 15s
+      timeout: 8s
+      retries: 12
+      start_period: 90s
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  eet-prod-pgdata:
