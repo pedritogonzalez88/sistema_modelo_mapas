@@ -128,6 +128,9 @@ log "Smoke HTTP"
 curl -fsS http://localhost:8000/salud >/dev/null \
     || fail "/salud no responde 200."
 
+curl -fsS http://localhost:8000/ready >/dev/null \
+    || fail "/ready no responde 200."
+
 AUTH_ENABLED=$(grep -E '^EET_AUTH_ENABLED=' deploy/.env.local \
     | head -1 | cut -d= -f2 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
 if [[ "$AUTH_ENABLED" == "true" ]]; then
@@ -135,7 +138,7 @@ if [[ "$AUTH_ENABLED" == "true" ]]; then
         || fail "Falta EET_DEMO_ADMIN_PASSWORD para el smoke de login."
     [[ -n "${EET_DEMO_CONSULTA_PASSWORD:-}" ]] \
         || fail "Falta EET_DEMO_CONSULTA_PASSWORD para el smoke de login."
-    .venv/bin/python scripts/login_smoke.py \
+    .venv/bin/python scripts/smoke_http.py \
         --base-url http://localhost:8000 \
         --admin-user demo.admin \
         --admin-password "$EET_DEMO_ADMIN_PASSWORD" \

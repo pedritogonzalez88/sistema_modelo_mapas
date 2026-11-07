@@ -47,8 +47,9 @@ bash scripts/test-local.sh /mnt/c/Users/<usuario>/PycharmProjects/sistema_modelo
    60 cruces, 56 fichas, la entrega 1 con un `.xlsx` válido y las cuentas
    `demo.admin` / `demo.consulta`.
 6. Ejecuta `pytest -q` (319 pruebas) y `pytest -m integration` (286 pruebas).
-7. Hace smoke HTTP de `/salud` y, si la autenticación está activa, login real
-   de administrador y denegación de `/auth/usuarios` para consulta.
+7. Hace smoke HTTP de `/salud`, `/ready` y, si la autenticación está activa,
+   login real de administrador y consulta, recorriendo las páginas permitidas
+   y denegadas para cada rol, más el XLSX consolidado.
 
 ## Arranque y watchdog
 
