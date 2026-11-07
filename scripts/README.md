@@ -216,6 +216,18 @@ bash scripts/start-with-admin.sh --production
 
 Equivalente bash del script PowerShell `start-with-admin.ps1`.
 
+## Orquestador de produccion
+
+```bash
+bash scripts/setup-production.sh \
+  --dominio "eet.aep.gov.py" --smtp-host "smtp.aep.gov.py" \
+  --smtp-user "validador" --admin-email "admin@aep.gov.py" \
+  [--vpn-cidr "10.20.0.0/16"] [--http-only] [--skip-preflight]
+```
+
+Genera `.env.production`, prepara directorios, valida configuracion y levanta
+el stack con administrador inicial.
+
 ## Credenciales demo
 
 El script crea `demo.admin` (rol admin) y `demo.consulta` (rol consulta) con
