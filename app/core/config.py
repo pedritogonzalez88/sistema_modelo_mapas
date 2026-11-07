@@ -13,6 +13,7 @@ import ipaddress
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -121,7 +122,7 @@ class Settings(BaseSettings):
 
     # --- Cifrado multi-clave ---
     # Formato: "v2:<clave>,v1:<clave>"; la primera clave es la vigente.
-    fernet_keys: str = ""
+    fernet_keys: Any = ""
 
     @property
     def upload_path(self) -> Path:
@@ -202,7 +203,17 @@ class Settings(BaseSettings):
         perder datos. Si no está definida, se usa ``secret_key`` como clave
         ``v1``. Nunca se registran los valores en logs.
         """
-        crudo = (self.fernet_keys or "").strip()
+        # Coercion defensiva: si el entorno pasa un dict u otro tipo, se
+        # convierte a texto. Un valor invalido no tumba el arranque: se omite
+        # con una advertencia y se usa secret_key como respaldo.
+        crudo = self.fernet_keys
+        if isinstance(crudo, (dict, list, tuple)):
+            import logging as _log
+            _log.getLogger(__name__).warning(
+                "EET_FERNET_KEYS tiene un tipo inesperado (%s); se ignora y se "
+                "usa EET_SECRET_KEY como respaldo.", type(crudo).__name__)
+            crudo = ""
+        crudo = (crudo or "").strip() if isinstance(crudo, str) else str(crudo or "").strip()
         if not crudo:
             return [("v1", self.secret_key)] if self.secret_key else []
         claves: list[tuple[str, str]] = []
@@ -286,7 +297,13 @@ class Settings(BaseSettings):
                 )
         # Valida el formato del mapa de roles y de las redes internas al inicio.
         _ = (self.ldap_role_map_dict, self.internal_networks,
-             self.trusted_proxy_networks, self.fernet_key_list)
+             self.trusted_proxy_networks)
+        try:
+            _ = self.fernet_key_list
+        except ValueError as exc:
+            raise ValueError(
+                "EET_FERNET_KEYS invalido: " + str(exc)
+            ) from exc
         return self
 
     def _problemas_produccion(self) -> list[str]:

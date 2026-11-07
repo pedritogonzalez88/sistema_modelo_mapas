@@ -81,7 +81,26 @@ print(''.join(chars[:32]))
         fi
         echo "POSTGRES_PASSWORD generado y agregado a $ENV_FILE"
     fi
-    echo "Verificacion: $(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | sed 's/=.*/=<set>/' )"
+    echo "Verificacion: $(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | sed 's/=.*/=<set>/')"
+
+    # Garantizar EET_FERNET_KEYS vacio o con formato id:clave valido.
+    FERNET_LINE="$(grep -E '^EET_FERNET_KEYS=' "$ENV_FILE" | head -1 || true)"
+    FERNET_VAL="${FERNET_LINE#EET_FERNET_KEYS=}"
+    if [[ -n "$FERNET_VAL" ]]; then
+        # Validar formato: cada item debe tener ':'
+        OK=1
+        IFS=',' read -ra ITEMS <<< "$FERNET_VAL"
+        for item in "${ITEMS[@]}"; do
+            item="${item## }"; item="${item%% }"
+            [[ -z "$item" ]] && continue
+            if [[ "$item" != *:* ]]; then OK=0; break; fi
+        done
+        if [[ "$OK" == "0" ]]; then
+            sed -i '/^EET_FERNET_KEYS=/d' "$ENV_FILE"
+            printf 'EET_FERNET_KEYS=\n' >> "$ENV_FILE"
+            echo "EET_FERNET_KEYS invalido; se vacio (se usara EET_SECRET_KEY)."
+        fi
+    fi
 else
     ENV_FILE="$ROOT/.env.local"
     COMPOSE_FILE="$ROOT/docker-compose.yml"
