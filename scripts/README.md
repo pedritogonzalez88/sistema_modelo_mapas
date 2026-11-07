@@ -204,6 +204,18 @@ Levanta el stack (local o produccion) y crea un administrador inicial de forma
 idempotente a partir de `EET_SUPER_ADMIN_*` (solicita los datos si faltan). El
 primer login exige cambiar la contrasena y enrolar TOTP.
 
+## Arranque con administrador (bash/WSL)
+
+```bash
+# Entorno local
+bash scripts/start-with-admin.sh
+
+# Produccion
+bash scripts/start-with-admin.sh --production
+```
+
+Equivalente bash del script PowerShell `start-with-admin.ps1`.
+
 ## Credenciales demo
 
 El script crea `demo.admin` (rol admin) y `demo.consulta` (rol consulta) con
