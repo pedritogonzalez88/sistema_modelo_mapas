@@ -62,6 +62,7 @@ BUILD_ARG=()
 echo "Levantando stack ($ENV_FILE)..."
 # Limpiar redes/contenedores previos con subredes incompatibles (evita
 # "no configured subnet contains IP address").
+docker rm -f eet-app-prod eet-db-prod eet-proxy-prod >/dev/null 2>&1 || true
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down --remove-orphans >/dev/null 2>&1 || true
 docker network rm eet-prod_internal eet-prod_edge >/dev/null 2>&1 || true
 
@@ -91,7 +92,7 @@ fi
     || { echo "Faltan datos del administrador." >&2; exit 1; }
 
 if [[ "$PRODUCTION" == "1" ]]; then
-    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm \
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T \
         -e "EET_SUPER_ADMIN_USERNAME=$ADMIN_USER" \
         -e "EET_SUPER_ADMIN_NOMBRE=$ADMIN_NOMBRE" \
         -e "EET_SUPER_ADMIN_EMAIL=$ADMIN_EMAIL" \
