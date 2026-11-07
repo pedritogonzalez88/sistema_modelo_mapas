@@ -99,9 +99,9 @@ services:
       app:
         condition: service_healthy
     networks:
-      edge:
+      edge: {}
+      internal:
         ipv4_address: 172.30.0.10
-      internal: {}
     read_only: true
     tmpfs:
       - /var/cache/nginx:size=64m
