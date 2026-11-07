@@ -60,7 +60,18 @@ BUILD_ARG=()
 [[ "$SKIP_BUILD" != "1" ]] && BUILD_ARG=(--build)
 
 echo "Levantando stack ($ENV_FILE)..."
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d "${BUILD_ARG[@]}" --wait --wait-timeout 240
+# Reintento: en servidores con DNS inestable la descarga de imagenes puede fallar.
+INTENTO=0
+until docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d "${BUILD_ARG[@]}" --wait --wait-timeout 240; do
+    INTENTO=$((INTENTO + 1))
+    if [[ "$INTENTO" -ge 3 ]]; then
+        echo "ERROR: no se pudo levantar el stack tras $INTENTO intentos." >&2
+        echo "Verifique DNS (cat /etc/resolv.conf) y conectividad a registry-1.docker.io." >&2
+        exit 1
+    fi
+    echo "Intento $INTENTO fallido; reintentando en 10s..." >&2
+    sleep 10
+done
 
 # Solicitar credenciales si faltan.
 if [[ -z "$ADMIN_USER" ]]; then read -r -p "Usuario administrador: " ADMIN_USER; fi
