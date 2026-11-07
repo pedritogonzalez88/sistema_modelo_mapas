@@ -49,8 +49,10 @@ if [[ "$PRODUCTION" == "1" ]]; then
         bash "$ROOT/scripts/prepare-production.sh" "${PREPARE_ARGS[@]}"
     fi
 
-    # Garantizar POSTGRES_PASSWORD (algunos .env manuales no lo incluyen).
-    if ! grep -qE '^POSTGRES_PASSWORD=.+' "$ENV_FILE"; then
+    # Garantizar POSTGRES_PASSWORD (algunos .env manuales no lo incluyen o lo dejan vacio).
+    if ! grep -qE '^POSTGRES_PASSWORD=[^[:space:]]+' "$ENV_FILE"; then
+        # Eliminar lineas vacias/invalidas previas para no duplicar.
+        sed -i '/^POSTGRES_PASSWORD=/d' "$ENV_FILE"
         DB_PASSWORD="$(python3 -c "
 import secrets,string
 lower=string.ascii_lowercase; upper=string.ascii_uppercase; digits=string.digits; special='!#$%&*()-_=+'
@@ -61,12 +63,18 @@ import random; random.SystemRandom().shuffle(chars)
 print(''.join(chars[:32]))
 ")"
         printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD" >> "$ENV_FILE"
-        # Sincronizar EET_DATABASE_URL si usa placeholder.
-        if grep -qE '^EET_DATABASE_URL=.*POSTGRES_PASSWORD' "$ENV_FILE"; then
-            :
+        # Sincronizar EET_DATABASE_URL si esta vacia o usa placeholder.
+        if ! grep -qE '^EET_DATABASE_URL=postgresql' "$ENV_FILE"; then
+            sed -i '/^EET_DATABASE_URL=/d' "$ENV_FILE"
+            DB_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
+            DB_NAME="$(grep -E '^POSTGRES_DB=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
+            [[ -n "$DB_USER" ]] || DB_USER="eet"
+            [[ -n "$DB_NAME" ]] || DB_NAME="eet"
+            printf 'EET_DATABASE_URL=postgresql+psycopg://%s:%s@db:5432/%s\n'                 "$DB_USER" "$DB_PASSWORD" "$DB_NAME" >> "$ENV_FILE"
         fi
         echo "POSTGRES_PASSWORD generado y agregado a $ENV_FILE"
     fi
+    echo "Verificacion: $(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | sed 's/=.*/=<set>/' )"
 else
     ENV_FILE="$ROOT/.env.local"
     COMPOSE_FILE="$ROOT/docker-compose.yml"
