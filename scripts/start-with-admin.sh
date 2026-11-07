@@ -48,6 +48,17 @@ if [[ "$PRODUCTION" == "1" ]]; then
         [[ -n "$VPN_CIDR" ]] && PREPARE_ARGS+=(--vpn-cidr "$VPN_CIDR")
         bash "$ROOT/scripts/prepare-production.sh" "${PREPARE_ARGS[@]}"
     fi
+
+    # Garantizar POSTGRES_PASSWORD (algunos .env manuales no lo incluyen).
+    if ! grep -qE '^POSTGRES_PASSWORD=.+' "$ENV_FILE"; then
+        DB_PASSWORD="$(openssl rand -hex 24)"
+        printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD" >> "$ENV_FILE"
+        # Sincronizar EET_DATABASE_URL si usa placeholder.
+        if grep -qE '^EET_DATABASE_URL=.*POSTGRES_PASSWORD' "$ENV_FILE"; then
+            :
+        fi
+        echo "POSTGRES_PASSWORD generado y agregado a $ENV_FILE"
+    fi
 else
     ENV_FILE="$ROOT/.env.local"
     COMPOSE_FILE="$ROOT/docker-compose.yml"
