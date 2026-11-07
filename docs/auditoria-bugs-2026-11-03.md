@@ -1,7 +1,7 @@
 # Auditoría de bugs y errores de código — 2026-11-03
 
 Sistema: Validador EET (FastAPI + SQLAlchemy 2.0 + PostGIS + Jinja2).
-Alcance: `app/`, `migrations/`, `scripts/`, `deploy/`, `tests/`.
+Alcance: `app/`, `migrations/`, `scripts/`, ``, `tests/`.
 
 ## Metodología
 
@@ -233,9 +233,9 @@ las migraciones al entrypoint.
 
 ### A-11. En staging, nginx rompe el CSRF de los navegadores reales
 
-- `deploy/nginx.conf:51` (`proxy_set_header Host $host`)
+- `nginx/nginx.conf:51` (`proxy_set_header Host $host`)
 - `app/auth/csrf.py:127-129`
-- `deploy/docker-compose.staging.yml:74-76` y `.env.staging.example:42`
+- `docker-compose.staging.yml:74-76` y `.env.staging.example:42`
 
 Nginx publica `https://localhost:8443`, pero `$host` no incluye el puerto. La
 app compara el `Origin` del navegador (`https://localhost:8443`) con
@@ -322,9 +322,9 @@ Fix: consumir con `UPDATE ... WHERE <condición> RETURNING` y comprobar
 | M-28 | `core/config.py:293-327`, `scripts/preflight-auth.py:180-187` | `admin_internal_only=false` no es un problema de producción: el preflight solo advierte y puede salir 0 con administración/auditoría expuestas. |
 | M-29 | `core/config.py:56` vs `docker-compose.yml:10` | El DSN por defecto apunta a `localhost:5433`, pero compose publica `5432`; el arranque local y los tests de integración fallan sin override. |
 | M-30 | `Dockerfile:31-34` | La imagen no copia `scripts/`, aunque la documentación ordena ejecutar `preflight-auth.py` dentro del contenedor. |
-| M-31 | `deploy/docker-compose.staging.yml:24-29` | PostgreSQL de staging se publica en `0.0.0.0:5434` con credenciales fijas `eet/eet`. |
+| M-31 | `docker-compose.staging.yml:24-29` | PostgreSQL de staging se publica en `0.0.0.0:5434` con credenciales fijas `eet/eet`. |
 | M-32 | `migrations/versions/0001_baseline.py:27-32`, `Dockerfile:45` | La migración base no es idempotente y el contenedor siempre ejecuta `alembic upgrade head`; un volumen creado con `init_db()` sin `alembic_version` falla al arrancar. |
-| M-33 | `deploy/docker-compose.staging.yml:53-55` | Staging comparte `../uploads` con desarrollo, contradiciendo “no comparte nada”. |
+| M-33 | `docker-compose.staging.yml:53-55` | Staging comparte `../uploads` con desarrollo, contradiciendo “no comparte nada”. |
 | M-34 | `scripts/smoke-staging.py:161-165,272-281` | Si faltan credenciales, el login se marca SKIP pero el script sale 0 y afirma que la cookie de sesión está verificada. |
 | M-35 | `scripts/preflight-auth.py:246-266` | Si el esquema no existe, el preflight continúa y lanza `ProgrammingError` en vez de reportar FAIL. |
 | M-36 | `app/cli.py:729-730` | `limpiar-sesiones --dias 0` borra todas las sesiones, incluidas las vivas (el docstring dice lo contrario). |
@@ -452,10 +452,10 @@ dejar de invalidar los anteriores y confiar en su vencimiento de 5 minutos.
 
 ### E-3. El login demo devolvía 200 en vez de 303
 
-- **Causa:** `deploy/.env.local` se sincronizaba desde Windows con CRLF. El
+- **Causa:** `.env.local` se sincronizaba desde Windows con CRLF. El
   `\r` quedaba al final de `EET_DEMO_*_PASSWORD`, el seed hasheaba la contraseña
   con `\r` y el formulario enviaba la contraseña sin él.
-- **Fix:** `sed -i 's/\r$//' deploy/.env.local` dentro de `test-local.sh`.
+- **Fix:** `sed -i 's/\r$//' .env.local` dentro de `test-local.sh`.
   Verificado con `login_smoke.py`: 303 y sesión válida.
 
 ### E-4. `GET /health` devuelve 401
@@ -560,7 +560,7 @@ hallazgos P1 de la Fase 1.
   `/entregas/1/preview`.
 - Datos demo sembrados para las pruebas que asumen contenido: 60 cruces,
   56 fichas y 1 entrega con `.xlsx` válido.
-- Autenticación activada con `deploy/.env.local` (secretos aleatorios, cookies
+- Autenticación activada con `.env.local` (secretos aleatorios, cookies
   no `Secure` solo por HTTP local). Cuentas demo `demo.admin` y
   `demo.consulta`; sus contraseñas se entregaron en la sesión y no se guardan en
   el repositorio. Ambas usan `mfa_policy=disabled` **solo para la demo**.
@@ -605,7 +605,7 @@ en lugar de en esas skills.
 | ID | Corrección |
 |---|---|
 | A-5 residual | `crear_desafio` ya no invalida challenges vivos; purga los vencidos. Un login nuevo no deja fuera al titular. |
-| A-11 staging | `deploy/nginx.conf` usa `Host $http_host` y `X-Forwarded-Host $http_host`, conservando el puerto 8443. |
+| A-11 staging | `nginx/nginx.conf` usa `Host $http_host` y `X-Forwarded-Host $http_host`, conservando el puerto 8443. |
 | A-12 | `app/core/excel.py` centraliza `celda_segura`; el XLSX consolidado y el CSV de auditoría prefijan fórmulas. |
 | A-13 / M-37 | `seed-usuarios` conserva `is_active` salvo `--reactivar`; `--con-password` revoca sesiones y tokens. |
 | A-14 | Bloqueo `FOR UPDATE` del challenge MFA y consumo atómico de códigos de respaldo y pasos TOTP. |

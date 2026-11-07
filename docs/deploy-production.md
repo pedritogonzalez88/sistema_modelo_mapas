@@ -6,11 +6,11 @@ un disco/NAS externo.
 
 > **Easypanel:** no use este compose dentro de Easypanel. Easypanel debe
 > desplegar la app en modo **App (Dockerfile = `Dockerfile`)** y administrar
-> TLS/proxy. Guía específica: `deploy/README-easypanel.md`.
+> TLS/proxy. Guía específica: `docs/deploy-easypanel.md`.
 >
 > **TLS en un nginx externo:** si el certificado lo termina un nginx del host,
 > use el modo HTTP (`--http-only` / `-HttpOnly`) y
-> `deploy/docker-compose.http.yml`. Guía: `deploy/README-http.md`.
+> `docker-compose.http.yml`. Guía: `docs/deploy-http.md`.
 
 ## 1. Requisitos
 
@@ -45,14 +45,14 @@ bash scripts/prepare-production.sh \
   --vpn-cidr "10.20.0.0/16"
 ```
 
-Ambos crean `deploy/.env.production` (gitignored) con secretos aleatorios y
+Ambos crean `.env.production` (gitignored) con secretos aleatorios y
 password de base URL-safe. No lo suba al repositorio ni lo comparta. También
-puede copiar `deploy/.env.production.example` y completarlo a mano.
+puede copiar `.env.production.example` y completarlo a mano.
 
 Para **TLS terminado en un nginx externo**, agregue `--http-only` (bash) o
 `-HttpOnly` (PowerShell). El script ajusta `EET_TRUSTED_PROXY_IPS` a
 `127.0.0.1/32` y añade `EET_HTTP_BIND`/`EET_HTTP_PORT`. Ver
-`deploy/README-http.md`.
+`docs/deploy-http.md`.
 
 > En WSL, si el repositorio está en `/mnt/c`, `chmod 600` puede no aplicarse.
 > Ejecute el script sobre una ruta ext4 o habilite metadata en `/etc/wsl.conf`.
@@ -73,8 +73,8 @@ Revise especialmente:
 Copie los certificados a:
 
 ```text
-deploy/certs/fullchain.pem
-deploy/certs/privkey.pem
+certs/fullchain.pem
+certs/privkey.pem
 ```
 
 Con Let's Encrypt puede emitirlos en el host y copiarlos; programe la
@@ -106,8 +106,8 @@ sudo install -d -o 10001 -g 10001 -m 0750 /opt/sistema_modelo_mapas/uploads
 ```
 
 ```bash
-docker compose --env-file deploy/.env.production \
-  -f deploy/docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production \
+  -f docker-compose.prod.yml up -d --build
 ```
 
 El contenedor de la app ejecuta `alembic upgrade head` antes de Uvicorn. La
@@ -168,7 +168,7 @@ powershell -ExecutionPolicy Bypass -File scripts/backup.ps1 `
 En Linux/WSL, instale el timer diario:
 
 ```bash
-sudo cp deploy/systemd/eet-backup.service deploy/systemd/eet-backup.timer /etc/systemd/system/
+sudo cp systemd/eet-backup.service systemd/eet-backup.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now eet-backup.timer
 systemctl list-timers eet-backup.timer
@@ -187,7 +187,7 @@ backup y vencimiento del certificado:
 .venv/bin/python scripts/healthcheck-production.py \
   --base-url https://<dominio> \
   --backup-dir /mnt/backup/eet \
-  --cert deploy/certs/fullchain.pem
+  --cert certs/fullchain.pem
 ```
 
 Para alertas por Telegram, cree `/etc/eet/healthcheck.env` (modo 600):
@@ -200,7 +200,7 @@ EET_TELEGRAM_CHAT_ID=...
 Instale el timer cada 5 minutos:
 
 ```bash
-sudo cp deploy/systemd/eet-healthcheck.service deploy/systemd/eet-healthcheck.timer /etc/systemd/system/
+sudo cp systemd/eet-healthcheck.service systemd/eet-healthcheck.timer /etc/systemd/system/
 # Edite el dominio y las rutas de la unidad antes de habilitarla.
 sudo systemctl daemon-reload
 sudo systemctl enable --now eet-healthcheck.timer
@@ -214,10 +214,10 @@ Además, configure un monitor externo (Uptime Kuma, Zabbix, etc.) contra
 
 ```bash
 # Estado
-docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
 
 # Logs
-docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml logs -f app
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f app
 
 # Actualización (con backup previo)
 docker compose ... pull
@@ -242,7 +242,7 @@ compatible, restaurar el backup.
    una base nueva y cambiar `EET_DATABASE_URL` tras validar.
 4. **Backup fallido o antiguo:** ejecutar `backup-local.sh --verify` manualmente
    y alertar al responsable; no esperar al siguiente ciclo.
-5. **Certificado vencido:** renovar, copiar a `deploy/certs/` y ejecutar
+5. **Certificado vencido:** renovar, copiar a `certs/` y ejecutar
    `docker compose ... exec proxy nginx -s reload`.
 6. **Compromiso de credenciales:** rotar `EET_SECRET_KEY`, `EET_AUTH_PEPPER`,
    contraseña de PostgreSQL, SMTP y clave de backup; invalidar sesiones.

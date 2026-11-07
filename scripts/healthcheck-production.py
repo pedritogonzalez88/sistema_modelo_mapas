@@ -12,7 +12,7 @@ Uso:
     .venv/bin/python scripts/healthcheck-production.py \
         --base-url https://eet.example.gov.py \
         --backup-dir /mnt/backup/eet \
-        --cert deploy/certs/fullchain.pem
+        --cert certs/fullchain.pem
 """
 from __future__ import annotations
 

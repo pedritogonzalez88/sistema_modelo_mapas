@@ -32,7 +32,7 @@ app/            código de la aplicación
 migrations/     Alembic (0001..0005)
 tests/          unitarias (sin marca) + integración (marcadas)
 scripts/        utilidades de operación, seeds, smoke
-deploy/         compose prod/staging/http, nginx, systemd
+         compose prod/staging/http, nginx, systemd
 docs/           documentación
 ```
 
@@ -48,7 +48,7 @@ Levanta PostGIS + app, siembra datos demo, ejecuta 319 unit + 286 integración
 y smoke HTTP. App en `http://localhost:8000`.
 
 Credenciales demo: `demo.admin` / `demo.consulta` (passwords en
-`deploy/.env.local`, gitignored).
+`.env.local`, gitignored).
 
 Arranque sin tests:
 
@@ -99,12 +99,12 @@ aplica) en la plantilla.
 
 ## 9. Despliegue
 
-Ver `deploy/README-production.md`. Resumen:
+Ver `deploy-production.md`. Resumen:
 
 ```bash
 # producción
-docker compose --env-file deploy/.env.production \
-  -f deploy/docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production \
+  -f docker-compose.prod.yml up -d --build
 # admin inicial
 EET_SUPER_ADMIN_USERNAME=admin ... .venv/bin/python scripts/seed_super_admin.py
 ```
@@ -116,7 +116,7 @@ Modos: TLS propio (nginx del compose), TLS externo (`--http-only`) y Easypanel
 
 - Python 3.12, type hints modernos (`X | None`).
 - Ruff + mypy + import-linter en CI.
-- No secretos en el repositorio (`deploy/.env.*` gitignored).
+- No secretos en el repositorio (`.env.*` gitignored).
 - Migraciones con Alembic; no `create_all` en producción.
 - Auditoría con actor real (`usuario:<id>`).
 

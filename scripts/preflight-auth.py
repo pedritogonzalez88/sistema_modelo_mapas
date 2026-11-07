@@ -8,14 +8,14 @@ login).
 
 Uso típico dentro del contenedor (la configuración ya está en el entorno)::
 
-    docker compose -f deploy/docker-compose.staging.yml exec app \
+    docker compose -f docker-compose.staging.yml exec app \
       python scripts/preflight-auth.py
 
 Uso desde el host contra el staging (la app vive en la red de Docker, así que
 hay que indicar el puerto publicado de la base y del proxy)::
 
     uv run python scripts/preflight-auth.py \
-      --env-file deploy/.env.staging \
+      --env-file .env.staging \
       --database-url postgresql+psycopg://eet:eet@localhost:5434/eet \
       --url https://localhost:8443 --insecure
 

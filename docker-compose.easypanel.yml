@@ -11,7 +11,7 @@
 #   - Domain: servicio interno "app", puerto 8000.
 #
 # Alternativa recomendada: usar un servicio App (Dockerfile = Dockerfile) y
-# una base PostGIS aparte, sin Compose. Ver deploy/README-easypanel.md.
+# una base PostGIS aparte, sin Compose. Ver docs/deploy-easypanel.md.
 name: eet-easypanel
 
 services:

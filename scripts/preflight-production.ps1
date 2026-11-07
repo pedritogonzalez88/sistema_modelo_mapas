@@ -2,15 +2,15 @@
 # No imprime secretos.
 [CmdletBinding()]
 param(
-    [string]$EnvFile = 'deploy/.env.production',
-    [string]$ComposeFile = 'deploy/docker-compose.prod.yml',
+    [string]$EnvFile = '.env.production',
+    [string]$ComposeFile = 'docker-compose.prod.yml',
     [switch]$HttpOnly,
     [switch]$SkipSettings
 )
 
 $ErrorActionPreference = 'Stop'
 if ($HttpOnly -and -not $PSBoundParameters.ContainsKey('ComposeFile')) {
-    $ComposeFile = 'deploy/docker-compose.http.yml'
+    $ComposeFile = 'docker-compose.http.yml'
 }
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $envPath = Join-Path $repo $EnvFile
@@ -79,8 +79,8 @@ if ($HttpOnly) {
     Write-Host "Modo HTTP: TLS lo termina el nginx externo; no se exigen certificados locales."
 } else {
     $certDir = Join-Path $repo 'deploy\certs'
-    Check (Test-Path (Join-Path $certDir 'fullchain.pem')) 'deploy/certs/fullchain.pem'
-    Check (Test-Path (Join-Path $certDir 'privkey.pem')) 'deploy/certs/privkey.pem'
+    Check (Test-Path (Join-Path $certDir 'fullchain.pem')) 'certs/fullchain.pem'
+    Check (Test-Path (Join-Path $certDir 'privkey.pem')) 'certs/privkey.pem'
 }
 
 $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue

@@ -45,7 +45,7 @@ powershell -ExecutionPolicy Bypass -File scripts/prepare-production.ps1 `
   -VpnCidr "10.20.0.0/16"
 ```
 
-El script crea `deploy/.env.production` con:
+El script crea `.env.production` con:
 
 ```text
 EET_PUBLIC_BASE_URL=https://<dominio>
@@ -61,10 +61,10 @@ IP/CIDR de ese contenedor.
 
 ## 2. nginx externo
 
-Use `deploy/nginx.external.conf` como base. En el host:
+Use `nginx/nginx.external.conf` como base. En el host:
 
 ```bash
-sudo cp deploy/nginx.external.conf /etc/nginx/conf.d/eet.conf
+sudo cp nginx/nginx.external.conf /etc/nginx/conf.d/eet.conf
 sudo editor /etc/nginx/conf.d/eet.conf   # dominio y rutas de certificados
 sudo nginx -t
 sudo systemctl reload nginx
@@ -92,8 +92,8 @@ No exige certificados locales (los tiene nginx) y valida variables, Compose y
 `Settings()`. En Linux puede validar el compose directamente:
 
 ```bash
-docker compose --env-file deploy/.env.production \
-  -f deploy/docker-compose.http.yml config --quiet
+docker compose --env-file .env.production \
+  -f docker-compose.http.yml config --quiet
 ```
 
 ## 4. Levantar
@@ -105,8 +105,8 @@ sudo install -d -o 10001 -g 10001 -m 0750 /opt/sistema_modelo_mapas/uploads
 ```
 
 ```bash
-docker compose --env-file deploy/.env.production \
-  -f deploy/docker-compose.http.yml up -d --build
+docker compose --env-file .env.production \
+  -f docker-compose.http.yml up -d --build
 ```
 
 La app ejecuta `alembic upgrade head` antes de Uvicorn y el healthcheck usa
@@ -124,12 +124,12 @@ La app ejecuta `alembic upgrade head` antes de Uvicorn y el healthcheck usa
 
 ## 6. Cambiar entre modos
 
-`deploy/docker-compose.http.yml` usa el mismo proyecto (`eet-prod`), volumen de
-PostgreSQL y contenedores que `deploy/docker-compose.prod.yml`. Por eso:
+`docker-compose.http.yml` usa el mismo proyecto (`eet-prod`), volumen de
+PostgreSQL y contenedores que `docker-compose.prod.yml`. Por eso:
 
 1. Detenga el stack anterior:
    ```bash
-   docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml down
+   docker compose --env-file .env.production -f docker-compose.prod.yml down
    ```
 2. Levante el otro modo. Los datos de PostgreSQL y uploads se conservan.
 

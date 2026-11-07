@@ -4,7 +4,7 @@
 > `auth_enabled=true` en staging**, con TLS real, reverse proxy, cookies
 > `__Host-` y proxy de confianza.
 >
-> Infraestructura: [`deploy/`](../deploy/README.md) ·
+> Infraestructura: [``](../docs/deploy.md) ·
 > Guía operativa: [`docs/despliegue-autenticacion.md`](despliegue-autenticacion.md) §12 ·
 > Runbook: [`docs/runbook-autenticacion.md`](runbook-autenticacion.md) §15 y §16.
 
@@ -18,16 +18,16 @@ desarrollo en `:8000`.
 
 | Entregable | Archivo |
 |---|---|
-| Compose de staging (db + app + proxy, red `172.28.0.0/24`, proxy en `172.28.0.10`) | `deploy/docker-compose.staging.yml` |
-| Nginx: 80→301, TLS 1.2/1.3, `client_max_body_size 20m`, `X-Forwarded-*`, `server_tokens off` | `deploy/nginx.conf` |
-| Variables del ensayo con placeholders y comentarios | `deploy/.env.staging.example` |
+| Compose de staging (db + app + proxy, red `172.28.0.0/24`, proxy en `172.28.0.10`) | `docker-compose.staging.yml` |
+| Nginx: 80→301, TLS 1.2/1.3, `client_max_body_size 20m`, `X-Forwarded-*`, `server_tokens off` | `nginx/nginx.conf` |
+| Variables del ensayo con placeholders y comentarios | `.env.staging.example` |
 | CA + certificado local con SAN `localhost`/`127.0.0.1` (idempotente) | `scripts/gen-dev-cert.py` |
 | Preflight de configuración + base + servicio (legible y `--json`) | `scripts/preflight-auth.py` |
 | Smoke HTTPS del camino completo, incluida la cookie `__Host-` | `scripts/smoke-staging.py` |
 | Comandos de operación | `app/cli.py` (`reenviar-correo`, `re-cifrar`, `estado-auth`) |
 | Fechas del mailer sin `utcnow` | `app/auth/mailer.py` |
 | Pruebas | `tests/test_cli_operacion.py` (12), `tests/test_mailer_fechas.py` (3) |
-| Exclusiones de secretos | `.gitignore`, `.dockerignore` (`deploy/`) |
+| Exclusiones de secretos | `.gitignore`, `.dockerignore` (``) |
 
 ---
 
@@ -81,14 +81,14 @@ uv run python scripts/gen-dev-cert.py
 #   ca.crt 1277 B · server.crt 2648 B · server.key 1704 B
 #   SAN: DNS:localhost, IP:127.0.0.1
 
-# deploy/.env.staging a partir del example + secretos aleatorios
+# .env.staging a partir del example + secretos aleatorios
 #   EET_SECRET_KEY = 64 caracteres · EET_AUTH_PEPPER = 32 caracteres
 ```
 
 ### 3.2 Levantar
 
 ```powershell
-docker compose -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging up -d --build
+docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
 ```
 
 ```text
@@ -104,7 +104,7 @@ El log del arranque muestra las tres migraciones y **solo** dos advertencias de
 ### 3.3 Administradores
 
 ```powershell
-docker compose -f deploy/docker-compose.staging.yml exec -e EET_ADMIN_PASSWORD=$pw app `
+docker compose -f docker-compose.staging.yml exec -e EET_ADMIN_PASSWORD=$pw app `
   uv run --no-sync --frozen python -m app.cli crear-admin `
   --email coordinacion@aep.gov.py --username staging-admin --nombre "Admin staging"
 # Administrador creado: id=9 usuario=staging-admin
@@ -128,7 +128,7 @@ comprobar la cookie de sesión.
 
 ```powershell
 uv run python scripts/preflight-auth.py `
-  --env-file deploy/.env.staging `
+  --env-file .env.staging `
   --database-url postgresql+psycopg://eet:eet@localhost:5434/eet `
   --url https://localhost:8443 --insecure
 ```

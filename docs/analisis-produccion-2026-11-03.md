@@ -59,9 +59,9 @@ Además, no se validan en producción: `EET_ADMIN_INTERNAL_ONLY`,
 
 - `docker-compose.yml` publica `8000` y `5432` en todas las interfaces.
 - PostgreSQL usa `eet/eet`.
-- `deploy/docker-compose.staging.yml` publica `5434`, usa `eet/eet` y comparte
+- `docker-compose.staging.yml` publica `5434`, usa `eet/eet` y comparte
   `uploads/` con desarrollo.
-- `deploy/nginx.conf` usa `Host $host` (pierde el puerto; puede romper CSRF en
+- `nginx/nginx.conf` usa `Host $host` (pierde el puerto; puede romper CSRF en
   puertos no estándar).
 - Dockerfile corre como root, no copia `scripts/`, usa tags flotantes y no
   declara `USER`/healthcheck de imagen.
@@ -102,7 +102,7 @@ Además, no se validan en producción: `EET_ADMIN_INTERNAL_ONLY`,
 
 ### B1. Configuración de producción
 
-Definir un `deploy/.env.production` (600, fuera de git) o secret manager con:
+Definir un `.env.production` (600, fuera de git) o secret manager con:
 
 ```env
 EET_ENVIRONMENT=prod
@@ -314,12 +314,12 @@ Con un backend + DevOps/QA parcial: **2–3 semanas**; con UAT y correcciones:
 
 Activos de producción creados:
 
-- `deploy/docker-compose.prod.yml`: app y PostgreSQL **sin puertos
+- `docker-compose.prod.yml`: app y PostgreSQL **sin puertos
   publicados**, proxy nginx en 80/443, healthchecks, `restart`, logs con
   rotación y red interna `172.30.0.0/24`.
-- `deploy/nginx.prod.conf`: TLS 1.2/1.3, HSTS, `Host $http_host`,
+- `nginx/nginx.prod.conf`: TLS 1.2/1.3, HSTS, `Host $http_host`,
   `X-Forwarded-Proto/For`, `client_max_body_size 20m`.
-- `deploy/.env.production.example` y `scripts/prepare-production.ps1`:
+- `.env.production.example` y `scripts/prepare-production.ps1`:
   generación de secretos, password de base URL-safe, SMTP y ACL del archivo.
 - `scripts/preflight-production.ps1` + `scripts/check_production_config.py`:
   validan variables, ausencia de demo/placeholders, certificados, Compose y
@@ -327,7 +327,7 @@ Activos de producción creados:
 - `scripts/bootstrap_admin.py` + `scripts/bootstrap-admin.ps1`: crean el
   administrador inicial con TOTP obligatorio y cambio de contraseña.
 - `Dockerfile` copia `scripts/` para preflight y bootstrap dentro de la imagen.
-- `.gitignore` excluye `deploy/.env.production`.
+- `.gitignore` excluye `.env.production`.
 - `persist.seed` no se ejecuta en `prod`; la semilla usa correo institucional y
   el administrador se crea explícitamente con TOTP.
 
@@ -353,7 +353,7 @@ SMTP real, base limpia, administrador real, backups programados y monitoreo.
 - Detección automática del contenedor (`eet-db-prod` en producción,
   `eet-mapa-aep` en desarrollo) y retención configurable (30 días por defecto).
 - `scripts/backup.ps1` acepta `-KeyFile` y `-Container`.
-- `deploy/systemd/eet-backup.service` + `.timer`: ejecución diaria 02:30 con
+- `systemd/eet-backup.service` + `.timer`: ejecución diaria 02:30 con
   `Persistent=true`, `UMask=0077` y destino externo `/mnt/backup/eet`.
 - `scripts/register-backup.ps1`: alternativa en el Programador de tareas de
   Windows/WSL.
@@ -401,7 +401,7 @@ SMTP real, base limpia, administrador real, backups programados y monitoreo.
 - El healthcheck de producción usa `/ready`.
 - `scripts/healthcheck-production.py` valida HTTP, base, espacio, antigüedad
   del backup y vencimiento del certificado; alerta opcional por Telegram.
-- `deploy/systemd/eet-healthcheck.service` + `.timer` cada 5 minutos.
+- `systemd/eet-healthcheck.service` + `.timer` cada 5 minutos.
 
 ### B8 — CI/CD
 
@@ -421,7 +421,7 @@ SMTP real, base limpia, administrador real, backups programados y monitoreo.
 - Verificado que el contenedor arranca como UID 10001 con `/app` de solo
   lectura e importa la aplicación.
 - El directorio `uploads` del host debe pertenecer a `10001:10001`
-  (documentado en `deploy/README-production.md`).
+  (documentado en `docs/deploy-production.md`).
 - Pendiente en el host: SSH con claves, fail2ban, NTP, firewall, escaneo de
   imagen/dependencias y revisión externa.
 

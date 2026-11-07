@@ -2,8 +2,8 @@
 
 Se ejecuta dentro del contenedor de la app, después de las migraciones:
 
-    docker compose --env-file deploy/.env.production \
-      -f deploy/docker-compose.prod.yml run --rm --no-deps app \
+    docker compose --env-file .env.production \
+      -f docker-compose.prod.yml run --rm --no-deps app \
       .venv/bin/python scripts/bootstrap_admin.py
 
 Solicita usuario, nombre, correo y contraseña de forma interactiva. También

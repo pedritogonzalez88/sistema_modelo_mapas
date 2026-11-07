@@ -4,7 +4,7 @@
 #   # Entorno local (dev)
 #   powershell -ExecutionPolicy Bypass -File scripts/start-with-admin.ps1
 #
-#   # Produccion (requiere deploy/.env.production)
+#   # Produccion (requiere .env.production)
 #   powershell -ExecutionPolicy Bypass -File scripts/start-with-admin.ps1 -Production
 #
 # Si no se pasan credenciales, se solicitan de forma interactiva (la
@@ -25,8 +25,8 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repo
 
 if ($Production) {
-    $envFile = Join-Path $repo 'deploy/.env.production'
-    $composeFile = Join-Path $repo 'deploy/docker-compose.prod.yml'
+    $envFile = Join-Path $repo '.env.production'
+    $composeFile = Join-Path $repo 'docker-compose.prod.yml'
     if (-not (Test-Path $envFile)) {
         throw "No existe $envFile. Genere la configuracion con prepare-production.ps1."
     }
@@ -34,7 +34,7 @@ if ($Production) {
         throw "No existe $composeFile."
     }
 } else {
-    $envFile = Join-Path $repo 'deploy/.env.local'
+    $envFile = Join-Path $repo '.env.local'
     $composeFile = Join-Path $repo 'docker-compose.yml'
     if (-not (Test-Path $envFile)) {
         throw "No existe $envFile. Ejecute primero scripts/start-local.ps1 o genere la configuracion local."

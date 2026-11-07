@@ -422,7 +422,7 @@ que un error de configuración no deje las cookies viajando en claro en internet
 
 Ensayo completo del despliegue —`EET_AUTH_ENABLED=true`, HTTPS, cookies
 `__Host-` y proxy de confianza— sin tocar el entorno de desarrollo. La
-infraestructura está en [`deploy/`](../deploy/README.md) y el informe del
+infraestructura está en [``](../docs/deploy.md) y el informe del
 ensayo en [`docs/fase-a6c-staging.md`](fase-a6c-staging.md).
 
 ### 12.1 Piezas
@@ -440,19 +440,19 @@ ensayo en [`docs/fase-a6c-staging.md`](fase-a6c-staging.md).
 uv run python scripts/gen-dev-cert.py
 
 # 2) Variables (copiar y completar los dos secretos)
-Copy-Item deploy/.env.staging.example deploy/.env.staging
+Copy-Item .env.staging.example .env.staging
 
 # 3) Levantar y esperar healthy
-docker compose -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging up -d --build
+docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
 
 # 4) Administrador (la clave va por entorno, nunca por parámetro)
-docker compose -f deploy/docker-compose.staging.yml exec -e EET_ADMIN_PASSWORD=$pw app `
+docker compose -f docker-compose.staging.yml exec -e EET_ADMIN_PASSWORD=$pw app `
   uv run --no-sync --frozen python -m app.cli crear-admin `
   --email coordinacion@aep.gov.py --username staging-admin --nombre "Admin staging"
 
 # 5) Preflight (configuración + base + servicio)
 uv run python scripts/preflight-auth.py `
-  --env-file deploy/.env.staging `
+  --env-file .env.staging `
   --database-url postgresql+psycopg://eet:eet@localhost:5434/eet `
   --url https://localhost:8443 --insecure
 
@@ -471,7 +471,7 @@ El preflight lee los `Settings` **reales** del proceso. Dentro del contenedor ya
 están en el entorno:
 
 ```bash
-docker compose -f deploy/docker-compose.staging.yml exec app \
+docker compose -f docker-compose.staging.yml exec app \
   uv run --no-sync --frozen python scripts/preflight-auth.py
 ```
 
@@ -483,7 +483,7 @@ cambia la URL de conexión del chequeo; no altera el entorno del despliegue.
 
 | Punto | Staging | Producción |
 |---|---|---|
-| Certificado | CA local (`deploy/certs/`) | CA institucional |
+| Certificado | CA local (`certs/`) | CA institucional |
 | `EET_PUBLIC_BASE_URL` | `https://localhost:8443` | `https://<dominio>` |
 | `EET_EMAIL_BACKEND` | `console` (aviso del preflight) | `smtp` + relay real |
 | `EET_ADMIN_INTERNAL_ONLY` | `false` (para operar desde el host) | `true` con CIDR reales |
@@ -494,7 +494,7 @@ cambia la URL de conexión del chequeo; no altera el entorno del despliegue.
 
 ```powershell
 # Detiene y elimina contenedores, red y volumen del staging
-docker compose -f deploy/docker-compose.staging.yml down -v
+docker compose -f docker-compose.staging.yml down -v
 ```
 
 No afecta al entorno de desarrollo: es otro proyecto de Compose (`eet-staging`) y

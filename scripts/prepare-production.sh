@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Genera deploy/.env.production con secretos aleatorios y datos de producción.
+# Genera .env.production con secretos aleatorios y datos de producción.
 # No imprime secretos. El archivo queda gitignored y con permisos 600.
 #
 # Uso:
@@ -20,8 +20,8 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DESTINO="$REPO/deploy/.env.production"
-CERTS="$REPO/deploy/certs"
+DESTINO="$REPO/.env.production"
+CERTS="$REPO/certs"
 UPLOADS="$REPO/uploads"
 
 DOMINIO=""
@@ -44,7 +44,7 @@ FORCE=0
 
 uso() {
     cat <<'EOF'
-Genera deploy/.env.production con secretos aleatorios y datos de producción.
+Genera .env.production con secretos aleatorios y datos de producción.
 No imprime secretos. El archivo queda gitignored y con permisos 600.
 
 Uso:
@@ -72,7 +72,7 @@ Opciones:
   --http-bind IP             Interfaz de la app en modo HTTP (127.0.0.1)
   --http-port PUERTO         Puerto de la app en modo HTTP (8000)
   --public-admin             EET_ADMIN_INTERNAL_ONLY=false (Easypanel/Internet)
-  --force                    Reemplaza deploy/.env.production si existe
+  --force                    Reemplaza .env.production si existe
   --help                     Muestra esta ayuda
 EOF
 }
@@ -228,11 +228,11 @@ else
 fi
 
 if [[ "$HTTP_ONLY" == "1" ]]; then
-    COMPOSE_FILE="deploy/docker-compose.http.yml"
-    PASO_TLS="1. Configure deploy/nginx.external.conf en el nginx externo (TLS) y recárguelo."
+    COMPOSE_FILE="docker-compose.http.yml"
+    PASO_TLS="1. Configure nginx/nginx.external.conf en el nginx externo (TLS) y recárguelo."
 else
-    COMPOSE_FILE="deploy/docker-compose.prod.yml"
-    PASO_TLS="1. Copie fullchain.pem y privkey.pem en deploy/certs/."
+    COMPOSE_FILE="docker-compose.prod.yml"
+    PASO_TLS="1. Copie fullchain.pem y privkey.pem en certs/."
 fi
 
 printf 'Configuración creada: %s\n' "$DESTINO"
@@ -240,8 +240,8 @@ printf 'Correo administrador para el bootstrap: %s\n' "$ADMIN_EMAIL"
 printf '\nSiguientes pasos:\n'
 printf '  0. %s\n' "$PROPIETARIO_UPLOADS"
 printf '  %s\n' "$PASO_TLS"
-printf '  2. Valide: docker compose --env-file deploy/.env.production -f %s config --quiet\n' "$COMPOSE_FILE"
-printf '  3. Levante: docker compose --env-file deploy/.env.production -f %s up -d --build\n' "$COMPOSE_FILE"
+printf '  2. Valide: docker compose --env-file .env.production -f %s config --quiet\n' "$COMPOSE_FILE"
+printf '  3. Levante: docker compose --env-file .env.production -f %s up -d --build\n' "$COMPOSE_FILE"
 printf '  4. Cree el admin:\n'
-printf '     docker compose --env-file deploy/.env.production -f %s \\\n' "$COMPOSE_FILE"
+printf '     docker compose --env-file .env.production -f %s \\\n' "$COMPOSE_FILE"
 printf '       run --rm --no-deps app .venv/bin/python scripts/bootstrap_admin.py\n'

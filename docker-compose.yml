@@ -24,7 +24,7 @@ services:
     # Entorno local de autenticación (gitignored). Si no existe, la app arranca
     # como antes: sin auth y solo con la conexión a la base.
     env_file:
-      - path: ./deploy/.env.local
+      - path: ./.env.local
         required: false
     environment:
       EET_DATABASE_URL: postgresql+psycopg://eet:eet@db:5432/eet

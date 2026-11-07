@@ -503,7 +503,7 @@ valor en 1–2 semanas. LDAP no está incluido en esta estimación.
 - `app/domain/qaqc.py`: máquina de estados.
 - `app/services/analysis.py`: estimadores y validación de pesos.
 - `tests/conftest.py`: base hermética y factories.
-- `docker-compose.yml`, `Dockerfile`, `deploy/nginx.conf`: operación.
+- `docker-compose.yml`, `Dockerfile`, `nginx/nginx.conf`: operación.
 - `scripts/test-local.*`, `scripts/start-local.*`: entorno local.
 
 ## Anexo B. Referencias

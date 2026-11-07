@@ -35,18 +35,18 @@ Todos los comandos se ejecutan **desde la raíz del repositorio**.
 uv run python scripts/gen-dev-cert.py
 ```
 
-Genera en `deploy/certs/` una CA local (`ca.crt`), el certificado del servidor
+Genera en `certs/` una CA local (`ca.crt`), el certificado del servidor
 con SAN `localhost` + `127.0.0.1` (`server.crt`, con la cadena) y la clave
 (`server.key`). Es idempotente: si son válidos no los reescribe (`--force` para
 regenerar). **No se versionan** (`.gitignore` y `.dockerignore`).
 
-Para que el navegador los acepte sin avisos, importe `deploy/certs/ca.crt` como
+Para que el navegador los acepte sin avisos, importe `certs/ca.crt` como
 autoridad raíz en el equipo de ensayo. `httpx` y `curl -k` no lo necesitan.
 
 ### 2. Variables de entorno
 
 ```powershell
-Copy-Item deploy/.env.staging.example deploy/.env.staging
+Copy-Item .env.staging.example .env.staging
 ```
 
 Complete los dos secretos (nunca los commitee):
@@ -59,8 +59,8 @@ uv run python -c "import secrets; print(secrets.token_urlsafe(24))"   # EET_AUTH
 ### 3. Levantar
 
 ```powershell
-docker compose -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging up -d --build
-docker compose -f deploy/docker-compose.staging.yml ps
+docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+docker compose -f docker-compose.staging.yml ps
 ```
 
 Espere a que `eet-db-staging` y `eet-app-staging` estén `healthy` (el arranque
@@ -70,7 +70,7 @@ aplica las migraciones antes de Uvicorn).
 
 ```powershell
 $env:EET_ADMIN_PASSWORD = '<clave inicial fuerte>'
-docker compose -f deploy/docker-compose.staging.yml exec -e EET_ADMIN_PASSWORD=$env:EET_ADMIN_PASSWORD app `
+docker compose -f docker-compose.staging.yml exec -e EET_ADMIN_PASSWORD=$env:EET_ADMIN_PASSWORD app `
   uv run --no-sync --frozen python -m app.cli crear-admin `
   --email coordinacion@aep.gov.py --username staging-admin --nombre "Admin staging"
 Remove-Item Env:EET_ADMIN_PASSWORD
@@ -85,7 +85,7 @@ usa el smoke para comprobar la cookie `__Host-eet_session`.
 ```powershell
 # Configuración + base + servicio (desde el host)
 uv run python scripts/preflight-auth.py `
-  --env-file deploy/.env.staging `
+  --env-file .env.staging `
   --database-url postgresql+psycopg://eet:eet@localhost:5434/eet `
   --url https://localhost:8443 --insecure
 
@@ -102,7 +102,7 @@ Ambos salen con 0 si todo está en verde y 1 si algo falla. El preflight acepta
 
 ```powershell
 # Detiene y elimina contenedores, red y volumen del staging (no toca dev)
-docker compose -f deploy/docker-compose.staging.yml down -v
+docker compose -f docker-compose.staging.yml down -v
 ```
 
 El volumen de desarrollo (`eet-pgdata`) y el contenedor `eet-app` no se tocan:
@@ -113,13 +113,13 @@ son otro proyecto de Compose (`eet-staging` ≠ directorio raíz).
 ## Comandos de operación dentro del contenedor
 
 ```powershell
-docker compose -f deploy/docker-compose.staging.yml exec app `
+docker compose -f docker-compose.staging.yml exec app `
   uv run --no-sync --frozen python -m app.cli estado-auth
 
-docker compose -f deploy/docker-compose.staging.yml exec app `
+docker compose -f docker-compose.staging.yml exec app `
   uv run --no-sync --frozen python -m app.cli reenviar-correo --limit 20
 
-docker compose -f deploy/docker-compose.staging.yml exec app `
+docker compose -f docker-compose.staging.yml exec app `
   uv run --no-sync --frozen python -m app.cli re-cifrar
 ```
 
@@ -145,7 +145,7 @@ Detalle de cada uno en `docs/runbook-autenticacion.md` §9 y §15.
 
 | Síntoma | Causa |
 |---|---|
-| El navegador avisa del certificado | Falta importar `deploy/certs/ca.crt` como CA raíz |
+| El navegador avisa del certificado | Falta importar `certs/ca.crt` como CA raíz |
 | HSTS ausente en la respuesta | `EET_TRUSTED_PROXY_IPS` no coincide con la IP del proxy (`172.28.0.10/32`) o el proxy no envía `X-Forwarded-Proto` |
 | `502 Bad Gateway` en el proxy | `app` todavía arrancando (migraciones) o sin `healthy` |
 | Puerto ocupado al levantar | 8080/8443/5434 en uso; ciérrelo o cambie el mapeo |

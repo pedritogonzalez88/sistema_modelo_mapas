@@ -2,8 +2,8 @@
 # El comando solicita usuario, nombre, correo y contraseña de forma interactiva.
 [CmdletBinding()]
 param(
-    [string]$EnvFile = 'deploy/.env.production',
-    [string]$ComposeFile = 'deploy/docker-compose.prod.yml'
+    [string]$EnvFile = '.env.production',
+    [string]$ComposeFile = 'docker-compose.prod.yml'
 )
 
 $ErrorActionPreference = 'Stop'

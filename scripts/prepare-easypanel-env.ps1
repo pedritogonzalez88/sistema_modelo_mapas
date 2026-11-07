@@ -1,4 +1,4 @@
-﻿# Genera deploy/.env.easypanel con secretos aleatorios y valores de producción
+﻿# Genera .env.easypanel con secretos aleatorios y valores de producción
 # para pegarlos en Easypanel → Environment.
 #
 # Uso (Compose de Easypanel, el host de la base es el servicio "db"):

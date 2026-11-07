@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Genera una CA local y un certificado de servidor para el staging (A6.12).
 
-Produce, en ``deploy/certs/``:
+Produce, en ``certs/``:
 
 - ``ca.crt``     — certificado de la CA (para confiar en el navegador/cliente).
 - ``server.crt`` — certificado del servidor + cadena de la CA.
@@ -16,7 +16,7 @@ Uso::
     uv run python scripts/gen-dev-cert.py
     uv run python scripts/gen-dev-cert.py --force --days 90
 
-Los archivos **no** se versionan (``deploy/certs/`` está en ``.gitignore`` y en
+Los archivos **no** se versionan (``certs/`` está en ``.gitignore`` y en
 ``.dockerignore``). Este certificado es solo para ensayo local: en producción se
 usa el certificado emitido por la CA institucional.
 """
@@ -200,7 +200,7 @@ def generar(destino: Path = DESTINO, dias: int = 365, forzar: bool = False) -> i
     print()
     print("Para que el navegador confíe, importe ca.crt como autoridad raíz "
           "local (solo en el equipo de ensayo).")
-    print("Estos archivos no se versionan: deploy/certs/ está en .gitignore.")
+    print("Estos archivos no se versionan: certs/ está en .gitignore.")
     return 0
 
 
@@ -210,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Genera CA y certificado TLS locales para el staging.",
     )
     parser.add_argument("--destino", default=str(DESTINO),
-                        help="Carpeta de salida (por defecto deploy/certs).")
+                        help="Carpeta de salida (por defecto certs).")
     parser.add_argument("--dias", type=int, default=365,
                         help="Días de validez (por defecto 365).")
     parser.add_argument("--force", action="store_true",

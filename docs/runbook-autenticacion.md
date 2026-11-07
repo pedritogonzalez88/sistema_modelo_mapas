@@ -8,7 +8,7 @@
 > (alcance técnico de la administración de usuarios y auditoría).
 >
 > §15 reúne los comandos de operación (`reenviar-correo`, `re-cifrar`,
-> `estado-auth`) y §16 el ciclo de vida del entorno de staging (`deploy/`).
+> `estado-auth`) y §16 el ciclo de vida del entorno de staging (``).
 
 Todos los comandos se ejecutan desde la raíz del repositorio. En producción,
 dentro del contenedor:
@@ -823,7 +823,7 @@ docker compose exec app uv run python -m app.cli re-cifrar
 
 ## 16. Staging: levantar, verificar y apagar
 
-Infraestructura en [`deploy/README.md`](../deploy/README.md); informe del ensayo
+Infraestructura en [`docs/deploy.md`](../docs/deploy.md); informe del ensayo
 en [`docs/fase-a6c-staging.md`](fase-a6c-staging.md). Es otro proyecto de
 Compose (`eet-staging`), con volumen y puertos propios: **no comparte nada con
 el entorno de desarrollo**.
@@ -831,22 +831,22 @@ el entorno de desarrollo**.
 ```powershell
 # Levantar (TLS, auth activa, proxy de confianza)
 uv run python scripts/gen-dev-cert.py
-Copy-Item deploy/.env.staging.example deploy/.env.staging   # completar secretos
-docker compose -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging up -d --build
+Copy-Item .env.staging.example .env.staging   # completar secretos
+docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
 
 # Verificar
 uv run python scripts/preflight-auth.py `
-  --env-file deploy/.env.staging `
+  --env-file .env.staging `
   --database-url postgresql+psycopg://eet:eet@localhost:5434/eet `
   --url https://localhost:8443 --insecure
 uv run python scripts/smoke-staging.py --base https://localhost:8443 --insecure
 
 # Operar (los mismos comandos del §15, con el compose del staging)
-docker compose -f deploy/docker-compose.staging.yml exec app `
+docker compose -f docker-compose.staging.yml exec app `
   uv run --no-sync --frozen python -m app.cli estado-auth
 
 # Apagar y limpiar (elimina contenedores, red y volumen del staging)
-docker compose -f deploy/docker-compose.staging.yml down -v
+docker compose -f docker-compose.staging.yml down -v
 ```
 
 `down -v` del staging **no** borra el volumen de desarrollo (`eet-pgdata`): son

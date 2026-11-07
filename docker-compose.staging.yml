@@ -4,8 +4,8 @@
 # `EET_AUTH_ENABLED=true` y proxy de confianza— sin tocar el entorno de
 # desarrollo (`docker-compose.yml`, puertos 8000/5432).
 #
-#   docker compose -f deploy/docker-compose.staging.yml \
-#     --env-file deploy/.env.staging up -d --build
+#   docker compose -f docker-compose.staging.yml \
+#     --env-file .env.staging up -d --build
 #
 # Diferencias deliberadas con desarrollo:
 #   - La aplicación NO publica puertos: solo la alcanza el proxy por la red
@@ -42,7 +42,7 @@ services:
       # El contexto es la raíz del repositorio: el Dockerfile es el mismo que
       # se usa en producción (CSS compilado + `alembic upgrade head` al
       # arrancar), así el ensayo valida la imagen real.
-      context: ..
+      context: .
       dockerfile: Dockerfile
     container_name: eet-app-staging
     env_file:

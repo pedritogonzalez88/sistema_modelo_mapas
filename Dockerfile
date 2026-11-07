@@ -45,7 +45,7 @@ RUN mkdir -p uploads \
     && chown -R eet:eet /app
 
 # La aplicación corre sin privilegios. El volumen de uploads debe pertenecer a
-# 10001:10001 en el host (ver deploy/README-production.md).
+# 10001:10001 en el host (ver docs/deploy-production.md).
 USER 10001:10001
 
 EXPOSE 8000

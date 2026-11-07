@@ -1,7 +1,7 @@
 # Despliegue en Easypanel — Validador EET
 
 Este repositorio **no debe desplegarse como Compose dentro de Easypanel**. El
-compose de producción (`deploy/docker-compose.prod.yml`) administra nginx,
+compose de producción (`docker-compose.prod.yml`) administra nginx,
 TLS y puertos 80/443, y Easypanel ya hace esa función con su proxy. En
 Easypanel se usa el modo **App (Dockerfile)** y una base PostGIS aparte.
 
@@ -36,7 +36,7 @@ Corrección en **Easypanel → proyecto → servicio → Settings / Build**:
 | Build context | `/` (raíz del repositorio) |
 | Puerto | `8000` |
 
-No use `docker-compose.yml` ni `deploy/docker-compose.prod.yml` en el campo
+No use `docker-compose.yml` ni `docker-compose.prod.yml` en el campo
 Dockerfile. Guarde y vuelva a desplegar.
 
 ## 1.1 Avisos `container_name` y `ports`
@@ -68,7 +68,7 @@ Compose de Easypanel. Dos soluciones:
 
 ## 1.2 Variables de entorno y `.env.example`
 
-Easypanel **no lee** `deploy/.env.production` del repositorio: los secretos se
+Easypanel **no lee** `.env.production` del repositorio: los secretos se
 cargan en **Environment**. Para Compose, Easypanel puede crear un `.env` en el
 build path a partir de `.env.example` (habilite **Create .env file**).
 
@@ -77,9 +77,9 @@ Archivos del repositorio:
 | Archivo | Uso |
 |---|---|
 | `.env.example` | Plantilla para el editor de Environment de Easypanel/Compose |
-| `deploy/.env.production.example` | Plantilla para el host con `docker-compose.prod.yml` |
-| `deploy/.env.production` | Generado localmente, gitignored, **no va a Easypanel** |
-| `deploy/.env.easypanel` | Generado por el script, gitignored, para copiar/pegar |
+| `.env.production.example` | Plantilla para el host con `docker-compose.prod.yml` |
+| `.env.production` | Generado localmente, gitignored, **no va a Easypanel** |
+| `.env.easypanel` | Generado por el script, gitignored, para copiar/pegar |
 
 Genere valores reales sin escribirlos a mano:
 
@@ -93,7 +93,7 @@ powershell -ExecutionPolicy Bypass -File scripts/prepare-easypanel-env.ps1 `
 
 Con `-DbHost "db"` para el Compose; con el nombre del servicio de base si usa
 App/Dockerfile. Luego copie el contenido en Easypanel → Environment (o use
-`Get-Content deploy/.env.easypanel -Raw | Set-Clipboard`). No lo commitee.
+`Get-Content .env.easypanel -Raw | Set-Clipboard`). No lo commitee.
 
 > **Password de PostgreSQL:** use solo caracteres URL-safe. Lo más simple es
 > `openssl rand -hex 24`. Si el password contiene `@`, `%`, `:`, `/`, `#` o

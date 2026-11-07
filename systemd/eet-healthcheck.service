@@ -13,7 +13,7 @@ ExecStart=/opt/sistema_modelo_mapas/.venv/bin/python \
     /opt/sistema_modelo_mapas/scripts/healthcheck-production.py \
     --base-url https://eet.example.gov.py \
     --backup-dir /mnt/backup/eet \
-    --cert /opt/sistema_modelo_mapas/deploy/certs/fullchain.pem
+    --cert /opt/sistema_modelo_mapas/certs/fullchain.pem
 Nice=10
 TimeoutStartSec=2min
 StandardOutput=journal

@@ -33,7 +33,7 @@ command -v openssl >/dev/null 2>&1 || fail "Falta openssl."
 if [[ "$SKIP_SYNC" != "1" ]]; then
     log "Sincronizando $SRC -> $DEST"
     mkdir -p "$DEST"
-    # No se borra el destino: se preservan .venv, uploads y deploy/.env.local.
+    # No se borra el destino: se preservan .venv, uploads y .env.local.
     tar -C "$SRC" \
         --exclude=.git \
         --exclude=.venv \
@@ -62,11 +62,11 @@ if ! docker info >/dev/null 2>&1; then
 fi
 docker info >/dev/null 2>&1 || fail "El daemon de Docker no responde."
 
-if [[ ! -f deploy/.env.local ]]; then
-    log "Generando deploy/.env.local"
+if [[ ! -f .env.local ]]; then
+    log "Generando .env.local"
     SECRET=$(openssl rand -base64 48 | tr -d '\n')
     PEPPER=$(openssl rand -base64 32 | tr -d '\n')
-    cat > deploy/.env.local <<EOF
+    cat > .env.local <<EOF
 EET_AUTH_ENABLED=true
 EET_ENVIRONMENT=dev
 EET_COOKIE_SECURE=false
@@ -76,27 +76,27 @@ EET_EMAIL_BACKEND=file
 EET_EMAIL_DIR=/app/uploads/mail
 EET_PUBLIC_BASE_URL=http://localhost:8000
 EOF
-    chmod 600 deploy/.env.local
+    chmod 600 .env.local
 fi
 
 # Credenciales demo solo para el smoke local. Si no existen se generan y se
-# guardan en deploy/.env.local (gitignored); nunca se versionan.
-if ! grep -q '^EET_DEMO_ADMIN_PASSWORD=' deploy/.env.local 2>/dev/null; then
+# guardan en .env.local (gitignored); nunca se versionan.
+if ! grep -q '^EET_DEMO_ADMIN_PASSWORD=' .env.local 2>/dev/null; then
     ADMIN_PASS=$(openssl rand -base64 24 | tr -d '\n/+=' | cut -c1-16)
-    echo "EET_DEMO_ADMIN_PASSWORD=$ADMIN_PASS" >> deploy/.env.local
+    echo "EET_DEMO_ADMIN_PASSWORD=$ADMIN_PASS" >> .env.local
 fi
-if ! grep -q '^EET_DEMO_CONSULTA_PASSWORD=' deploy/.env.local 2>/dev/null; then
+if ! grep -q '^EET_DEMO_CONSULTA_PASSWORD=' .env.local 2>/dev/null; then
     CONSULTA_PASS=$(openssl rand -base64 24 | tr -d '\n/+=' | cut -c1-16)
-    echo "EET_DEMO_CONSULTA_PASSWORD=$CONSULTA_PASS" >> deploy/.env.local
+    echo "EET_DEMO_CONSULTA_PASSWORD=$CONSULTA_PASS" >> .env.local
 fi
 
 # El repositorio puede venir de Windows con CRLF; un \r al final de la
 # contraseña demo haría fallar el login de forma silenciosa.
-sed -i 's/\r$//' deploy/.env.local
+sed -i 's/\r$//' .env.local
 
 set -a
 # shellcheck disable=SC1091
-source deploy/.env.local
+source .env.local
 set +a
 
 log "Levantando el stack"
@@ -131,7 +131,7 @@ curl -fsS http://localhost:8000/salud >/dev/null \
 curl -fsS http://localhost:8000/ready >/dev/null \
     || fail "/ready no responde 200."
 
-AUTH_ENABLED=$(grep -E '^EET_AUTH_ENABLED=' deploy/.env.local \
+AUTH_ENABLED=$(grep -E '^EET_AUTH_ENABLED=' .env.local \
     | head -1 | cut -d= -f2 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
 if [[ "$AUTH_ENABLED" == "true" ]]; then
     [[ -n "${EET_DEMO_ADMIN_PASSWORD:-}" ]] \
@@ -156,6 +156,6 @@ echo "Contenedores:"
 docker compose ps
 if [[ "$AUTH_ENABLED" == "true" ]]; then
     echo "Usuarios demo: demo.admin / demo.consulta"
-    echo "Credenciales en deploy/.env.local (EET_DEMO_*_PASSWORD)."
+    echo "Credenciales en .env.local (EET_DEMO_*_PASSWORD)."
 fi
 echo "Todo OK."

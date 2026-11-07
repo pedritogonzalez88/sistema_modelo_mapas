@@ -10,8 +10,8 @@ node_modules/
 *.pyc
 
 # Entorno de staging (A6.12): secretos y certificados locales nunca se versionan.
-deploy/.env.staging
-deploy/.env.production
-deploy/.env.easypanel
-deploy/certs/
-deploy/.env.local
+.env.staging
+.env.production
+.env.easypanel
+certs/
+.env.local

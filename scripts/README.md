@@ -38,8 +38,8 @@ bash scripts/test-local.sh /mnt/c/Users/<usuario>/PycharmProjects/sistema_modelo
 
 1. Sincroniza el repositorio a `/opt/sistema_modelo_mapas` (sin `.git`,
    `.venv`, `node_modules` ni `uploads`; conserva `.venv`, `uploads` y
-   `deploy/.env.local` del destino).
-2. Genera `deploy/.env.local` si no existe, con secretos aleatorios y
+   `.env.local` del destino).
+2. Genera `.env.local` si no existe, con secretos aleatorios y
    credenciales demo.
 3. Levanta `db` (PostGIS) y `app` con `docker compose up -d --wait`.
 4. Ejecuta `uv sync --frozen --dev`.
@@ -87,10 +87,10 @@ El log del watchdog está en `%LOCALAPPDATA%\EET\keep-local.log`.
 
 ## Producción
 
-Guía completa: `deploy/README-production.md`.
+Guía completa: `docs/deploy-production.md`.
 
 ```powershell
-# 1. Generar deploy/.env.production con secretos y datos reales (Windows)
+# 1. Generar .env.production con secretos y datos reales (Windows)
 powershell -ExecutionPolicy Bypass -File scripts/prepare-production.ps1 `
   -Dominio "eet.aep.gov.py" -SmtpHost "smtp.aep.gov.py" `
   -SmtpUser "validador" -AdminEmail "admin@aep.gov.py"
@@ -104,15 +104,15 @@ bash scripts/prepare-production.sh `
 bash scripts/prepare-production.sh --http-only `
   --dominio "eet.aep.gov.py" --smtp-host "smtp.aep.gov.py" `
   --smtp-user "validador" --admin-email "admin@aep.gov.py"
-# Luego: deploy/docker-compose.http.yml + deploy/nginx.external.conf
-# Guía: deploy/README-http.md
+# Luego: docker-compose.http.yml + nginx/nginx.external.conf
+# Guía: docs/deploy-http.md
 
-# 2. Copiar fullchain.pem/privkey.pem a deploy/certs y validar
+# 2. Copiar fullchain.pem/privkey.pem a certs y validar
 powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1
 
 # 3. Levantar el stack de producción
-docker compose --env-file deploy/.env.production `
-  -f deploy/docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production `
+  -f docker-compose.prod.yml up -d --build
 
 # 4. Crear el administrador inicial (TOTP obligatorio)
 powershell -ExecutionPolicy Bypass -File scripts/bootstrap-admin.ps1
@@ -138,7 +138,7 @@ powershell -ExecutionPolicy Bypass -File scripts/register-backup.ps1 `
 ```
 
 En Linux/WSL también puede instalar
-`deploy/systemd/eet-backup.service` y `deploy/systemd/eet-backup.timer`.
+`systemd/eet-backup.service` y `systemd/eet-backup.timer`.
 El backup incluye PostgreSQL/PostGIS y `uploads`, se cifra con AES-256-CBC
 (PBKDF2) y verifica la restauración en una base temporal antes de publicar los
 archivos `.enc`.
@@ -148,7 +148,7 @@ archivos `.enc`.
 No use el `docker-compose.yml` de desarrollo en Easypanel: tiene
 `container_name` y `ports`, que Easypanel administra. Use el modo
 **App/Dockerfile** o, si prefiere Compose, `docker-compose.easypanel.yml`.
-Guía completa: `deploy/README-easypanel.md`.
+Guía completa: `docs/deploy-easypanel.md`.
 
 Para generar las variables que se pegan en **Environment**:
 
@@ -158,7 +158,7 @@ powershell -ExecutionPolicy Bypass -File scripts/prepare-easypanel-env.ps1 `
   -SmtpUser "validador" -AdminEmail "admin@aep.gov.py"
 ```
 
-El script crea `deploy/.env.easypanel` (gitignored) con password de base
+El script crea `.env.easypanel` (gitignored) con password de base
 URL-safe y secretos aleatorios. Easypanel no lee ese archivo: hay que copiar su
 contenido al editor de Environment.
 
@@ -168,13 +168,13 @@ contenido al editor de Environment.
 .venv\Scripts\python.exe scripts\healthcheck-production.py `
   --base-url https://eet.aep.gov.py `
   --backup-dir /mnt/backup/eet `
-  --cert deploy/certs/fullchain.pem
+  --cert certs/fullchain.pem
 ```
 
 Comprueba `/salud`, `/ready` (base), espacio libre, antigüedad del backup y
 vencimiento del certificado. Devuelve código 1 ante cualquier fallo. Con
 `EET_TELEGRAM_TOKEN` y `EET_TELEGRAM_CHAT_ID` envía la alerta por Telegram.
-El timer `deploy/systemd/eet-healthcheck.timer` lo ejecuta cada 5 minutos.
+El timer `systemd/eet-healthcheck.timer` lo ejecuta cada 5 minutos.
 
 El workflow `.github/workflows/ci.yml` ejecuta lint, unitarias, integración con
 PostGIS y build de la imagen en cada push/PR. En push a `master` publica
@@ -208,11 +208,11 @@ primer login exige cambiar la contrasena y enrolar TOTP.
 
 El script crea `demo.admin` (rol admin) y `demo.consulta` (rol consulta) con
 MFA deshabilitado **solo para la demo**. Las contraseñas se generan en el primer
-arranque y se guardan en `deploy/.env.local` (gitignored) como
+arranque y se guardan en `.env.local` (gitignored) como
 `EET_DEMO_ADMIN_PASSWORD` y `EET_DEMO_CONSULTA_PASSWORD`.
 
 Para usar contraseñas propias, expórtelas antes de ejecutar el script o
-escríbelas en `deploy/.env.local`.
+escríbelas en `.env.local`.
 
 ## Notas
 
@@ -227,6 +227,6 @@ escríbelas en `deploy/.env.local`.
   copia limpia, elimine `/opt/sistema_modelo_mapas` y vuelva a ejecutar.
 - `EET_COOKIE_SECURE=false` es solo para HTTP local. En producción use HTTPS y
   cookies `Secure`, y exija TOTP a `admin`/`supervision`.
-- Los secretos viven en `deploy/.env.local` (gitignored). Si se rotan, use
+- Los secretos viven en `.env.local` (gitignored). Si se rotan, use
   `EET_FERNET_KEYS="v2:<nueva>,v1:<anterior>"` para conservar la lectura de
   correos/TOTP antiguos.

@@ -1,4 +1,4 @@
-﻿# Genera deploy/.env.production con secretos aleatorios y datos de producción.
+﻿# Genera .env.production con secretos aleatorios y datos de producción.
 # No imprime secretos. El archivo queda gitignored y con ACL restringida.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts/prepare-production.ps1 `
@@ -117,11 +117,11 @@ New-Item -ItemType Directory -Force -Path $uploads | Out-Null
 # Restringir el archivo al usuario actual (NTFS). Si falla, no bloquea.
 & icacls.exe $destino /inheritance:r /grant:r "$($env:USERNAME):(F)" 2>$null | Out-Null
 
-$composeFile = if ($HttpOnly) { "deploy/docker-compose.http.yml" } else { "deploy/docker-compose.prod.yml" }
+$composeFile = if ($HttpOnly) { "docker-compose.http.yml" } else { "docker-compose.prod.yml" }
 $pasoTls = if ($HttpOnly) {
-    "1. Configure deploy/nginx.external.conf en el nginx externo (TLS) y recárguelo."
+    "1. Configure nginx/nginx.external.conf en el nginx externo (TLS) y recárguelo."
 } else {
-    "1. Copie fullchain.pem y privkey.pem en deploy/certs/."
+    "1. Copie fullchain.pem y privkey.pem en certs/."
 }
 
 Write-Host "Configuración creada: $destino"
@@ -132,5 +132,5 @@ Write-Host "  0. En el host Linux, dé al directorio de uploads el UID del conte
 Write-Host "     sudo install -d -o 10001 -g 10001 -m 0750 $uploads"
 Write-Host "  $pasoTls"
 Write-Host "  2. Ejecute: powershell -ExecutionPolicy Bypass -File scripts/preflight-production.ps1 -HttpOnly:$HttpOnly"
-Write-Host "  3. Levante: docker compose --env-file deploy/.env.production -f $composeFile up -d --build"
+Write-Host "  3. Levante: docker compose --env-file .env.production -f $composeFile up -d --build"
 Write-Host "  4. Cree el admin: scripts/bootstrap-admin.ps1 (o el comando del README)."
