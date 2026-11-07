@@ -67,8 +67,11 @@ services:
     stop_grace_period: 30s
     healthcheck:
       # /ready comprueba la base; /salud solo demuestra que Uvicorn responde.
-      test: [ CMD-SHELL, ">-
-          python -c " ]
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"
       interval: 15s
       timeout: 8s
       retries: 12
