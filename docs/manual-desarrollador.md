@@ -32,7 +32,9 @@ app/            código de la aplicación
 migrations/     Alembic (0001..0005)
 tests/          unitarias (sin marca) + integración (marcadas)
 scripts/        utilidades de operación, seeds, smoke
-         compose prod/staging/http, nginx, systemd
+nginx/          configuracion nginx (prod/external)
+systemd/       unidades backup/healthcheck
+*.yml          docker-compose (dev/prod/staging/http/easypanel)
 docs/           documentación
 ```
 
