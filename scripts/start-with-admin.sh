@@ -18,6 +18,7 @@ ADMIN_NOMBRE="${EET_SUPER_ADMIN_NOMBRE:-}"
 ADMIN_EMAIL="${EET_SUPER_ADMIN_EMAIL:-}"
 ADMIN_PASSWORD="${EET_SUPER_ADMIN_PASSWORD:-}"
 SKIP_BUILD=0
+HTTP_ONLY=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -27,6 +28,7 @@ while [[ $# -gt 0 ]]; do
         --admin-email) ADMIN_EMAIL="$2"; shift 2 ;;
         --admin-password) ADMIN_PASSWORD="$2"; shift 2 ;;
         --skip-build) SKIP_BUILD=1; shift ;;
+        --http-only) HTTP_ONLY=1; shift ;;
         *) echo "Opcion desconocida: $1" >&2; exit 2 ;;
     esac
 done
@@ -36,7 +38,11 @@ cd "$ROOT"
 
 if [[ "$PRODUCTION" == "1" ]]; then
     ENV_FILE="$ROOT/.env.production"
-    COMPOSE_FILE="$ROOT/docker-compose.prod.yml"
+    if [[ "$HTTP_ONLY" == "1" ]]; then
+        COMPOSE_FILE="$ROOT/docker-compose.http.yml"
+    else
+        COMPOSE_FILE="$ROOT/docker-compose.prod.yml"
+    fi
     if [[ ! -f "$ENV_FILE" ]]; then
         echo ".env.production no existe; se va a generar."
         read -r -p "Dominio publico (sin https://): " DOMINIO
@@ -46,6 +52,7 @@ if [[ "$PRODUCTION" == "1" ]]; then
         read -r -p "CIDR VPN/LAN administrativa (opcional): " VPN_CIDR
         PREPARE_ARGS=(--dominio "$DOMINIO" --smtp-host "$SMTP_HOST" --smtp-user "$SMTP_USER" --admin-email "$ADMIN_EMAIL")
         [[ -n "$VPN_CIDR" ]] && PREPARE_ARGS+=(--vpn-cidr "$VPN_CIDR")
+        [[ "$HTTP_ONLY" == "1" ]] && PREPARE_ARGS+=(--http-only)
         bash "$ROOT/scripts/prepare-production.sh" "${PREPARE_ARGS[@]}"
     fi
 
