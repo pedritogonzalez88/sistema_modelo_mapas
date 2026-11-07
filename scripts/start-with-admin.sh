@@ -55,7 +55,7 @@ if [[ "$PRODUCTION" == "1" ]]; then
         sed -i '/^POSTGRES_PASSWORD=/d' "$ENV_FILE"
         DB_PASSWORD="$(python3 -c "
 import secrets,string
-lower=string.ascii_lowercase; upper=string.ascii_uppercase; digits=string.digits; special='!#$%&*()-_=+'
+lower=string.ascii_lowercase; upper=string.ascii_uppercase; digits=string.digits; special='!$*()-_+.'
 chars=[secrets.choice(lower),secrets.choice(upper),secrets.choice(digits),secrets.choice(special)]
 pool=lower+upper+digits+special
 chars += [secrets.choice(pool) for _ in range(28)]
@@ -66,10 +66,10 @@ print(''.join(chars[:32]))
         # Sincronizar EET_DATABASE_URL si esta vacia o usa placeholder.
         if ! grep -qE '^EET_DATABASE_URL=postgresql' "$ENV_FILE"; then
             sed -i '/^EET_DATABASE_URL=/d' "$ENV_FILE"
-            DB_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
-            DB_NAME="$(grep -E '^POSTGRES_DB=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
+            POSTGRES_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
+            POSTGRES_DB="$(grep -E '^POSTGRES_DB=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
             [[ -n "$DB_USER" ]] || DB_USER="eet"
-            [[ -n "$DB_NAME" ]] || DB_NAME="eet"
+            [[ -n "$POSTGRES_DB" ]] || DB_NAME="eet"
             printf 'EET_DATABASE_URL=postgresql+psycopg://%s:%s@db:5432/%s\n'                 "$DB_USER" "$DB_PASSWORD" "$DB_NAME" >> "$ENV_FILE"
         fi
         echo "POSTGRES_PASSWORD generado y agregado a $ENV_FILE"

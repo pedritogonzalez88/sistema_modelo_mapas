@@ -174,7 +174,7 @@ n = int(sys.argv[1])
 lower = string.ascii_lowercase
 upper = string.ascii_uppercase
 digits = string.digits
-special = "!#$%&*()-_=+"
+special = "!$*()-_+."
 chars = [secrets.choice(lower), secrets.choice(upper),
          secrets.choice(digits), secrets.choice(special)]
 pool = lower + upper + digits + special
