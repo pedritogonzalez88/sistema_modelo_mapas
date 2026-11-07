@@ -13,3 +13,9 @@ app/static/css/app.css
 # Staging: el contexto de build es la raíz del repo, así que se excluye el
 # entorno y, sobre todo, la clave privada de la CA local (deploy/certs/).
 deploy/
+
+# Datos demo y scripts de desarrollo: no se despliegan en producción.
+scripts/seed_demo_data.py
+scripts/test-local.ps1
+scripts/test-local.sh
+

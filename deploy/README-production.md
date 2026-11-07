@@ -116,12 +116,29 @@ healthcheck usa `/ready`, que comprueba la base de datos.
 
 ## 6. Crear el administrador inicial
 
+Opción interactiva:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/bootstrap-admin.ps1
 ```
 
 Solicita usuario, nombre, correo y contraseña. El primer login exigirá cambiar
 la contraseña y enrolar TOTP. No hay usuarios demo en producción.
+
+Opción no interactiva (para automatizar el arranque, Easypanel o CI):
+
+```bash
+EET_SUPER_ADMIN_USERNAME=admin \
+EET_SUPER_ADMIN_NOMBRE="Administrador EET" \
+EET_SUPER_ADMIN_EMAIL=admin@aep.gov.py \
+EET_SUPER_ADMIN_PASSWORD='...' \
+  .venv/bin/python scripts/seed_super_admin.py
+```
+
+El script es idempotente: si falta alguna variable o ya existe un
+administrador activo, sale con código 0 sin tocar la base. Use
+`EET_SUPER_ADMIN_FORCE=1` solo para forzar la creación. No imprime la
+contraseña.
 
 ## 7. Smoke de producción
 
