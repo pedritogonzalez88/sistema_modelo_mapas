@@ -12,7 +12,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-eet}
       POSTGRES_USER: ${POSTGRES_USER:-eet}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - eet-prod-pgdata:/var/lib/postgresql/data
     shm_size: 256m
@@ -99,7 +99,6 @@ services:
       app:
         condition: service_healthy
     networks:
-      edge: {}
       internal:
         ipv4_address: 172.30.0.10
     read_only: true
@@ -124,8 +123,6 @@ networks:
     ipam:
       config:
         - subnet: 172.30.0.0/24
-  edge:
-    driver: bridge
 
 volumes:
   eet-prod-pgdata:
