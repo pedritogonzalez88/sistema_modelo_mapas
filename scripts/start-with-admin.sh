@@ -60,6 +60,11 @@ BUILD_ARG=()
 [[ "$SKIP_BUILD" != "1" ]] && BUILD_ARG=(--build)
 
 echo "Levantando stack ($ENV_FILE)..."
+# Limpiar redes/contenedores previos con subredes incompatibles (evita
+# "no configured subnet contains IP address").
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down --remove-orphans >/dev/null 2>&1 || true
+docker network rm eet-prod_internal eet-prod_edge >/dev/null 2>&1 || true
+
 # Reintento: en servidores con DNS inestable la descarga de imagenes puede fallar.
 INTENTO=0
 until docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d "${BUILD_ARG[@]}" --wait --wait-timeout 240; do
